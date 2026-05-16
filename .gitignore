@@ -1,0 +1,7 @@
+.netlify/
+.claude/
+.DS_Store
+Icon?
+Icon
+node_modules/
+*.log
