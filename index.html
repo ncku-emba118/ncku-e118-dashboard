@@ -4,6 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>E118 Dashboard ｜ 成大 EMBA 第 118 班</title>
+
+  <!-- ── PWA ── -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#8B1F2F" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="E118" />
+  <link rel="apple-touch-icon" href="assets/pwa-icon-180.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/pwa-icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="assets/pwa-icon-512.png" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Noto+Serif+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -304,6 +315,281 @@
       flex-shrink: 0;
     }
 
+    /* ── Help (?) button on each card ── */
+    .app-help {
+      position: absolute;
+      top: 24px;
+      right: 64px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--ncku-line);
+      background: var(--ncku-paper);
+      color: var(--ncku-mute);
+      font: 600 12px/1 var(--font-body);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      z-index: 2;
+      transition: all 0.2s ease;
+    }
+    .app-help:hover {
+      background: var(--ncku-wine);
+      color: #fff;
+      border-color: var(--ncku-wine);
+      transform: scale(1.08);
+    }
+    .app-card:hover .app-help {
+      border-color: var(--ncku-gold);
+      color: var(--ncku-wine);
+    }
+    @media (max-width: 720px) {
+      .app-help { top: 22px; right: 56px; }
+    }
+
+    /* ── Help popover ── */
+    .help-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 22, 18, 0.42);
+      backdrop-filter: blur(3px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 998;
+    }
+    .help-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .help-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -48%) scale(0.97);
+      width: min(540px, calc(100vw - 40px));
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
+      background: var(--ncku-cream);
+      border: 1px solid var(--ncku-line);
+      border-top: 3px solid var(--ncku-wine);
+      box-shadow: 0 40px 80px rgba(26, 22, 18, 0.18), 0 0 0 1px rgba(201, 169, 97, 0.15);
+      padding: 40px 36px 32px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.3s ease;
+      z-index: 999;
+    }
+    .help-modal.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .help-eyebrow {
+      font: 500 10px var(--font-body);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--ncku-gold);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .help-eyebrow::before {
+      content: '';
+      width: 22px;
+      height: 1px;
+      background: var(--ncku-gold);
+    }
+    .help-title {
+      font: 600 24px/1.3 var(--font-tc);
+      color: var(--ncku-ink);
+      margin-bottom: 6px;
+    }
+    .help-domain {
+      font: 500 11px var(--font-mono);
+      letter-spacing: 0.05em;
+      color: var(--ncku-wine);
+      margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--ncku-rule);
+    }
+    .help-section-label {
+      font: 500 11px var(--font-body);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ncku-mute);
+      margin-top: 18px;
+      margin-bottom: 10px;
+    }
+    .help-desc {
+      font: 400 14px/1.7 var(--font-body);
+      color: var(--ncku-ink-soft);
+    }
+    .help-steps {
+      list-style: none;
+      counter-reset: helpstep;
+      margin-top: 4px;
+    }
+    .help-steps li {
+      counter-increment: helpstep;
+      position: relative;
+      padding: 8px 0 8px 32px;
+      font: 400 14px/1.6 var(--font-body);
+      color: var(--ncku-ink-soft);
+      border-bottom: 1px dotted var(--ncku-rule);
+    }
+    .help-steps li:last-child { border-bottom: none; }
+    .help-steps li::before {
+      content: counter(helpstep, decimal-leading-zero);
+      position: absolute;
+      left: 0;
+      top: 9px;
+      font: 600 11px var(--font-mono);
+      color: var(--ncku-wine);
+      letter-spacing: 0.05em;
+    }
+    .help-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--ncku-rule);
+      background: transparent;
+      color: var(--ncku-mute);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .help-close:hover {
+      background: var(--ncku-wine);
+      color: #fff;
+      border-color: var(--ncku-wine);
+    }
+    .help-close svg { width: 14px; height: 14px; }
+    .help-cta {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--ncku-rule);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .help-cta a {
+      font: 500 13px var(--font-body);
+      letter-spacing: 0.04em;
+      color: var(--ncku-wine);
+      text-decoration: none;
+      padding: 10px 20px;
+      border: 1px solid var(--ncku-wine);
+      transition: all 0.2s;
+    }
+    .help-cta a:hover {
+      background: var(--ncku-wine);
+      color: #fff;
+    }
+    .help-cta-note {
+      font: 400 11px var(--font-body);
+      color: var(--ncku-mute);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── PWA Install Section ── */
+    .pwa-section {
+      padding: 56px 0 32px;
+      border-top: 1px dashed var(--ncku-rule);
+      margin-top: 32px;
+    }
+    .pwa-head {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .pwa-head h3 {
+      font: 400 24px/1.3 var(--font-display);
+      color: var(--ncku-ink);
+    }
+    .pwa-head .tc {
+      font: 500 15px var(--font-tc);
+      color: var(--ncku-ink-soft);
+    }
+    .pwa-lede {
+      font: 400 14px/1.7 var(--font-body);
+      color: var(--ncku-mute);
+      max-width: 680px;
+      margin-bottom: 28px;
+    }
+    .pwa-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+    .pwa-card {
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid var(--ncku-line);
+      padding: 22px 22px 20px;
+      position: relative;
+    }
+    .pwa-card-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--ncku-rule);
+    }
+    .pwa-card-platform {
+      font: 600 13px var(--font-tc);
+      color: var(--ncku-wine);
+      letter-spacing: 0.04em;
+    }
+    .pwa-card-platform-en {
+      font: 500 10px var(--font-mono);
+      letter-spacing: 0.1em;
+      color: var(--ncku-mute);
+      text-transform: uppercase;
+    }
+    .pwa-steps {
+      list-style: none;
+      counter-reset: pwastep;
+    }
+    .pwa-steps li {
+      counter-increment: pwastep;
+      position: relative;
+      padding: 6px 0 6px 26px;
+      font: 400 13px/1.6 var(--font-body);
+      color: var(--ncku-ink-soft);
+    }
+    .pwa-steps li::before {
+      content: counter(pwastep);
+      position: absolute;
+      left: 0;
+      top: 7px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--ncku-paper);
+      border: 1px solid var(--ncku-line);
+      color: var(--ncku-wine);
+      font: 600 10px/16px var(--font-mono);
+      text-align: center;
+    }
+    .pwa-note {
+      margin-top: 24px;
+      padding: 14px 18px;
+      background: rgba(201, 169, 97, 0.08);
+      border-left: 2px solid var(--ncku-gold);
+      font: 400 12px/1.6 var(--font-body);
+      color: var(--ncku-ink-soft);
+    }
+
     /* ── Footer ── */
     footer.foot {
       margin-top: 80px;
@@ -334,6 +620,7 @@
     @media (max-width: 1024px) {
       .hero h1 { font-size: 76px; }
       .app-grid { grid-template-columns: repeat(2, 1fr); }
+      .pwa-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 720px) {
       .container { padding: 0 24px; }
@@ -353,6 +640,8 @@
       .app-grid { grid-template-columns: 1fr; }
       .app-card { min-height: 160px; padding: 24px 24px 22px; }
       .app-arrow { top: 24px; right: 24px; }
+      .pwa-grid { grid-template-columns: 1fr; }
+      .help-modal { padding: 32px 24px 24px; }
       footer.foot { margin-top: 48px; padding: 32px 0; }
     }
   </style>
@@ -370,6 +659,7 @@
       </a>
       <ul class="nav-links">
         <li><a href="#apps">系統入口</a></li>
+        <li><a href="#install">安裝 App</a></li>
       </ul>
     </div>
   </header>
@@ -399,10 +689,11 @@
 
         <div class="app-grid">
 
-          <a href="https://reports.e118.aqualux.dev/" class="app-card" target="_blank" rel="noopener noreferrer">
+          <a href="https://reports.e118.aqualux.dev/" class="app-card" target="_blank" rel="noopener noreferrer" data-help="reports">
             <div class="app-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0zM22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
             </div>
+            <button type="button" class="app-help" data-help-btn="reports" aria-label="查看「課程報告」操作說明">?</button>
             <div class="app-arrow">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10M7 17L17 7"/></svg>
             </div>
@@ -411,10 +702,11 @@
             <div class="app-domain">reports.e118.aqualux.dev</div>
           </a>
 
-          <a href="https://thesis.e118.aqualux.dev/" class="app-card" target="_blank" rel="noopener noreferrer">
+          <a href="https://thesis.e118.aqualux.dev/" class="app-card" target="_blank" rel="noopener noreferrer" data-help="thesis">
             <div class="app-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v8l3-3l3 3V2"/><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg>
             </div>
+            <button type="button" class="app-help" data-help-btn="thesis" aria-label="查看「論文查詢系統」操作說明">?</button>
             <div class="app-arrow">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10M7 17L17 7"/></svg>
             </div>
@@ -423,10 +715,11 @@
             <div class="app-domain">thesis.e118.aqualux.dev</div>
           </a>
 
-          <a href="https://activities.e118.aqualux.dev/" data-local-href="http://localhost:5174/" class="app-card" target="_blank" rel="noopener noreferrer">
+          <a href="https://activities.e118.aqualux.dev/" data-local-href="http://localhost:5174/" class="app-card" target="_blank" rel="noopener noreferrer" data-help="activities">
             <div class="app-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
             </div>
+            <button type="button" class="app-help" data-help-btn="activities" aria-label="查看「班級活動歷程」操作說明">?</button>
             <div class="app-arrow">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10M7 17L17 7"/></svg>
             </div>
@@ -435,10 +728,11 @@
             <div class="app-domain">activities.e118.aqualux.dev</div>
           </a>
 
-          <a href="https://field-study.e118.aqualux.dev/" class="app-card" target="_blank" rel="noopener noreferrer">
+          <a href="https://field-study.e118.aqualux.dev/" class="app-card" target="_blank" rel="noopener noreferrer" data-help="field-study">
             <div class="app-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4m-4-4h4m0 13v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg>
             </div>
+            <button type="button" class="app-help" data-help-btn="field-study" aria-label="查看「職業參訪」操作說明">?</button>
             <div class="app-arrow">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10M7 17L17 7"/></svg>
             </div>
@@ -447,22 +741,11 @@
             <div class="app-domain">field-study.e118.aqualux.dev</div>
           </a>
 
-          <a href="https://order.e118.aqualux.dev/" class="app-card" target="_blank" rel="noopener noreferrer">
-            <div class="app-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20m14-7V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2zm0 0v7"/></svg>
-            </div>
-            <div class="app-arrow">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10M7 17L17 7"/></svg>
-            </div>
-            <div class="app-title">點餐系統</div>
-            <div class="app-meta">班級聚餐統計與點餐</div>
-            <div class="app-domain">order.e118.aqualux.dev</div>
-          </a>
-
-          <a href="https://drive.google.com/drive/folders/1q3ULP_ASkMnmBDhI0ed-yQ8QChXuTojd?usp=drive_link" class="app-card" target="_blank" rel="noopener noreferrer">
+          <a href="https://drive.google.com/drive/folders/1q3ULP_ASkMnmBDhI0ed-yQ8QChXuTojd?usp=drive_link" class="app-card" target="_blank" rel="noopener noreferrer" data-help="drive">
             <div class="app-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9"/></svg>
             </div>
+            <button type="button" class="app-help" data-help-btn="drive" aria-label="查看「班級雲端硬碟」操作說明">?</button>
             <div class="app-arrow">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10M7 17L17 7"/></svg>
             </div>
@@ -471,10 +754,11 @@
             <div class="app-domain">drive.google.com</div>
           </a>
 
-          <a href="https://members.e118.aqualux.dev/" data-local-href="http://localhost:5191/" class="app-card" target="_blank" rel="noopener noreferrer">
+          <a href="https://members.e118.aqualux.dev/" data-local-href="http://localhost:5191/" class="app-card" target="_blank" rel="noopener noreferrer" data-help="members">
             <div class="app-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>
             </div>
+            <button type="button" class="app-help" data-help-btn="members" aria-label="查看「班級成員圖鑑」操作說明">?</button>
             <div class="app-arrow">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10M7 17L17 7"/></svg>
             </div>
@@ -483,6 +767,73 @@
             <div class="app-domain">members.e118.aqualux.dev</div>
           </a>
 
+        </div>
+      </section>
+
+      <!-- ── PWA Install ── -->
+      <section id="install" class="pwa-section">
+        <div class="pwa-head">
+          <h3>Install as App</h3>
+          <span class="tc">安裝到桌面，像 App 一樣使用</span>
+        </div>
+        <p class="pwa-lede">
+          E118 Dashboard 採用 PWA（Progressive Web App）格式設計。把網址加到主畫面後，會在桌面產生一個 App 圖示，
+          點開即直接進入 Dashboard，無瀏覽器網址列、開啟速度更快，視覺體驗等同原生 App。
+        </p>
+
+        <div class="pwa-grid">
+          <!-- iOS -->
+          <div class="pwa-card">
+            <div class="pwa-card-head">
+              <div>
+                <div class="pwa-card-platform">iPhone / iPad</div>
+                <div class="pwa-card-platform-en">iOS · Safari</div>
+              </div>
+            </div>
+            <ol class="pwa-steps">
+              <li>用 <strong>Safari</strong> 打開本頁面（Chrome 不支援）</li>
+              <li>點下方工具列正中央「<strong>分享</strong>」圖示（方框 + 上箭頭）</li>
+              <li>下滑選單，點「<strong>加入主畫面</strong>」</li>
+              <li>名稱保留「E118」，按右上「<strong>加入</strong>」</li>
+            </ol>
+          </div>
+
+          <!-- Android -->
+          <div class="pwa-card">
+            <div class="pwa-card-head">
+              <div>
+                <div class="pwa-card-platform">Android 手機</div>
+                <div class="pwa-card-platform-en">Android · Chrome</div>
+              </div>
+            </div>
+            <ol class="pwa-steps">
+              <li>用 <strong>Chrome</strong> 打開本頁面</li>
+              <li>點網址列右側「<strong>⋮</strong>」（三個點）</li>
+              <li>選「<strong>安裝應用程式</strong>」或「加到主畫面」</li>
+              <li>確認後，桌面會出現 E118 圖示</li>
+            </ol>
+          </div>
+
+          <!-- Desktop -->
+          <div class="pwa-card">
+            <div class="pwa-card-head">
+              <div>
+                <div class="pwa-card-platform">電腦桌機</div>
+                <div class="pwa-card-platform-en">Mac / Windows · Chrome / Edge</div>
+              </div>
+            </div>
+            <ol class="pwa-steps">
+              <li>用 <strong>Chrome</strong> 或 <strong>Edge</strong> 開啟本頁面</li>
+              <li>網址列右側會出現「<strong>安裝</strong>」小圖示（螢幕 + 下箭頭）</li>
+              <li>點下去，按「<strong>安裝</strong>」</li>
+              <li>會在 Dock / 工作列產生獨立 App 圖示</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="pwa-note">
+          <strong>小提醒：</strong>安裝後若 Dashboard 有更新，App 會自動同步最新內容（連網時）。
+          如需移除：iOS 長按圖示 → 刪除；Android 長按 → 解除安裝；桌機開啟 App 後右上「⋮」→ 解除安裝。
         </div>
       </section>
 
@@ -496,10 +847,160 @@
     </div>
   </footer>
 
+  <!-- ── Help popover (rendered once, shared by all cards) ── -->
+  <div class="help-backdrop" id="helpBackdrop"></div>
+  <aside class="help-modal" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <button type="button" class="help-close" id="helpClose" aria-label="關閉">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="help-eyebrow" id="helpEyebrow">系統說明</div>
+    <h3 class="help-title" id="helpTitle">—</h3>
+    <div class="help-domain" id="helpDomain">—</div>
+    <div class="help-section-label">用途說明</div>
+    <p class="help-desc" id="helpDesc">—</p>
+    <div class="help-section-label">操作流程</div>
+    <ol class="help-steps" id="helpSteps"></ol>
+    <div class="help-cta">
+      <a href="#" id="helpOpenLink" target="_blank" rel="noopener noreferrer">開啟系統 ↗</a>
+      <span class="help-cta-note">在新分頁開啟</span>
+    </div>
+  </aside>
+
   <script>
+    // Local dev override
     if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
       document.querySelectorAll('[data-local-href]').forEach(function (el) {
         el.href = el.dataset.localHref;
+      });
+    }
+
+    // ── Help popover content ──
+    const HELP = {
+      'reports': {
+        title: '課程報告',
+        domain: 'reports.e118.aqualux.dev',
+        desc: '集中存放本班每門課的期中／期末分組報告，依「課程 → 組別 → 報告」三層分類，可直接線上瀏覽 PDF 或下載原檔。',
+        steps: [
+          '從上方挑選想看的「課程」（例如 戰略管理、組織行為）',
+          '進入課程頁後，依「組別」找到報告（封面顯示組員與題目）',
+          '點報告卡片即線上預覽 PDF，可全螢幕／下載',
+          '右上方有「我的組別」捷徑，回到自己這組的繳交紀錄',
+          '報告繳交：把 PDF 上傳到雲端硬碟對應資料夾，系統會自動納入'
+        ]
+      },
+      'thesis': {
+        title: '論文查詢系統',
+        domain: 'thesis.e118.aqualux.dev',
+        desc: '聚合成大歷年 EMBA 學位論文（含管理、商學、會計、財金等所），提供關鍵字、指導教授、產業領域三種篩選方式，補足校內系統檢索介面的不便。',
+        steps: [
+          '首頁直接輸入關鍵字（中文或英文皆可），例如「品牌延伸」「ESG」',
+          '左側可勾選「指導教授」「產業別」「學位別」做進階篩選',
+          '結果按相關度排序，點論文標題進入摘要頁',
+          '摘要頁可看到 PDF 連結、引用次數、相關論文推薦',
+          '若搜尋無結果，試著用較通用的中文詞（中文索引完整度較高）'
+        ]
+      },
+      'activities': {
+        title: '班級活動歷程',
+        domain: 'activities.e118.aqualux.dev',
+        desc: '以時間軸方式記錄本班所有正式／非正式活動，包含開學迎新、社團聚會、運動賽事、年度大餐等，搭配照片牆與活動花絮。',
+        steps: [
+          '首頁是時間軸，最新活動在最上方，向下滑可看到所有歷史活動',
+          '每場活動卡片包含日期、地點、參與人數、精選照片',
+          '點卡片進入活動頁，可看完整照片牆（瀑布流排版）',
+          '若該活動有公關長／文宣長撰寫的紀錄文，會放在照片下方',
+          '想分享照片：把照片上傳到該活動資料夾，活動長會整合進系統'
+        ]
+      },
+      'field-study': {
+        title: '職業參訪',
+        domain: 'field-study.e118.aqualux.dev',
+        desc: '管理本班所有企業參訪行程，包含台積電、聯電、各產業龍頭等。提供報名、分組、行前資料、會後心得彙整一站式服務。',
+        steps: [
+          '首頁顯示即將開放的參訪行程，標示日期、企業、剩餘名額',
+          '點「報名」進入表單，填寫個人資料與飲食偏好',
+          '報名截止後系統會自動分組（依產業背景 / 同質互補原則）',
+          '行前 3 天會推播行前資料：公司介紹、提問清單、交通方式',
+          '參訪結束後請在 7 天內填寫心得問卷（影響下次優先報名權）'
+        ]
+      },
+      'drive': {
+        title: '班級雲端硬碟',
+        domain: 'drive.google.com',
+        desc: '本班共享的 Google Drive 雲端空間，存放上課教材、講義、案例討論、班務文件等共用資源。需以個人 Google 帳號登入後存取。',
+        steps: [
+          '點開連結後，會跳轉到 Google Drive 共享資料夾',
+          '若未登入 Google，請先登入（建議用本人主用帳號）',
+          '資料夾按「課程」「行政文件」「活動」「案例庫」分類',
+          '可直接線上預覽 Word / PDF / PPT；如要編輯請複製到自己 Drive 再改',
+          '上傳檔案：拖曳到對應資料夾即可（請依分類擺放，不要亂丟根目錄）'
+        ]
+      },
+      'members': {
+        title: '班級成員圖鑑',
+        domain: 'members.e118.aqualux.dev',
+        desc: '101 位同學的公開資料庫，可依專業領域、所在地區、產業類別、職稱層級交叉瀏覽，協助找到產業互補對象、組讀書會、跨界合作。',
+        steps: [
+          '首頁顯示全班 101 位同學的縮圖牆（依姓氏排序）',
+          '上方有 4 種篩選器：產業 / 地區 / 職稱 / 專業領域',
+          '勾選後縮圖牆即時過濾（例如：篩「南部 + 製造業 + CEO」）',
+          '點同學卡片進入個人頁：公司、職務、專業、可協助領域',
+          '聯絡資訊（Email / Line / 電話）為保護個資不上線，請走 LINE 群／秘書長協助轉介'
+        ]
+      }
+    };
+
+    // ── Popover behaviour ──
+    const backdrop = document.getElementById('helpBackdrop');
+    const modal = document.getElementById('helpModal');
+    const closeBtn = document.getElementById('helpClose');
+    const helpTitle = document.getElementById('helpTitle');
+    const helpDomain = document.getElementById('helpDomain');
+    const helpDesc = document.getElementById('helpDesc');
+    const helpSteps = document.getElementById('helpSteps');
+    const helpOpenLink = document.getElementById('helpOpenLink');
+
+    function openHelp(key) {
+      const data = HELP[key];
+      if (!data) return;
+      helpTitle.textContent = data.title;
+      helpDomain.textContent = data.domain;
+      helpDesc.textContent = data.desc;
+      helpSteps.innerHTML = data.steps.map(s => '<li>' + s + '</li>').join('');
+      // Find the card link for this help key
+      const card = document.querySelector('[data-help="' + key + '"]');
+      if (card) helpOpenLink.href = card.href;
+      backdrop.classList.add('open');
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeHelp() {
+      backdrop.classList.remove('open');
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    document.querySelectorAll('[data-help-btn]').forEach(btn => {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openHelp(this.dataset.helpBtn);
+      });
+    });
+
+    backdrop.addEventListener('click', closeHelp);
+    closeBtn.addEventListener('click', closeHelp);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal.classList.contains('open')) closeHelp();
+    });
+
+    // ── PWA Service Worker (optional, for offline support) ──
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () {
+          // SW is optional; ignore if not present
+        });
       });
     }
   </script>
