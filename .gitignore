@@ -8,3 +8,7 @@ node_modules/
 
 # Local design preview only — do not deploy
 assets/_variants/
+
+# Python cache
+__pycache__/
+*.pyc

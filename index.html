@@ -674,7 +674,7 @@
         <div class="hero-tc">國立成功大學 EMBA 高階管理碩士在職專班 第 118 班</div>
         <p class="lede">班級系統控制面板，整合課程、研究、活動與資源。</p>
         <div class="hero-divider">
-          <span class="stat">6 Systems Online</span>
+          <span class="stat">7 Systems Online</span>
           <span class="line"></span>
           <span class="stat">Est. 2026</span>
         </div>
@@ -684,7 +684,7 @@
       <section id="apps" class="block">
         <div class="section-head">
           <h2>System Hub<span class="tc">系統入口</span></h2>
-          <span class="count">06 / 06</span>
+          <span class="count">07 / 07</span>
         </div>
 
         <div class="app-grid">
@@ -765,6 +765,19 @@
             <div class="app-title">班級成員圖鑑</div>
             <div class="app-meta">依專業領域 / 地區 / 產業瀏覽同學</div>
             <div class="app-domain">members.e118.aqualux.dev</div>
+          </a>
+
+          <a href="https://emba.aqualux.dev/calendar/" data-local-href="/calendar/" class="app-card" target="_blank" rel="noopener noreferrer" data-help="calendar">
+            <div class="app-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>
+            </div>
+            <button type="button" class="app-help" data-help-btn="calendar" aria-label="查看「班級行事曆」操作說明">?</button>
+            <div class="app-arrow">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10M7 17L17 7"/></svg>
+            </div>
+            <div class="app-title">班級行事曆</div>
+            <div class="app-meta">全班課程、放假、活動 — 一鍵訂閱到手機</div>
+            <div class="app-domain">emba.aqualux.dev/calendar</div>
           </a>
 
         </div>
@@ -915,13 +928,25 @@
       'field-study': {
         title: '職業參訪',
         domain: 'field-study.e118.aqualux.dev',
-        desc: '管理本班所有企業參訪行程，包含台積電、聯電、各產業龍頭等。提供報名、分組、行前資料、會後心得彙整一站式服務。',
+        desc: '記錄本班歷次企業參訪行程，包含台積電、聯電、各產業龍頭等。以時間軸瀏覽參訪內容、現場照片與企業介紹，僅供查詢回顧，不處理報名作業。',
         steps: [
-          '首頁顯示即將開放的參訪行程，標示日期、企業、剩餘名額',
-          '點「報名」進入表單，填寫個人資料與飲食偏好',
-          '報名截止後系統會自動分組（依產業背景 / 同質互補原則）',
-          '行前 3 天會推播行前資料：公司介紹、提問清單、交通方式',
-          '參訪結束後請在 7 天內填寫心得問卷（影響下次優先報名權）'
+          '首頁是時間軸，最新一次參訪在最上方，向下滑可看歷次紀錄',
+          '每筆參訪卡片包含日期、企業名稱、所屬產業、精選照片',
+          '點卡片進入參訪頁，可看完整照片牆與當天行程紀錄',
+          '若有公關長／活動長撰寫的參訪心得，會放在照片下方',
+          '想補充照片或資料：上傳到該參訪資料夾，活動長會整合進系統'
+        ]
+      },
+      'calendar': {
+        title: '班級行事曆',
+        domain: 'emba.aqualux.dev/calendar',
+        desc: '把成大校曆、班級活動、企業參訪、慶生月等全部彙整在一本可訂閱的 Google Calendar。同學一次設定訂閱，手機行事曆自動同步更新，活動前由手機原生通知提醒。',
+        steps: [
+          '點進來會看到嵌入的月曆，可直接查看本班所有活動',
+          '點「🍎 iPhone / Mac」按鈕，跳出系統訂閱對話框 → 點訂閱即完成',
+          '點「🤖 Google Calendar」按鈕，跳到 Google 行事曆 App → 點加入',
+          '訂閱後每位同學在自己手機設「活動前 X 分鐘提醒」（每人自決）',
+          '幹部新增活動到 Google Cal 後，同學手機 15-60 分鐘內自動同步'
         ]
       },
       'drive': {
