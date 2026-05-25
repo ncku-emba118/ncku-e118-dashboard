@@ -5,3 +5,6 @@ Icon?
 Icon
 node_modules/
 *.log
+
+# Local design preview only — do not deploy
+assets/_variants/
