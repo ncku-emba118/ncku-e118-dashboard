@@ -1,32 +1,625 @@
-/* 全站 base reset — 細節 styles 在每個 page / component 自己處理 */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+    :root {
+      /* NCKU EMBA palette (shared with reports system) */
+      --ncku-wine:      #8B1F2F;
+      --ncku-wine-deep: #6B1622;
+      --ncku-wine-soft: #A84453;
+      --ncku-gold:      #C9A961;
+      --ncku-gold-soft: #E0C896;
+      --ncku-cream:     #FAF7F2;
+      --ncku-paper:     #F4EFE6;
+      --ncku-ivory:     #EDE6D6;
+      --ncku-ink:       #1A1612;
+      --ncku-ink-soft:  #4A413A;
+      --ncku-mute:      #8A7F73;
+      --ncku-line:      #D9CDB8;
+      --ncku-rule:      rgba(26, 22, 18, 0.10);
 
-* {
-  margin: 0;
-  padding: 0;
-}
+      --font-display: 'Cormorant Garamond', 'Iowan Old Style', 'Charter', Georgia, serif;
+      --font-tc:      'Noto Serif TC', 'PingFang TC', 'Songti TC', serif;
+      --font-body:    -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'PingFang TC', 'Noto Sans TC', sans-serif;
+      --font-mono:    ui-monospace, 'IBM Plex Mono', Menlo, monospace;
+    }
 
-html {
-  scroll-behavior: smooth;
-}
+    * { box-sizing: border-box; margin: 0; }
+    html { scroll-behavior: smooth; }
 
-body {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: #FAF7F2;
-  color: #1A1612;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui,
-    'PingFang TC', 'Noto Sans TC', sans-serif;
-  font-size: 15px;
-  line-height: 1.65;
-  min-height: 100vh;
-}
+    body {
+      background:
+        radial-gradient(circle at 0% 0%, rgba(201,169,97,0.04) 0%, transparent 60%),
+        radial-gradient(circle at 100% 100%, rgba(139,31,47,0.03) 0%, transparent 50%),
+        var(--ncku-cream);
+      color: var(--ncku-ink);
+      font: 15px/1.65 var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
 
-a {
-  color: inherit;
-}
+    a { color: inherit; }
+
+    .container { max-width: 1180px; margin: 0 auto; padding: 0 40px; }
+
+    /* ── Header / Top Nav ── */
+    header.top {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--ncku-rule);
+      background: rgba(250, 247, 242, 0.85);
+      backdrop-filter: saturate(140%) blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .top-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 24px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      text-decoration: none;
+      color: var(--ncku-ink);
+    }
+    .brand img { height: 44px; width: auto; display: block; }
+    .brand-class {
+      display: flex;
+      flex-direction: column;
+      line-height: 1;
+      padding-left: 16px;
+      border-left: 1px solid var(--ncku-rule);
+    }
+    .brand-class-num {
+      font: 600 20px var(--font-display);
+      letter-spacing: 0.04em;
+      color: var(--ncku-wine);
+    }
+    .brand-class-label {
+      font: 500 10px var(--font-body);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ncku-mute);
+      margin-top: 4px;
+    }
+    .nav-links { display: flex; gap: 28px; list-style: none; }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--ncku-ink-soft);
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      position: relative;
+      padding: 4px 0;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--ncku-wine); }
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      left: 0; bottom: 0;
+      width: 100%;
+      height: 1px;
+      background: var(--ncku-wine);
+      transform: scaleX(0);
+      transform-origin: right center;
+      transition: transform 0.3s ease;
+    }
+    .nav-links a:hover::after {
+      transform: scaleX(1);
+      transform-origin: left center;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 100px 0 80px;
+      position: relative;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font: 500 11px var(--font-body);
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--ncku-wine);
+      margin-bottom: 32px;
+    }
+    .hero-eyebrow::before {
+      content: '';
+      width: 32px;
+      height: 1px;
+      background: var(--ncku-wine);
+    }
+    .hero h1 {
+      font: 300 92px/0.95 var(--font-display);
+      letter-spacing: -0.025em;
+      color: var(--ncku-ink);
+      margin-bottom: 12px;
+    }
+    .hero h1 .num {
+      font-style: italic;
+      color: var(--ncku-wine);
+    }
+    .hero-tc {
+      font: 500 22px/1.4 var(--font-tc);
+      color: var(--ncku-ink-soft);
+      margin-bottom: 24px;
+      max-width: 640px;
+    }
+    .hero p.lede {
+      font: 400 16px/1.7 var(--font-body);
+      color: var(--ncku-mute);
+      max-width: 560px;
+    }
+    .hero-divider {
+      margin-top: 56px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .hero-divider .line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, var(--ncku-gold), transparent);
+    }
+    .hero-divider .stat {
+      font: 500 11px var(--font-mono);
+      letter-spacing: 0.15em;
+      color: var(--ncku-mute);
+      text-transform: uppercase;
+    }
+
+    /* ── Apps Section ── */
+    section.block { padding: 64px 0; }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--ncku-rule);
+    }
+    .section-head h2 {
+      font: 400 32px/1.2 var(--font-display);
+      color: var(--ncku-ink);
+    }
+    .section-head h2 .tc {
+      font: 500 18px var(--font-tc);
+      color: var(--ncku-ink-soft);
+      margin-left: 16px;
+    }
+    .section-head .count {
+      font: 500 11px var(--font-mono);
+      letter-spacing: 0.15em;
+      color: var(--ncku-mute);
+      text-transform: uppercase;
+    }
+
+    /* ── App Card Grid ── */
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .app-card {
+      position: relative;
+      background: var(--ncku-cream);
+      border: 1px solid var(--ncku-line);
+      padding: 32px 28px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-decoration: none;
+      color: var(--ncku-ink);
+      min-height: 200px;
+      overflow: hidden;
+      transition: border-color 0.25s, transform 0.25s, box-shadow 0.3s, background 0.25s;
+    }
+    .app-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--ncku-wine);
+      transform: scaleX(0);
+      transform-origin: left center;
+      transition: transform 0.4s ease;
+    }
+    .app-card:hover {
+      border-color: var(--ncku-wine);
+      transform: translateY(-3px);
+      box-shadow: 0 14px 32px rgba(107,22,34,0.08);
+      background: #fff;
+    }
+    .app-card:hover::before { transform: scaleX(1); }
+    .app-card:hover .app-icon {
+      background: var(--ncku-wine);
+      color: #fff;
+      border-color: var(--ncku-wine);
+    }
+    .app-card:hover .app-arrow {
+      opacity: 1;
+      transform: translate(0, 0);
+      color: var(--ncku-wine);
+    }
+
+    .app-icon {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--ncku-line);
+      background: var(--ncku-paper);
+      color: var(--ncku-wine);
+      transition: all 0.25s;
+    }
+    .app-icon svg { width: 22px; height: 22px; }
+    .app-arrow {
+      position: absolute;
+      top: 28px;
+      right: 28px;
+      color: var(--ncku-mute);
+      opacity: 0;
+      transform: translate(-4px, 4px);
+      transition: opacity 0.25s, transform 0.25s, color 0.25s;
+    }
+    .app-arrow svg { width: 18px; height: 18px; }
+    .app-title {
+      font: 600 20px/1.3 var(--font-tc);
+      color: var(--ncku-ink);
+      margin-top: 4px;
+    }
+    .app-meta {
+      font: 400 13px/1.5 var(--font-body);
+      color: var(--ncku-mute);
+      margin-top: auto;
+    }
+    .app-domain {
+      font: 500 10px var(--font-mono);
+      letter-spacing: 0.05em;
+      color: var(--ncku-gold);
+      text-transform: lowercase;
+      margin-top: 6px;
+    }
+    .app-domain-locked {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ncku-wine);
+    }
+    .app-domain-locked svg {
+      width: 11px;
+      height: 11px;
+      flex-shrink: 0;
+    }
+
+    /* ── Help (?) button on each card ── */
+    .app-help {
+      position: absolute;
+      top: 24px;
+      right: 64px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--ncku-line);
+      background: var(--ncku-paper);
+      color: var(--ncku-mute);
+      font: 600 12px/1 var(--font-body);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      z-index: 2;
+      transition: all 0.2s ease;
+    }
+    .app-help:hover {
+      background: var(--ncku-wine);
+      color: #fff;
+      border-color: var(--ncku-wine);
+      transform: scale(1.08);
+    }
+    .app-card:hover .app-help {
+      border-color: var(--ncku-gold);
+      color: var(--ncku-wine);
+    }
+    @media (max-width: 720px) {
+      .app-help { top: 22px; right: 56px; }
+    }
+
+    /* ── Help popover ── */
+    .help-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 22, 18, 0.42);
+      backdrop-filter: blur(3px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 998;
+    }
+    .help-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .help-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -48%) scale(0.97);
+      width: min(540px, calc(100vw - 40px));
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
+      background: var(--ncku-cream);
+      border: 1px solid var(--ncku-line);
+      border-top: 3px solid var(--ncku-wine);
+      box-shadow: 0 40px 80px rgba(26, 22, 18, 0.18), 0 0 0 1px rgba(201, 169, 97, 0.15);
+      padding: 40px 36px 32px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.3s ease;
+      z-index: 999;
+    }
+    .help-modal.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .help-eyebrow {
+      font: 500 10px var(--font-body);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--ncku-gold);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .help-eyebrow::before {
+      content: '';
+      width: 22px;
+      height: 1px;
+      background: var(--ncku-gold);
+    }
+    .help-title {
+      font: 600 24px/1.3 var(--font-tc);
+      color: var(--ncku-ink);
+      margin-bottom: 6px;
+    }
+    .help-domain {
+      font: 500 11px var(--font-mono);
+      letter-spacing: 0.05em;
+      color: var(--ncku-wine);
+      margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--ncku-rule);
+    }
+    .help-section-label {
+      font: 500 11px var(--font-body);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ncku-mute);
+      margin-top: 18px;
+      margin-bottom: 10px;
+    }
+    .help-desc {
+      font: 400 14px/1.7 var(--font-body);
+      color: var(--ncku-ink-soft);
+    }
+    .help-steps {
+      list-style: none;
+      counter-reset: helpstep;
+      margin-top: 4px;
+    }
+    .help-steps li {
+      counter-increment: helpstep;
+      position: relative;
+      padding: 8px 0 8px 32px;
+      font: 400 14px/1.6 var(--font-body);
+      color: var(--ncku-ink-soft);
+      border-bottom: 1px dotted var(--ncku-rule);
+    }
+    .help-steps li:last-child { border-bottom: none; }
+    .help-steps li::before {
+      content: counter(helpstep, decimal-leading-zero);
+      position: absolute;
+      left: 0;
+      top: 9px;
+      font: 600 11px var(--font-mono);
+      color: var(--ncku-wine);
+      letter-spacing: 0.05em;
+    }
+    .help-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--ncku-rule);
+      background: transparent;
+      color: var(--ncku-mute);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .help-close:hover {
+      background: var(--ncku-wine);
+      color: #fff;
+      border-color: var(--ncku-wine);
+    }
+    .help-close svg { width: 14px; height: 14px; }
+    .help-cta {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--ncku-rule);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .help-cta a {
+      font: 500 13px var(--font-body);
+      letter-spacing: 0.04em;
+      color: var(--ncku-wine);
+      text-decoration: none;
+      padding: 10px 20px;
+      border: 1px solid var(--ncku-wine);
+      transition: all 0.2s;
+    }
+    .help-cta a:hover {
+      background: var(--ncku-wine);
+      color: #fff;
+    }
+    .help-cta-note {
+      font: 400 11px var(--font-body);
+      color: var(--ncku-mute);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── PWA Install Section ── */
+    .pwa-section {
+      padding: 56px 0 32px;
+      border-top: 1px dashed var(--ncku-rule);
+      margin-top: 32px;
+    }
+    .pwa-head {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .pwa-head h3 {
+      font: 400 24px/1.3 var(--font-display);
+      color: var(--ncku-ink);
+    }
+    .pwa-head .tc {
+      font: 500 15px var(--font-tc);
+      color: var(--ncku-ink-soft);
+    }
+    .pwa-lede {
+      font: 400 14px/1.7 var(--font-body);
+      color: var(--ncku-mute);
+      max-width: 680px;
+      margin-bottom: 28px;
+    }
+    .pwa-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+    .pwa-card {
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid var(--ncku-line);
+      padding: 22px 22px 20px;
+      position: relative;
+    }
+    .pwa-card-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--ncku-rule);
+    }
+    .pwa-card-platform {
+      font: 600 13px var(--font-tc);
+      color: var(--ncku-wine);
+      letter-spacing: 0.04em;
+    }
+    .pwa-card-platform-en {
+      font: 500 10px var(--font-mono);
+      letter-spacing: 0.1em;
+      color: var(--ncku-mute);
+      text-transform: uppercase;
+    }
+    .pwa-steps {
+      list-style: none;
+      counter-reset: pwastep;
+    }
+    .pwa-steps li {
+      counter-increment: pwastep;
+      position: relative;
+      padding: 6px 0 6px 26px;
+      font: 400 13px/1.6 var(--font-body);
+      color: var(--ncku-ink-soft);
+    }
+    .pwa-steps li::before {
+      content: counter(pwastep);
+      position: absolute;
+      left: 0;
+      top: 7px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--ncku-paper);
+      border: 1px solid var(--ncku-line);
+      color: var(--ncku-wine);
+      font: 600 10px/16px var(--font-mono);
+      text-align: center;
+    }
+    .pwa-note {
+      margin-top: 24px;
+      padding: 14px 18px;
+      background: rgba(201, 169, 97, 0.08);
+      border-left: 2px solid var(--ncku-gold);
+      font: 400 12px/1.6 var(--font-body);
+      color: var(--ncku-ink-soft);
+    }
+
+    /* ── Footer ── */
+    footer.foot {
+      margin-top: 80px;
+      padding: 40px 0 48px;
+      border-top: 1px solid var(--ncku-rule);
+    }
+    .foot-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .foot-mark {
+      font: 500 12px var(--font-tc);
+      letter-spacing: 0.18em;
+      color: var(--ncku-mute);
+    }
+    .foot-mark .wine { color: var(--ncku-wine); }
+    .foot-meta {
+      font: 400 11px var(--font-mono);
+      letter-spacing: 0.1em;
+      color: var(--ncku-mute);
+      text-transform: uppercase;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 1024px) {
+      .hero h1 { font-size: 76px; }
+      .app-grid { grid-template-columns: repeat(2, 1fr); }
+      .pwa-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 720px) {
+      .container { padding: 0 24px; }
+      header.top { padding: 16px 0; }
+      .brand img { height: 36px; }
+      .brand-class { padding-left: 12px; }
+      .brand-class-num { font-size: 17px; }
+      .nav-links { display: none; }
+      .hero { padding: 56px 0 40px; }
+      .hero h1 { font-size: 56px; }
+      .hero-tc { font-size: 18px; }
+      .hero-divider { margin-top: 36px; }
+      section.block { padding: 40px 0; }
+      .section-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .section-head h2 { font-size: 26px; }
+      .section-head h2 .tc { font-size: 16px; margin-left: 12px; }
+      .app-grid { grid-template-columns: 1fr; }
+      .app-card { min-height: 160px; padding: 24px 24px 22px; }
+      .app-arrow { top: 24px; right: 24px; }
+      .pwa-grid { grid-template-columns: 1fr; }
+      .help-modal { padding: 32px 24px 24px; }
+      footer.foot { margin-top: 48px; padding: 32px 0; }
+    }
