@@ -37,6 +37,7 @@ const DB_PASSWORD_FILE = path.join(SECRETS_DIR, 'supabase-db-password.txt');
 const ACCOUNTS_PASSWORD_FILE = path.join(SECRETS_DIR, 'passwords.txt');
 
 const SCHEMA_FILE = path.join(__dirname, '../supabase/migrations/0001_initial.sql');
+const AUTH_RPC_FILE = path.join(__dirname, '../supabase/migrations/0002_auth_rpc.sql');
 const DEPT_SEED_FILE = path.join(__dirname, '../supabase/seed/01-departments.sql');
 
 const BCRYPT_COST = 12;
@@ -121,10 +122,26 @@ async function main() {
   console.log('✓ Connected');
 
   try {
-    // 3. Apply schema
-    console.log('\n── Step 1: Apply schema migration ──');
-    await client.query(schemaSql);
-    console.log('✓ Schema applied');
+    // 3. Apply schema (idempotent: skip if departments table already exists)
+    console.log('\n── Step 1: Apply schema migration (0001_initial) ──');
+    const tableCheck = await client.query(
+      `SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='departments' LIMIT 1`,
+    );
+    if (tableCheck.rows.length > 0) {
+      console.log('✓ Schema already exists, skip');
+    } else {
+      await client.query(schemaSql);
+      console.log('✓ Schema applied');
+    }
+
+    // 3b. Apply auth RPC functions (CREATE OR REPLACE — always safe to re-run)
+    console.log('\n── Step 1b: Apply auth RPC (0002_auth_rpc) ──');
+    const authRpcSql = fs.readFileSync(AUTH_RPC_FILE, 'utf8');
+    await client.query(authRpcSql);
+    const fnCheck = await client.query(
+      `SELECT proname FROM pg_proc WHERE proname IN ('record_failed_login','record_successful_login') ORDER BY proname`,
+    );
+    console.log(`✓ Auth RPC functions: ${fnCheck.rows.map((r) => r.proname).join(', ')}`);
 
     // 4. Apply departments seed
     console.log('\n── Step 2: Seed 7 departments ──');

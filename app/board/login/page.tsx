@@ -15,10 +15,23 @@ const ACCOUNTS: Array<{ value: string; label: string; role: 'super' | 'dept' }> 
   { value: '醫務',   label: '醫務（dept · 僅醫務部）',     role: 'dept' },
 ];
 
+/**
+ * ⚠ Codex Sec F3 fix: 不直接信任 `?next=` 參數
+ * 攻擊者可釣魚連結 /board/login?next=https://evil.example/fake-login 引導登入後 redirect 出去
+ * 只允許 /board/admin 開頭的內部相對 path
+ */
+function safeNext(raw: string | null): string {
+  if (!raw) return '/board/admin';
+  if (raw.startsWith('//')) return '/board/admin';
+  if (raw.includes('://')) return '/board/admin';
+  if (!raw.startsWith('/board/admin')) return '/board/admin';
+  return raw;
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') || '/board/admin';
+  const next = safeNext(searchParams.get('next'));
 
   const [username, setUsername] = useState<string>('班代');
   const [password, setPassword] = useState<string>('');
