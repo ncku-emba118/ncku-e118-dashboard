@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>E118 Dashboard ｜ 成大 EMBA 第 118 班</title>
+  <title>E118 SLC ｜ Shared Learning Circle · 成大 EMBA 第 118 班</title>
 
   <!-- ── PWA ── -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#8B1F2F" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="E118" />
+  <meta name="apple-mobile-web-app-title" content="E118 SLC" />
   <link rel="apple-touch-icon" href="assets/pwa-icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="assets/pwa-icon-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="assets/pwa-icon-512.png" />
@@ -163,8 +163,32 @@
     .hero-tc {
       font: 500 22px/1.4 var(--font-tc);
       color: var(--ncku-ink-soft);
-      margin-bottom: 24px;
+      margin-bottom: 14px;
       max-width: 640px;
+    }
+    .hero-slc {
+      font: italic 500 19px/1.5 var(--font-display);
+      letter-spacing: 0.04em;
+      color: var(--ncku-gold);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .hero-slc strong {
+      font-style: normal;
+      font-weight: 600;
+      color: var(--ncku-wine);
+      font-size: 22px;
+      letter-spacing: 0.08em;
+    }
+    .hero-slc::before {
+      content: "";
+      display: inline-block;
+      width: 24px;
+      height: 1px;
+      background: var(--ncku-gold);
+      vertical-align: middle;
     }
     .hero p.lede {
       font: 400 16px/1.7 var(--font-body);
@@ -672,9 +696,10 @@
         <div class="hero-eyebrow">NCKU EMBA · Class Dashboard</div>
         <h1>E<span class="num">118</span></h1>
         <div class="hero-tc">國立成功大學 EMBA 高階管理碩士在職專班 第 118 班</div>
-        <p class="lede">班級系統控制面板，整合課程、研究、活動與資源。</p>
+        <div class="hero-slc"><strong>SLC</strong> Shared Learning Circle</div>
+        <p class="lede">共學群系統控制面板，整合課程、研究、活動、共學分享與班務資源。</p>
         <div class="hero-divider">
-          <span class="stat">7 Systems Online</span>
+          <span class="stat">9 Systems Online</span>
           <span class="line"></span>
           <span class="stat">Est. 2026</span>
         </div>
@@ -684,7 +709,7 @@
       <section id="apps" class="block">
         <div class="section-head">
           <h2>System Hub<span class="tc">系統入口</span></h2>
-          <span class="count">07 / 07</span>
+          <span class="count">09 / 09</span>
         </div>
 
         <div class="app-grid">
@@ -778,6 +803,32 @@
             <div class="app-title">班級行事曆</div>
             <div class="app-meta">全班課程、放假、活動 — 一鍵訂閱到手機</div>
             <div class="app-domain">emba.aqualux.dev/calendar</div>
+          </a>
+
+          <a href="https://order.e118.aqualux.dev/" class="app-card" target="_blank" rel="noopener noreferrer" data-help="order">
+            <div class="app-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+            </div>
+            <button type="button" class="app-help" data-help-btn="order" aria-label="查看「點餐系統」操作說明">?</button>
+            <div class="app-arrow">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10M7 17L17 7"/></svg>
+            </div>
+            <div class="app-title">點餐系統</div>
+            <div class="app-meta">班級聚餐線上點餐 — 一鍵集合菜單與人數</div>
+            <div class="app-domain">order.e118.aqualux.dev</div>
+          </a>
+
+          <a href="https://sharing.e118.aqualux.dev/" class="app-card" target="_blank" rel="noopener noreferrer" data-help="sharing">
+            <div class="app-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+            </div>
+            <button type="button" class="app-help" data-help-btn="sharing" aria-label="查看「共學系列」操作說明">?</button>
+            <div class="app-arrow">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10M7 17L17 7"/></svg>
+            </div>
+            <div class="app-title">共學系列</div>
+            <div class="app-meta">同學輪流上場分享自己事業與專業領域</div>
+            <div class="app-domain">sharing.e118.aqualux.dev</div>
           </a>
 
         </div>
@@ -971,6 +1022,30 @@
           '勾選後縮圖牆即時過濾（例如：篩「南部 + 製造業 + CEO」）',
           '點同學卡片進入個人頁：公司、職務、專業、可協助領域',
           '聯絡資訊（Email / Line / 電話）為保護個資不上線，請走 LINE 群／秘書長協助轉介'
+        ]
+      },
+      'order': {
+        title: '點餐系統',
+        domain: 'order.e118.aqualux.dev',
+        desc: '班級聚餐線上點餐工具，把菜單、人數統計、特殊飲食需求集中在一個頁面。活動長開放點餐後，同學自行勾選餐點，後台自動匯總給主辦同學給餐廳。',
+        steps: [
+          '收到 LINE 群通知後，點連結進入當次聚餐頁面',
+          '頁面上可看到餐廳菜單、價位、活動長備註',
+          '勾選自己要的餐點與飲料、填入特殊需求（素食 / 不吃辣 / 過敏原）',
+          '送出後系統會記住你的選擇，截止前都可修改',
+          '結帳分攤由活動長另行公告（通常 LINE Pay / 現金二擇一）'
+        ]
+      },
+      'sharing': {
+        title: '共學系列',
+        domain: 'sharing.e118.aqualux.dev',
+        desc: 'SLC 共學分享系列的文章典藏站。同學輪流上場分享自己事業與專業領域，每一期都有完整紀錄、講者介紹、現場照片與重點摘要。',
+        steps: [
+          '首頁是「共學發起人吳佳展（Dan）」的系列介紹 + 全部期數列表',
+          '每張期數卡含日期、主題、主講同學、場地',
+          '點卡片進入該期完整文章 — 含主講者照片、產業重點、金句、現場側拍',
+          '想成為下一期主講同學，跟 Dan 直接提案就好（LINE 找他）',
+          '系列暫定每月一場，視同學行程而定'
         ]
       }
     };
