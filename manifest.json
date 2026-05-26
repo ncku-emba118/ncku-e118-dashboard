@@ -1,7 +1,7 @@
 {
-  "name": "E118 SLC ｜ Shared Learning Circle · 成大 EMBA 第 118 班",
-  "short_name": "E118 SLC",
-  "description": "Shared Learning Circle · 成大 EMBA 第 118 班 共學群系統入口",
+  "name": "E118 Dashboard ｜ 成大 EMBA 第 118 班",
+  "short_name": "E118",
+  "description": "國立成功大學 EMBA 第 118 班 系統入口",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
