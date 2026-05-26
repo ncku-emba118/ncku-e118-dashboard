@@ -12,8 +12,6 @@
 ```html
 <a href="<目標站 URL>"
    class="app-card"
-   target="_blank"
-   rel="noopener noreferrer"
    data-help="<help-key>">
 
   <div class="app-icon">
@@ -36,6 +34,12 @@
 ```
 
 **`<help-key>` 規則**：英文 kebab-case，跟子網域同名（例：`reports` / `field-study`），同卡片的 `data-help` 與按鈕的 `data-help-btn` 必須一致。
+
+**點擊行為（target 規則）**：
+
+- 內部子站（`*.e118.aqualux.dev` / `emba.aqualux.dev/*`）→ **不加** `target` / `rel`，預設同視窗切換，user 可按返回鍵回 dashboard
+- 外部服務（Google Drive、Notion、Sheets 等第三方）→ **加** `target="_blank" rel="noopener noreferrer"`，避免污染 dashboard history
+- popover 內「開啟系統」連結會在 JS 自動跟卡片同步：卡片有 target 就是 `↗`（新分頁）、無 target 就是 `→`（同窗），不需手動維護
 
 ---
 
