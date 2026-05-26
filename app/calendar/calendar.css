@@ -1,0 +1,278 @@
+/**
+ * /calendar 頁面專用 CSS（從 calendar/index.html <style> block 遷移）。
+ * 所有 selector 都 prefix 為 .calendar-route，避免跟 globals.css 衝突
+ * （特別是 .container max-width / header / h1 / footer 等通用 selector）。
+ *
+ * :root CSS 變數已在 globals.css 定義、不重複；
+ * `*` reset 也已在 globals.css 處理、不重複。
+ */
+
+/* Wrapper — gradient bg + 字型（覆蓋 globals.css body 純色背景）*/
+.calendar-route {
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--ncku-cream) 0%, var(--ncku-paper) 100%);
+  font-family: 'Noto Serif TC', 'Cormorant Garamond', Georgia, serif;
+  color: var(--ncku-ink);
+  line-height: 1.65;
+}
+.calendar-route a {
+  color: var(--ncku-wine);
+  text-decoration: none;
+}
+.calendar-route a:hover { color: var(--ncku-wine-deep); }
+
+.calendar-route .container {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 36px 28px 80px;
+}
+
+/* ── Back link ── */
+.calendar-route .back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  color: var(--ncku-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 32px;
+  transition: color 0.2s;
+}
+.calendar-route .back-link:hover { color: var(--ncku-wine); }
+.calendar-route .back-link svg { stroke: currentColor; }
+
+/* ── Header ── */
+.calendar-route header { text-align: center; margin-bottom: 40px; }
+.calendar-route .icon-wrap {
+  display: inline-flex;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--ncku-wine);
+  color: var(--ncku-cream);
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(139, 31, 47, 0.25);
+}
+.calendar-route h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0 0 4px;
+  color: var(--ncku-wine-deep);
+}
+.calendar-route .h1-tc {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--ncku-ink);
+  margin-bottom: 12px;
+}
+.calendar-route .lede {
+  max-width: 600px;
+  margin: 16px auto 0;
+  color: var(--ncku-ink);
+  font-size: 16px;
+}
+.calendar-route .lede .muted {
+  color: var(--ncku-mute);
+  font-size: 14px;
+  display: block;
+  margin-top: 6px;
+}
+
+/* ── Embedded calendar ── */
+.calendar-route .cal-embed {
+  background: white;
+  border: 1px solid rgba(139, 31, 47, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 40px 0;
+  box-shadow: 0 8px 32px rgba(26, 22, 18, 0.06);
+}
+.calendar-route .cal-embed iframe {
+  display: block;
+  border: 0;
+  width: 100%;
+  height: 640px;
+}
+@media (max-width: 768px) {
+  .calendar-route .cal-embed iframe { height: 480px; }
+}
+
+/* ── Section divider ── */
+.calendar-route .sec-divider {
+  text-align: center;
+  margin: 56px 0 28px;
+  font-family: 'Cormorant Garamond', serif;
+  color: var(--ncku-mute);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-size: 14px;
+  position: relative;
+}
+.calendar-route .sec-divider::before,
+.calendar-route .sec-divider::after {
+  content: '';
+  display: inline-block;
+  width: 60px;
+  height: 1px;
+  background: var(--ncku-gold);
+  vertical-align: middle;
+  margin: 0 16px;
+}
+.calendar-route .sec-divider .tc {
+  display: block;
+  font-family: 'Noto Serif TC', serif;
+  font-size: 22px;
+  color: var(--ncku-wine-deep);
+  letter-spacing: normal;
+  text-transform: none;
+  margin-top: 4px;
+}
+
+/* ── Subscribe buttons ── */
+.calendar-route .btn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+@media (max-width: 600px) {
+  .calendar-route .btn-grid { grid-template-columns: 1fr; }
+}
+
+.calendar-route .sub-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 22px;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 31, 47, 0.18);
+  background: white;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 15px;
+  text-align: left;
+  transition: all 0.2s;
+  width: 100%;
+}
+.calendar-route .sub-btn:hover {
+  border-color: var(--ncku-wine);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(139, 31, 47, 0.12);
+}
+.calendar-route .sub-btn .btn-emoji {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+.calendar-route .sub-btn .btn-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.calendar-route .sub-btn .btn-title {
+  font-weight: 600;
+  color: var(--ncku-wine-deep);
+  font-size: 16px;
+}
+.calendar-route .sub-btn .btn-sub {
+  color: var(--ncku-mute);
+  font-size: 13px;
+}
+.calendar-route .sub-btn-wide {
+  grid-column: 1 / -1;
+  max-width: 312px;
+  margin: 8px auto 0;
+}
+@media (max-width: 600px) {
+  .calendar-route .sub-btn-wide { max-width: 100%; }
+}
+
+/* Copy feedback toast — position fixed, body 級 */
+.calendar-route .copy-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(60px);
+  background: var(--ncku-wine-deep);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  z-index: 100;
+  font-size: 14px;
+}
+.calendar-route .copy-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── FAQ ── */
+.calendar-route .faq {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.calendar-route .faq details {
+  background: white;
+  border: 1px solid rgba(139, 31, 47, 0.12);
+  border-radius: 6px;
+  margin-bottom: 10px;
+  padding: 0;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+.calendar-route .faq details[open] { border-color: var(--ncku-gold); }
+.calendar-route .faq summary {
+  padding: 18px 22px;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--ncku-wine-deep);
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15.5px;
+}
+.calendar-route .faq summary::-webkit-details-marker { display: none; }
+.calendar-route .faq summary::after {
+  content: '+';
+  color: var(--ncku-gold);
+  font-size: 22px;
+  font-weight: 300;
+  transition: transform 0.2s;
+}
+.calendar-route .faq details[open] summary::after { content: '−'; }
+.calendar-route .faq .faq-body {
+  padding: 0 22px 20px;
+  color: var(--ncku-ink);
+  font-size: 14.5px;
+  line-height: 1.75;
+  border-top: 1px solid rgba(139, 31, 47, 0.08);
+  padding-top: 16px;
+}
+.calendar-route .faq code {
+  background: var(--ncku-paper);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+  color: var(--ncku-wine-deep);
+}
+
+/* ── Footer ── */
+.calendar-route footer {
+  text-align: center;
+  margin-top: 64px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(139, 31, 47, 0.1);
+  color: var(--ncku-mute);
+  font-size: 13px;
+}
