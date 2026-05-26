@@ -11,6 +11,18 @@ type HelpEntry = {
 
 // 對應 ARCHITECTURE.md 第 5 章「help popover 文案」— 修改任一張卡時同步更新對應 entry
 const HELP: Record<string, HelpEntry> = {
+  board: {
+    title: '班級公告欄',
+    domain: 'emba.aqualux.dev/board',
+    desc: '7 個部門統一發布公告、可推播到手機、同學可在公告下方留言互動。主 dashboard 子模組，共用 PWA 與推播訂閱（不必另裝 app）。',
+    steps: [
+      '點卡片進入公告欄首頁，看全部公告 timeline',
+      '可按部門 filter（秘書 / 學務 / 活動 / 公關 / 財務 / 文宣 / 醫務）',
+      '點任一則公告進詳情、看附件、留言',
+      '訂閱頁勾選想追蹤的部門 → 推播到手機',
+      '部門負責同學 → 進 /board/login 寫公告（用負責人發的 4 位數密碼）',
+    ],
+  },
   reports: {
     title: '課程報告',
     domain: 'reports.e118.aqualux.dev',
