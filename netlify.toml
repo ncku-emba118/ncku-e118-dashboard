@@ -10,6 +10,9 @@
 
 [build]
   command = "npm run build"
+  # 必須明示 publish；@netlify/plugin-nextjs 之後會自己覆寫處理，
+  # 但 toml 不寫的話 Netlify 把 publish 當 base (/) → "publish 不能跟 base 相同" 錯
+  publish = ".next"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
