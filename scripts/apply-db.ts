@@ -39,6 +39,7 @@ const ACCOUNTS_PASSWORD_FILE = path.join(SECRETS_DIR, 'passwords.txt');
 const SCHEMA_FILE = path.join(__dirname, '../supabase/migrations/0001_initial.sql');
 const AUTH_RPC_FILE = path.join(__dirname, '../supabase/migrations/0002_auth_rpc.sql');
 const REALTIME_FILE = path.join(__dirname, '../supabase/migrations/0003_realtime.sql');
+const PUSH_RPC_FILE = path.join(__dirname, '../supabase/migrations/0004_push_dispatcher.sql');
 const DEPT_SEED_FILE = path.join(__dirname, '../supabase/seed/01-departments.sql');
 
 const BCRYPT_COST = 12;
@@ -157,6 +158,15 @@ async function main() {
         throw err;
       }
     }
+
+    // 3d. Push dispatcher RPC (CREATE OR REPLACE — idempotent)
+    console.log('\n── Step 1d: Apply push dispatcher RPC (0004_push_dispatcher) ──');
+    const pushRpcSql = fs.readFileSync(PUSH_RPC_FILE, 'utf8');
+    await client.query(pushRpcSql);
+    const pushFnCheck = await client.query(
+      `SELECT proname FROM pg_proc WHERE proname = 'claim_push_jobs'`,
+    );
+    console.log(`✓ Push dispatcher RPC: ${pushFnCheck.rows.map((r) => r.proname).join(', ') || '(none)'}`);
 
     // 4. Apply departments seed
     console.log('\n── Step 2: Seed 7 departments ──');

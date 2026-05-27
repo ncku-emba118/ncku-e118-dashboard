@@ -22,7 +22,8 @@ const PUBLIC_API_PATHS = new Set<string>([
  * POST-only 公開 path：anon user 可以 POST，但 PATCH/DELETE 仍需登入。
  */
 const POST_PUBLIC_PATHS = new Set<string>([
-  '/api/board/comments',  // 留言（半實名、IP HMAC 防 spam）
+  '/api/board/comments',   // 留言（半實名、IP HMAC 防 spam）
+  '/api/board/subscribe',  // PWA push 訂閱（management_token 自驗 + endpoint allowlist）
 ]);
 
 /**

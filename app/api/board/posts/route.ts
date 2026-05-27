@@ -11,6 +11,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getServerClient } from '@/lib/supabase/server';
 import { readSession, canManageDept, ALL_DEPTS } from '@/lib/auth/session';
+import { processQueuedJobs } from '@/lib/push/dispatcher';
 
 const DEPT_IDS = ALL_DEPTS.map((d) => d.id) as readonly string[];
 
@@ -201,8 +202,31 @@ export async function POST(req: NextRequest) {
     pinned,
   });
 
-  // TODO（下個 commit）：enqueue push_job 觸發推播
-  //   await supabase.from('push_jobs').insert({ post_id: inserted.id, event_type: 'post_published' })
+  // ── Enqueue push_job for outbox dispatcher ──
+  // ON CONFLICT (post_id, event_type) DO NOTHING — 同 post 同事件只一個 job
+  const { error: jobErr } = await supabase
+    .from('push_jobs')
+    .insert({
+      post_id: inserted.id,
+      event_type: 'post_published',
+      status: 'queued',
+    });
+  if (jobErr) {
+    // 已存在或其他 — 不阻擋 post create 本身（user 已看到成功）
+    console.warn('[posts.create.push_job_enqueue_failed]', {
+      traceId,
+      post_id: inserted.id,
+      error: jobErr.message,
+    });
+  } else {
+    // 立刻 fire-and-forget 觸發 dispatcher（best effort、不 await 不阻擋 response）
+    processQueuedJobs().catch((err) => {
+      console.error('[posts.create.dispatcher_async_failed]', {
+        traceId,
+        error: (err as Error).message,
+      });
+    });
+  }
 
   return NextResponse.json(
     { post_id: inserted.id, idempotent: false },
