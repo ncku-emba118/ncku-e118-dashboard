@@ -12,17 +12,32 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE_NAME, verifySession } from './lib/auth/jwt';
 
 /**
- * 白名單：這些 path 不需登入即可訪問。
- * 未來新增 public API（例如 /api/board/comments POST、/api/board/posts GET）時也要加進來。
+ * 白名單：這些 path 不需登入即可訪問（所有 method）。
  */
 const PUBLIC_API_PATHS = new Set<string>([
   '/api/board/login',
 ]);
 
+/**
+ * GET-only 公開 pattern：這些 path 對 GET 公開（依 RLS 過濾資料），
+ * 但 POST/PATCH/DELETE 仍需登入。Route handler 自己再驗 session。
+ */
+const GET_PUBLIC_PATTERNS: RegExp[] = [
+  /^\/api\/board\/posts$/,                                              // GET 列表
+  /^\/api\/board\/posts\/[a-fA-F0-9-]{36}$/,                            // GET 單篇（UUID）
+];
+
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   if (PUBLIC_API_PATHS.has(path)) {
+    return NextResponse.next();
+  }
+
+  if (
+    request.method === 'GET' &&
+    GET_PUBLIC_PATTERNS.some((p) => p.test(path))
+  ) {
     return NextResponse.next();
   }
 
