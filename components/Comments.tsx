@@ -12,14 +12,8 @@ export type Comment = {
   status?: string;
 };
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${d.getFullYear()}-${m}-${day} ${hh}:${mm}`;
-}
+import { formatDateTW } from '@/lib/format';
+const formatDate = formatDateTW;
 
 export default function Comments({
   postId,

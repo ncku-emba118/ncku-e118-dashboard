@@ -43,15 +43,7 @@ function excerpt(content: string, max = 140): string {
   return t.length > max ? `${t.slice(0, max)}…` : t;
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${y}-${m}-${day} ${hh}:${mm}`;
-}
+import { formatDateTW as formatDate } from '@/lib/format';
 
 export default async function BoardHome() {
   const posts = await loadPosts();

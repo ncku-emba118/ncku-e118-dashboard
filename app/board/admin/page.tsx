@@ -45,14 +45,7 @@ async function loadManageablePosts(
   return (data || []) as unknown as AdminPost[];
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${d.getFullYear()}-${m}-${day} ${hh}:${mm}`;
-}
+import { formatDateTW as formatDate } from '@/lib/format';
 
 export default async function AdminHome() {
   const session = await readSession();

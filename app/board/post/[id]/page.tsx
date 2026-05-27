@@ -55,17 +55,7 @@ async function loadComments(postId: string): Promise<Comment[]> {
   return (data || []) as Comment[];
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString('zh-TW', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-}
+import { formatDateTW as formatDate } from '@/lib/format';
 
 export default async function PostDetail({
   params,
