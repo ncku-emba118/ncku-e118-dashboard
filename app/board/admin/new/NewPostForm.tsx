@@ -218,7 +218,7 @@ export default function NewPostForm({
               letterSpacing: '0.05em',
             }}
           >
-            內容（≤ 20 KB · 純文字、換行會保留 · 下個版本支援 markdown）
+            內容（≤ 20 KB · 支援 markdown：**粗體** *斜體* # 標題 - 列表 [連結](https://...) ```code```）
           </label>
           <textarea
             value={content}

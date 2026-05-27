@@ -36,6 +36,48 @@
 
     a { color: inherit; }
 
+    /* ── Markdown content (公告/留言內文) ── */
+    .board-post-content h1 { font: 600 28px var(--font-tc); margin: 1.2em 0 0.6em; color: var(--ncku-wine-deep); }
+    .board-post-content h2 { font: 600 22px var(--font-tc); margin: 1.2em 0 0.6em; color: var(--ncku-wine-deep); }
+    .board-post-content h3 { font: 600 18px var(--font-tc); margin: 1em 0 0.5em; color: var(--ncku-wine-deep); }
+    .board-post-content h4 { font: 600 16px var(--font-tc); margin: 1em 0 0.5em; color: var(--ncku-ink); }
+    .board-post-content p { margin: 0 0 1em; }
+    .board-post-content ul, .board-post-content ol { margin: 0 0 1em; padding-left: 24px; }
+    .board-post-content li { margin-bottom: 4px; }
+    .board-post-content blockquote {
+      margin: 1em 0;
+      padding: 8px 16px;
+      border-left: 3px solid var(--ncku-gold);
+      background: rgba(201,169,97,0.08);
+      color: var(--ncku-ink-soft);
+    }
+    .board-post-content code {
+      background: var(--ncku-paper);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font: 0.9em var(--font-mono);
+      color: var(--ncku-wine-deep);
+    }
+    .board-post-content pre {
+      background: var(--ncku-paper);
+      padding: 12px 16px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+    .board-post-content pre code { background: none; padding: 0; }
+    .board-post-content a { color: var(--ncku-wine); text-decoration: underline; }
+    .board-post-content a:hover { color: var(--ncku-wine-deep); }
+    .board-post-content table { border-collapse: collapse; margin: 1em 0; width: 100%; }
+    .board-post-content th, .board-post-content td {
+      border: 1px solid var(--ncku-line);
+      padding: 8px 12px;
+      text-align: left;
+    }
+    .board-post-content th { background: var(--ncku-paper); font-weight: 600; }
+    .board-post-content img { max-width: 100%; height: auto; border-radius: 4px; margin: 1em 0; }
+    .board-post-content hr { border: 0; border-top: 1px solid var(--ncku-line); margin: 2em 0; }
+
     .container { max-width: 1180px; margin: 0 auto; padding: 0 40px; }
 
     /* ── Header / Top Nav ── */

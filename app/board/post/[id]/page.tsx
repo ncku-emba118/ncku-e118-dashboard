@@ -8,6 +8,7 @@
 import { notFound } from 'next/navigation';
 import { getServerClient } from '@/lib/supabase/server';
 import { deptInfo } from '@/lib/auth/session';
+import Markdown from '@/components/Markdown';
 
 const UUID_RE = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
 
@@ -162,18 +163,18 @@ export default async function PostDetail({
           </div>
         </header>
 
-        {/* Content (pre-wrap，preserve user line breaks，無 HTML 注入風險) */}
+        {/* Content — markdown 渲染 + rehype-sanitize 防 XSS（第 17 章規格）*/}
         <article
+          className="board-post-content"
           style={{
             fontSize: 16,
             lineHeight: 1.8,
             color: '#1A1612',
-            whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
             marginBottom: 32,
           }}
         >
-          {post.content}
+          <Markdown source={post.content} />
         </article>
 
         {/* Attachments — 暫不嵌入 GDrive iframe，先列連結（下個 commit 加 embed） */}
