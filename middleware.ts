@@ -19,6 +19,13 @@ const PUBLIC_API_PATHS = new Set<string>([
 ]);
 
 /**
+ * POST-only 公開 path：anon user 可以 POST，但 PATCH/DELETE 仍需登入。
+ */
+const POST_PUBLIC_PATHS = new Set<string>([
+  '/api/board/comments',  // 留言（半實名、IP HMAC 防 spam）
+]);
+
+/**
  * GET-only 公開 pattern：這些 path 對 GET 公開（依 RLS 過濾資料），
  * 但 POST/PATCH/DELETE 仍需登入。Route handler 自己再驗 session。
  */
@@ -31,6 +38,10 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   if (PUBLIC_API_PATHS.has(path)) {
+    return NextResponse.next();
+  }
+
+  if (request.method === 'POST' && POST_PUBLIC_PATHS.has(path)) {
     return NextResponse.next();
   }
 

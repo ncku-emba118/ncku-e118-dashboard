@@ -7,9 +7,10 @@
  */
 import { notFound } from 'next/navigation';
 import { getServerClient } from '@/lib/supabase/server';
-import { deptInfo } from '@/lib/auth/session';
+import { deptInfo, readSession, canManageDept } from '@/lib/auth/session';
 import Markdown from '@/components/Markdown';
 import Attachments from '@/components/Attachments';
+import Comments, { type Comment } from '@/components/Comments';
 import type { GdriveAttachment } from '@/lib/gdrive';
 
 const UUID_RE = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
@@ -40,6 +41,20 @@ async function loadPost(id: string): Promise<Post | null> {
   return data as unknown as Post;
 }
 
+async function loadComments(postId: string): Promise<Comment[]> {
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from('comments')
+    .select('id, post_id, author_name, content, status, created_at')
+    .eq('post_id', postId)
+    .eq('status', 'visible')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+    .limit(200);
+  if (error) return [];
+  return (data || []) as Comment[];
+}
+
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleString('zh-TW', {
@@ -58,8 +73,15 @@ export default async function PostDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const post = await loadPost(id);
+  const [post, sessionResult] = await Promise.all([
+    loadPost(id),
+    readSession(),
+  ]);
   if (!post) notFound();
+
+  const initialComments = await loadComments(post.id);
+  const canModerate =
+    !!sessionResult && canManageDept(sessionResult, post.department_id);
 
   const dept = deptInfo(post.department_id);
 
@@ -182,20 +204,12 @@ export default async function PostDetail({
         {/* Attachments — GDrive iframe embed + 在 Drive 開啟連結 */}
         <Attachments items={post.attachments || []} />
 
-        {/* Comments placeholder（下個 commit 開做） */}
-        <div
-          style={{
-            padding: '20px 24px',
-            background: '#fff',
-            border: '1px dashed #D9CDB8',
-            borderRadius: 6,
-            color: '#8A7F73',
-            fontSize: 13,
-            textAlign: 'center',
-          }}
-        >
-          💬 留言區建構中
-        </div>
+        {/* Comments — Realtime 訂閱、可即時看到別人新留言 */}
+        <Comments
+          postId={post.id}
+          initialComments={initialComments}
+          canModerate={canModerate}
+        />
 
         <p
           style={{

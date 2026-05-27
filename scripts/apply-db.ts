@@ -38,6 +38,7 @@ const ACCOUNTS_PASSWORD_FILE = path.join(SECRETS_DIR, 'passwords.txt');
 
 const SCHEMA_FILE = path.join(__dirname, '../supabase/migrations/0001_initial.sql');
 const AUTH_RPC_FILE = path.join(__dirname, '../supabase/migrations/0002_auth_rpc.sql');
+const REALTIME_FILE = path.join(__dirname, '../supabase/migrations/0003_realtime.sql');
 const DEPT_SEED_FILE = path.join(__dirname, '../supabase/seed/01-departments.sql');
 
 const BCRYPT_COST = 12;
@@ -142,6 +143,20 @@ async function main() {
       `SELECT proname FROM pg_proc WHERE proname IN ('record_failed_login','record_successful_login') ORDER BY proname`,
     );
     console.log(`✓ Auth RPC functions: ${fnCheck.rows.map((r) => r.proname).join(', ')}`);
+
+    // 3c. Apply Realtime publication (idempotent: catch duplicate-object error)
+    console.log('\n── Step 1c: Apply Realtime publication (0003_realtime) ──');
+    const realtimeSql = fs.readFileSync(REALTIME_FILE, 'utf8');
+    try {
+      await client.query(realtimeSql);
+      console.log('✓ Realtime publication applied');
+    } catch (err: any) {
+      if (err.code === '42710' || /already member of publication/i.test(err.message || '')) {
+        console.log('✓ Realtime publication already includes tables, skip');
+      } else {
+        throw err;
+      }
+    }
 
     // 4. Apply departments seed
     console.log('\n── Step 2: Seed 7 departments ──');
