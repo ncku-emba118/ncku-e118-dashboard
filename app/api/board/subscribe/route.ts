@@ -13,26 +13,18 @@ import bcrypt from 'bcryptjs';
 import { getServerClient } from '@/lib/supabase/server';
 import { isAllowedPushEndpoint } from '@/lib/push/endpoint-allowlist';
 import { resolveClientIp } from '@/lib/ip-resolve';
-import { ALL_DEPTS } from '@/lib/depts';
-
-const DEPT_IDS = ALL_DEPTS.map((d) => d.id) as readonly string[];
 
 const MAX_BODY_BYTES = 8192;
 
 /**
- * P0-4 修正：
- *   • dept_filter 改 .min(1) + 嚴格 enum，禁止 client 送 []（空陣列原本被當「訂閱全部」
- *     反直覺；改為「不選則無法訂閱」強制 user 明示選擇）
- *   • dept ID 用 enum 鎖死，不可送任意字串
+ * 2026-05-27 設計簡化：全班統一一條推播 channel，不再分部門。
+ *   • client 不再送 dept_filter，server 永遠插 [] 給 DB（欄位保留以利日後復原）
+ *   • 任何部門發新公告 → fan-out 給所有 push_subscriptions
  */
 const subscribeSchema = z.object({
   endpoint: z.string().url().max(1000),
   p256dh: z.string().min(20).max(200),
   auth: z.string().min(10).max(200),
-  dept_filter: z
-    .array(z.enum(DEPT_IDS as [string, ...string[]]))
-    .min(1)
-    .max(7),
   management_token: z.string().min(32).max(128),
   user_agent: z.string().max(300).optional(),
 });
@@ -147,7 +139,7 @@ export async function POST(req: NextRequest) {
     const { error: updateErr } = await supabase
       .from('push_subscriptions')
       .update({
-        dept_filter: input.dept_filter,
+        // dept_filter 永遠保持 [] — 簡化設計後不再用
         p256dh: input.p256dh,
         auth: input.auth,
         user_agent: input.user_agent ?? null,
@@ -168,7 +160,6 @@ export async function POST(req: NextRequest) {
     console.info('[push.subscribe.updated]', {
       traceId,
       subscription_id: existing.id,
-      depts: input.dept_filter,
     });
     return NextResponse.json(
       { ok: true, subscription_id: existing.id, mode: 'update' },
@@ -176,14 +167,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Insert
+  // Insert — dept_filter 永遠 [] (簡化設計後不再分部門)
   const { data: inserted, error: insertErr } = await supabase
     .from('push_subscriptions')
     .insert({
       endpoint: input.endpoint,
       p256dh: input.p256dh,
       auth: input.auth,
-      dept_filter: input.dept_filter,
+      dept_filter: [],
       management_token_hash: tokenHash,
       user_agent: input.user_agent ?? null,
     })
@@ -204,7 +195,6 @@ export async function POST(req: NextRequest) {
   console.info('[push.subscribe.created]', {
     traceId,
     subscription_id: inserted.id,
-    depts: input.dept_filter,
   });
 
   return NextResponse.json(

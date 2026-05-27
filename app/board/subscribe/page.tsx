@@ -1,33 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { ALL_DEPTS } from '@/lib/depts';
 import SubscribeButton from '@/components/SubscribeButton';
 
 export default function SubscribePage() {
-  // Default：勾全部部門
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(ALL_DEPTS.map((d) => d.id)),
-  );
-
-  function toggle(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function selectAll() {
-    setSelected(new Set(ALL_DEPTS.map((d) => d.id)));
-  }
-  function clearAll() {
-    setSelected(new Set());
-  }
-
-  const deptFilter = Array.from(selected);
-
   return (
     <main
       style={{
@@ -78,7 +53,7 @@ export default function SubscribePage() {
             margin: '0 0 24px',
           }}
         >
-          📢 設定推播 — 對應部門發新公告會直接通知這台裝置
+          📢 設定推播 — 任何部門發新公告都會直接通知這台裝置
         </p>
 
         {/* iOS reminder */}
@@ -107,116 +82,43 @@ export default function SubscribePage() {
           </span>
         </div>
 
+        {/* Hero info card */}
         <div
           style={{
             background: '#fff',
             border: '1px solid #D9CDB8',
             borderRadius: 8,
-            padding: '24px 24px 20px',
-            marginBottom: 24,
+            padding: '24px 24px 22px',
+            marginBottom: 20,
+            textAlign: 'center',
           }}
         >
+          <div style={{ fontSize: 36, marginBottom: 8 }}>🔔</div>
           <div
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-              marginBottom: 14,
+              fontFamily: "'Noto Serif TC', serif",
+              fontWeight: 600,
+              fontSize: 16,
+              color: '#1A1612',
+              marginBottom: 6,
             }}
           >
-            <label
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: '#4A413A',
-                letterSpacing: '0.05em',
-              }}
-            >
-              想追蹤哪些部門？({selected.size}/{ALL_DEPTS.length})
-            </label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                onClick={selectAll}
-                style={{
-                  fontSize: 12,
-                  color: '#8B1F2F',
-                  background: 'transparent',
-                  border: '1px solid #D9CDB8',
-                  borderRadius: 3,
-                  padding: '3px 10px',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                全選
-              </button>
-              <button
-                type="button"
-                onClick={clearAll}
-                style={{
-                  fontSize: 12,
-                  color: '#8A7F73',
-                  background: 'transparent',
-                  border: '1px solid #D9CDB8',
-                  borderRadius: 3,
-                  padding: '3px 10px',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                清空
-              </button>
-            </div>
+            全班公告統一推播
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {ALL_DEPTS.map((d) => {
-              const checked = selected.has(d.id);
-              return (
-                <label
-                  key={d.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '10px 14px',
-                    borderRadius: 4,
-                    border: `1px solid ${checked ? d.color : '#D9CDB8'}`,
-                    background: checked ? `${d.color}1A` : '#FAF7F2',
-                    cursor: 'pointer',
-                    fontSize: 14,
-                    color: checked ? d.color : '#4A413A',
-                    fontFamily: "'Noto Serif TC', serif",
-                    fontWeight: checked ? 600 : 400,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggle(d.id)}
-                    style={{ accentColor: d.color }}
-                  />
-                  {d.name}
-                </label>
-              );
-            })}
-          </div>
-
-          <p
+          <div
             style={{
-              marginTop: 12,
-              fontSize: 11,
-              color: '#8A7F73',
-              fontFamily: 'ui-monospace, Menlo, monospace',
-              letterSpacing: '0.03em',
+              fontSize: 13,
+              color: '#4A413A',
+              lineHeight: 1.7,
             }}
           >
-            預設全部勾選 · 取消勾選即不接收該部門公告
-          </p>
+            7 個部門（秘書／學務／活動／公關／財務／文宣／醫務）任何一篇新公告
+            <br />
+            都會直接通知這台裝置 — 一次訂閱、全部收到
+          </div>
         </div>
 
-        <SubscribeButton deptFilter={deptFilter} />
+        <SubscribeButton />
 
         <p
           style={{

@@ -144,13 +144,12 @@ async function processOneJob(
   }
   const post = postRow as unknown as PostRow;
 
-  // P0-4 修正：dept_filter 必須**明確**包含此部門才推；空陣列視為「不收」（之前
-  // 「空 = 訂閱全部」反直覺、會發給沒明確選的人）。配合 subscribe schema 強制 .min(1)。
-  // dept_id 來自 DB（zod enum 已過濾），這裡走 .contains() 安全 — 不再字串拼接。
+  // 2026-05-27 設計簡化：全班統一一條推播 channel。
+  // 任何部門發新公告 → fan-out 給所有 push_subscriptions。
+  // dept_filter 欄位保留在 DB（不刪 schema、避免 migration 風險），但 dispatcher 不再讀。
   const { data: subsRows, error: subsErr } = await supabase
     .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth, dept_filter, failure_count')
-    .contains('dept_filter', [post.department_id]);
+    .select('id, endpoint, p256dh, auth, dept_filter, failure_count');
 
   if (subsErr) {
     console.error('[push.dispatcher.subs_load_failed]', {

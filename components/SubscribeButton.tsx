@@ -3,12 +3,13 @@
 /**
  * SubscribeButton — request notification permission + register PWA push subscription
  *
+ * 2026-05-27 簡化：全班統一一條推播 channel，不再分部門。
  * 對應 ARCHITECTURE.md v3 第 7 章「訂閱端」流程：
  *   1. 確認 Service Worker + PushManager 支援
  *   2. 跳系統 notification 權限請求
  *   3. SW registration.pushManager.subscribe(VAPID_PUBLIC_KEY)
  *   4. localStorage 存 random management_token
- *   5. POST /api/board/subscribe with token + endpoint + keys + dept_filter
+ *   5. POST /api/board/subscribe with token + endpoint + keys
  */
 
 import { useState, useEffect } from 'react';
@@ -48,11 +49,7 @@ type State =
   | { kind: 'error'; message: string }
   | { kind: 'loading' };
 
-export default function SubscribeButton({
-  deptFilter,
-}: {
-  deptFilter: string[];
-}) {
+export default function SubscribeButton() {
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [supported, setSupported] = useState<boolean | null>(null);
 
@@ -115,7 +112,6 @@ export default function SubscribeButton({
           endpoint: subJson.endpoint,
           p256dh: subJson.keys.p256dh,
           auth: subJson.keys.auth,
-          dept_filter: deptFilter,
           management_token: managementToken,
           user_agent: navigator.userAgent,
         }),
@@ -173,7 +169,7 @@ export default function SubscribeButton({
           fontSize: 13,
         }}
       >
-        ✅ 已訂閱推播 · 之後對應部門發新公告會直接通知這台裝置
+        ✅ 已訂閱推播 · 之後**任何部門**發新公告都會直接通知這台裝置
         <br />
         <span style={{ fontSize: 11, opacity: 0.7 }}>
           subscription_id: {state.subscription_id}
@@ -182,36 +178,29 @@ export default function SubscribeButton({
     );
   }
 
+  const loading = state.kind === 'loading';
+
   return (
     <div>
       <button
         type="button"
         onClick={subscribe}
-        disabled={state.kind === 'loading' || deptFilter.length === 0}
+        disabled={loading}
         style={{
-          padding: '12px 22px',
-          fontSize: 14,
+          padding: '14px 28px',
+          fontSize: 15,
           fontWeight: 600,
-          background:
-            state.kind === 'loading' || deptFilter.length === 0
-              ? '#A84453'
-              : '#8B1F2F',
+          background: loading ? '#A84453' : '#8B1F2F',
           color: '#fff',
           border: 'none',
           borderRadius: 4,
-          cursor:
-            state.kind === 'loading' || deptFilter.length === 0
-              ? 'not-allowed'
-              : 'pointer',
+          cursor: loading ? 'not-allowed' : 'pointer',
           fontFamily: 'inherit',
           letterSpacing: '0.05em',
+          width: '100%',
         }}
       >
-        {state.kind === 'loading'
-          ? '訂閱中…'
-          : deptFilter.length === 0
-            ? '請先勾選想追蹤的部門'
-            : '📢 開啟推播'}
+        {loading ? '訂閱中…' : '📢 開啟全班公告推播'}
       </button>
 
       {state.kind === 'permission_denied' && (
