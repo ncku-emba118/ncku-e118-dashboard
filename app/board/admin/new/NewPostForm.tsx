@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { parseGdriveUrl, type GdriveAttachment } from '@/lib/gdrive';
 
 type Dept = { id: string; name: string; color: string };
 
@@ -23,8 +24,37 @@ export default function NewPostForm({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [pinned, setPinned] = useState(false);
+  const [attachments, setAttachments] = useState<GdriveAttachment[]>([]);
+  const [attUrl, setAttUrl] = useState('');
+  const [attName, setAttName] = useState('');
+  const [attError, setAttError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function addAttachment() {
+    setAttError(null);
+    if (!attUrl.trim()) {
+      setAttError('請填 Google Drive 網址');
+      return;
+    }
+    if (attachments.length >= 10) {
+      setAttError('每篇公告最多 10 個附件');
+      return;
+    }
+    const parsed = parseGdriveUrl(attUrl);
+    if (!parsed) {
+      setAttError('不是有效的 Google Drive / Docs / Sheets / Slides 網址');
+      return;
+    }
+    const name = attName.trim() || `${parsed.type}-${attachments.length + 1}`;
+    setAttachments([...attachments, { name, gdrive_id: parsed.gdrive_id, type: parsed.type }]);
+    setAttUrl('');
+    setAttName('');
+  }
+
+  function removeAttachment(i: number) {
+    setAttachments(attachments.filter((_, idx) => idx !== i));
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,6 +82,7 @@ export default function NewPostForm({
           title: title.trim(),
           content,
           pinned: isSuper ? pinned : false,
+          attachments,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -251,6 +282,166 @@ export default function NewPostForm({
             }}
           >
             {(contentLen / 1024).toFixed(1)} KB / 20 KB
+          </div>
+
+          {/* Attachments — Google Drive */}
+          <label
+            style={{
+              display: 'block',
+              fontSize: 12,
+              fontWeight: 500,
+              color: '#4A413A',
+              marginBottom: 6,
+              letterSpacing: '0.05em',
+            }}
+          >
+            📎 Google Drive 附件（選填 · 最多 10 個）
+          </label>
+          <div
+            style={{
+              padding: '12px 14px',
+              background: '#FAF7F2',
+              border: '1px solid #D9CDB8',
+              borderRadius: 4,
+              marginBottom: 18,
+            }}
+          >
+            {/* 既有附件列表 */}
+            {attachments.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                {attachments.map((att, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '8px 10px',
+                      background: '#fff',
+                      border: '1px solid #D9CDB8',
+                      borderRadius: 4,
+                      marginBottom: 6,
+                      fontSize: 12,
+                    }}
+                  >
+                    <span style={{ color: '#8A7F73', fontFamily: 'ui-monospace, Menlo, monospace', minWidth: 70 }}>
+                      [{att.type}]
+                    </span>
+                    <span
+                      style={{
+                        flex: 1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {att.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(i)}
+                      disabled={submitting}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid #D9CDB8',
+                        color: '#8B1F2F',
+                        cursor: submitting ? 'not-allowed' : 'pointer',
+                        padding: '2px 8px',
+                        borderRadius: 3,
+                        fontSize: 11,
+                      }}
+                    >
+                      移除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 新增 row */}
+            <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                value={attName}
+                onChange={(e) => setAttName(e.target.value)}
+                disabled={submitting}
+                placeholder="附件名（選填）"
+                maxLength={120}
+                style={{
+                  flex: '0 0 140px',
+                  padding: '8px 10px',
+                  fontSize: 13,
+                  border: '1px solid #D9CDB8',
+                  borderRadius: 3,
+                  background: '#fff',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <input
+                type="url"
+                value={attUrl}
+                onChange={(e) => setAttUrl(e.target.value)}
+                disabled={submitting}
+                placeholder="https://drive.google.com/... 或 https://docs.google.com/..."
+                style={{
+                  flex: 1,
+                  minWidth: 200,
+                  padding: '8px 10px',
+                  fontSize: 13,
+                  border: '1px solid #D9CDB8',
+                  borderRadius: 3,
+                  background: '#fff',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <button
+                type="button"
+                onClick={addAttachment}
+                disabled={submitting || !attUrl.trim() || attachments.length >= 10}
+                style={{
+                  padding: '8px 14px',
+                  fontSize: 12,
+                  background: '#fff',
+                  border: '1px solid #8B1F2F',
+                  color: '#8B1F2F',
+                  borderRadius: 3,
+                  cursor:
+                    submitting || !attUrl.trim() || attachments.length >= 10
+                      ? 'not-allowed'
+                      : 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                + 加附件
+              </button>
+            </div>
+
+            {attError && (
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: '6px 10px',
+                  background: 'rgba(139, 31, 47, 0.08)',
+                  color: '#8B1F2F',
+                  fontSize: 11,
+                  borderRadius: 3,
+                }}
+              >
+                {attError}
+              </div>
+            )}
+
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 10,
+                color: '#8A7F73',
+                fontFamily: 'ui-monospace, Menlo, monospace',
+                lineHeight: 1.5,
+              }}
+            >
+              支援 GDrive 檔案 / 資料夾 + Google 文件 / 試算表 / 簡報。請先在 GDrive 把檔案設「知道連結的人可看」。
+            </div>
           </div>
 
           {/* Pinned (only super) */}

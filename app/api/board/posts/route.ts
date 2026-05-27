@@ -24,9 +24,15 @@ const createSchema = z.object({
   attachments: z
     .array(
       z.object({
-        name: z.string().max(120),
+        name: z.string().min(1).max(120),
         gdrive_id: z.string().regex(/^[A-Za-z0-9_-]{20,60}$/),
-        type: z.string().max(30),
+        type: z.enum([
+          'file',
+          'folder',
+          'document',
+          'spreadsheet',
+          'presentation',
+        ]),
       }),
     )
     .max(10)

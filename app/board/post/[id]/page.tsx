@@ -9,6 +9,8 @@ import { notFound } from 'next/navigation';
 import { getServerClient } from '@/lib/supabase/server';
 import { deptInfo } from '@/lib/auth/session';
 import Markdown from '@/components/Markdown';
+import Attachments from '@/components/Attachments';
+import type { GdriveAttachment } from '@/lib/gdrive';
 
 const UUID_RE = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
 
@@ -17,7 +19,7 @@ type Post = {
   department_id: string;
   title: string;
   content: string;
-  attachments: Array<{ name: string; gdrive_id: string; type: string }>;
+  attachments: GdriveAttachment[];
   pinned: boolean;
   created_at: string;
   accounts: { username: string } | null;
@@ -177,57 +179,8 @@ export default async function PostDetail({
           <Markdown source={post.content} />
         </article>
 
-        {/* Attachments — 暫不嵌入 GDrive iframe，先列連結（下個 commit 加 embed） */}
-        {post.attachments && post.attachments.length > 0 && (
-          <section
-            style={{
-              padding: '20px 24px',
-              background: '#fff',
-              border: '1px solid #D9CDB8',
-              borderRadius: 6,
-              marginBottom: 32,
-            }}
-          >
-            <p
-              style={{
-                fontSize: 11,
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                color: '#8A7F73',
-                margin: '0 0 12px',
-              }}
-            >
-              📎 附件 · {post.attachments.length} 個
-            </p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {post.attachments.map((att, i) => (
-                <li
-                  key={i}
-                  style={{
-                    padding: '8px 0',
-                    borderBottom:
-                      i < post.attachments.length - 1
-                        ? '1px dashed rgba(26,22,18,0.08)'
-                        : 'none',
-                  }}
-                >
-                  <a
-                    href={`https://drive.google.com/file/d/${att.gdrive_id}/view`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      color: '#8B1F2F',
-                      fontSize: 14,
-                      textDecoration: 'none',
-                    }}
-                  >
-                    {att.name} ↗
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        {/* Attachments — GDrive iframe embed + 在 Drive 開啟連結 */}
+        <Attachments items={post.attachments || []} />
 
         {/* Comments placeholder（下個 commit 開做） */}
         <div
