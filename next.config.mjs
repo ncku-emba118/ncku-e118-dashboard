@@ -21,7 +21,8 @@ const CSP_DIRECTIVES = [
   SCRIPT_SRC,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://drive.google.com https://*.googleusercontent.com",
-  "frame-src https://drive.google.com https://docs.google.com",
+  // calendar.google.com: /calendar 嵌入班級行事曆 iframe；P0-7 漏掉導致 calendar 全空白
+  "frame-src https://drive.google.com https://docs.google.com https://calendar.google.com",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
   "font-src 'self' https://fonts.gstatic.com data:",
   "object-src 'none'",
