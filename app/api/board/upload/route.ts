@@ -1,20 +1,23 @@
 /**
- * POST /api/board/upload — multipart 檔案上傳到 Supabase Storage
+ * POST /api/board/upload — 產生 Supabase Storage signed upload URL
+ *
+ * 為什麼不直接讓 client POST 檔案？
+ *   Netlify Functions 同步 invocation 有 6 MB request body 上限。
+ *   multipart 二進位 5+ MB → 編碼後超 6 MB → Function 直接 500 crash。
+ *   改成 signed URL pattern：API 只傳 metadata、檔案 client → Supabase Storage 直送。
  *
  * 流程：
- *   1. 驗 session（super / dept 都可上傳）
- *   2. multipart/form-data 解析、取 'file' field
- *   3. 驗檔案大小 ≤ 25 MB、MIME 在白名單
- *   4. 產生 random storage path（防 collision + 不洩漏原始檔名給 storage layer）
- *   5. 用 service_role client 上傳到 board-attachments bucket
- *   6. 拿 public URL 回傳給 client，client 把 metadata 塞進 posts.attachments JSONB
- *
- * 認證：需登入；rate limit 10 次/分/session
- * size: API 層 25 MB；bucket 層也 25 MB（雙保險）
- * MIME 白名單：圖片 / PDF / Office docs / 純文字 / CSV — 拒絕執行檔 / archive
+ *   1. Client POST { filename, mime, size }
+ *   2. API 驗 session + size 25 MB + MIME 白名單 + rate limit
+ *   3. API 產 random storage path、用 service_role 產 signed upload URL
+ *   4. API 回 { signed_url, token, attachment_template }
+ *   5. Client PUT 檔案到 signed_url（繞 Netlify Function，直送 *.supabase.co）
+ *   6. Supabase Storage 在 storage 層也驗 MIME / size（雙保險，bucket 設定）
+ *   7. 上傳完成 → Client 把 attachment_template 加進 form state
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import crypto from 'node:crypto';
+import { z } from 'zod';
 import { getServerClient } from '@/lib/supabase/server';
 import { readSession } from '@/lib/auth/session';
 import { resolveClientIp } from '@/lib/ip-resolve';
@@ -36,9 +39,6 @@ const ALLOWED_MIMES = new Set<string>([
   'text/csv',
 ]);
 
-/**
- * 副檔名對照（給 MIME → ext 用，避免完全相信 client 的 filename）
- */
 const MIME_EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -57,19 +57,24 @@ const MIME_EXT: Record<string, string> = {
   'text/csv': 'csv',
 };
 
-/** 把 user-provided filename sanitize 一輪，去掉路徑分隔符 + 控制字元 */
+const requestSchema = z.object({
+  filename: z.string().min(1).max(255),
+  mime: z.string().min(3).max(120),
+  size: z.number().int().positive().max(MAX_FILE_BYTES),
+});
+
 function sanitizeFilename(raw: string): string {
-  const cleaned = raw
-    .replace(/[\x00-\x1f\x7f]/g, '') // control chars
-    .replace(/[/\\]/g, '_')
-    .trim()
-    .slice(0, 120);
-  return cleaned || 'untitled';
+  return (
+    raw
+      .replace(/[\x00-\x1f\x7f]/g, '')
+      .replace(/[/\\]/g, '_')
+      .trim()
+      .slice(0, 120) || 'untitled'
+  );
 }
 
-// In-memory rate limit (per session id)
 const sessionBuckets = new Map<string, { count: number; resetAt: number }>();
-const RL_MAX = 10;
+const RL_MAX = 20; // per minute per session — 拿 signed URL 不是真上傳，可以放寬
 const RL_WINDOW_MS = 60 * 1000;
 
 function checkRateLimit(key: string): boolean {
@@ -100,123 +105,111 @@ export async function POST(req: NextRequest) {
     return jsonResp({ error: '未登入或 session 過期' }, 401, traceId);
   }
 
-  // 2. Rate limit by session.sub
+  // 2. Rate limit
   if (!checkRateLimit(session.sub)) {
     console.warn('[upload.rate_limit]', {
       traceId,
       account: session.username,
     });
-    return jsonResp({ error: '上傳過於頻繁，請稍等 1 分鐘' }, 429, traceId);
+    return jsonResp({ error: '上傳請求過於頻繁，請稍等 1 分鐘' }, 429, traceId);
   }
 
-  // 3. Validate IP available (defensive, P0-3 same pattern)
+  // 3. IP available（同 P0-3）
   const ip = resolveClientIp(req);
   if (!ip) {
     return jsonResp({ error: '系統無法識別來源' }, 503, traceId);
   }
 
-  // 4. Parse multipart
-  let form: FormData;
+  // 4. Body parse + validate
+  let body: unknown;
   try {
-    form = await req.formData();
-  } catch (err) {
-    console.error('[upload.bad_form]', {
+    body = await req.json();
+  } catch {
+    return jsonResp({ error: '請求 JSON 格式錯誤' }, 400, traceId);
+  }
+  const parsed = requestSchema.safeParse(body);
+  if (!parsed.success) {
+    return jsonResp(
+      { error: '欄位格式錯誤', detail: parsed.error.flatten().fieldErrors },
+      400,
       traceId,
-      error: (err as Error).message,
-    });
-    return jsonResp({ error: '請求格式錯誤' }, 400, traceId);
+    );
   }
+  const { filename, mime, size } = parsed.data;
 
-  const file = form.get('file');
-  if (!(file instanceof File)) {
-    return jsonResp({ error: '請選擇檔案' }, 400, traceId);
-  }
-
-  // 5. Size validation
-  if (file.size === 0) {
-    return jsonResp({ error: '檔案為空' }, 400, traceId);
-  }
-  if (file.size > MAX_FILE_BYTES) {
+  // 5. MIME / size 白名單（雙保險 — Storage bucket 也會擋）
+  if (!ALLOWED_MIMES.has(mime)) {
     return jsonResp(
       {
-        error: `檔案超過 25 MB 上限（您的檔案 ${Math.round(
-          file.size / 1024 / 1024,
-        )} MB）`,
+        error: `不支援的檔案類型：${mime}（允許：圖片 / PDF / Word / Excel / PPT / 純文字 / CSV）`,
+      },
+      415,
+      traceId,
+    );
+  }
+  if (size > MAX_FILE_BYTES) {
+    return jsonResp(
+      {
+        error: `檔案超過 25 MB 上限（您的檔案 ${Math.round(size / 1024 / 1024)} MB）`,
       },
       413,
       traceId,
     );
   }
 
-  // 6. MIME validation
-  if (!ALLOWED_MIMES.has(file.type)) {
-    return jsonResp(
-      {
-        error: `不支援的檔案類型：${file.type || '未知'}（允許：圖片 / PDF / Word / Excel / PPT / 純文字 / CSV）`,
-      },
-      415,
-      traceId,
-    );
-  }
-
-  // 7. Generate random storage path
-  // 路徑格式：{dept_or_super}/{yyyymm}/{random16}.{ext}
-  // dept 用於組織（同部門檔案分群、未來想批次清理某部門好操作）
-  const ext = MIME_EXT[file.type] ?? 'bin';
+  // 6. Generate random storage path
+  const ext = MIME_EXT[mime] ?? 'bin';
   const randomId = crypto.randomBytes(16).toString('hex');
   const yyyymm = new Date().toISOString().slice(0, 7).replace('-', '');
   const deptFolder = session.home_dept_id || 'super';
   const storagePath = `${deptFolder}/${yyyymm}/${randomId}.${ext}`;
 
-  // 8. Upload to Supabase Storage
+  // 7. Create signed upload URL（用 service_role bypass RLS）
   const supabase = getServerClient();
-  const arrayBuffer = await file.arrayBuffer();
-  const { error: uploadErr } = await supabase.storage
+  const { data: signedData, error: signedErr } = await supabase.storage
     .from('board-attachments')
-    .upload(storagePath, arrayBuffer, {
-      contentType: file.type,
-      upsert: false,
-      cacheControl: '31536000', // 1 year，public 內容、URL 含 random id 不會變
-    });
+    .createSignedUploadUrl(storagePath);
 
-  if (uploadErr) {
-    console.error('[upload.storage_failed]', {
+  if (signedErr || !signedData) {
+    console.error('[upload.signed_url_failed]', {
       traceId,
-      error: uploadErr.message,
+      error: signedErr?.message,
       account: session.username,
     });
-    return jsonResp({ error: '上傳失敗，請稍後再試' }, 503, traceId);
+    return jsonResp({ error: '無法產生上傳網址' }, 503, traceId);
   }
 
-  // 9. Get public URL
+  // 8. 預先算 public URL（client 上傳完成後不必再 round-trip 拿）
   const { data: pubData } = supabase.storage
     .from('board-attachments')
     .getPublicUrl(storagePath);
 
-  const sanitizedDisplayName = sanitizeFilename(file.name);
+  const displayName = sanitizeFilename(filename);
 
-  console.info('[upload.success]', {
+  console.info('[upload.signed_url_issued]', {
     traceId,
     account: session.username,
     dept: deptFolder,
     storage_path: storagePath,
-    mime: file.type,
-    size: file.size,
+    mime,
+    size,
   });
 
   return jsonResp(
     {
       ok: true,
-      attachment: {
-        name: sanitizedDisplayName,
-        source: 'supabase',
+      signed_url: signedData.signedUrl,
+      token: signedData.token,
+      attachment_template: {
+        source: 'supabase' as const,
+        name: displayName,
         storage_path: storagePath,
         public_url: pubData.publicUrl,
-        mime: file.type,
-        size: file.size,
+        mime,
+        size,
       },
     },
-    201,
+    200,
     traceId,
   );
 }

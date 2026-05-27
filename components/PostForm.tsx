@@ -85,7 +85,6 @@ export default function PostForm({
 
   async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    // Reset input so the same file can be re-selected later
     if (e.target) e.target.value = '';
     if (!file) return;
 
@@ -95,24 +94,60 @@ export default function PostForm({
     }
     setAttError(null);
     setUploading(true);
-    setUploadProgress(`上傳中：${file.name}（${formatSize(file.size)}）…`);
+    setUploadProgress(
+      `1/2 取得上傳網址：${file.name}（${formatSize(file.size)}）…`,
+    );
 
     try {
-      const form = new FormData();
-      form.append('file', file);
-      const res = await fetch('/api/board/upload', {
+      // Step 1: 跟 API 要 signed upload URL（檔案 bytes 不送 Netlify Function、避開 6 MB 限制）
+      const metaRes = await fetch('/api/board/upload', {
         method: 'POST',
-        body: form,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          mime: file.type,
+          size: file.size,
+        }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setAttError(data.error || `上傳失敗（HTTP ${res.status}）`);
+      const metaData = await metaRes.json().catch(() => ({}));
+      if (!metaRes.ok) {
+        setAttError(metaData.error || `取上傳網址失敗（HTTP ${metaRes.status}）`);
         return;
       }
-      setAttachments([...attachments, data.attachment as Attachment]);
+
+      // Step 2: 把檔案直接 PUT 到 Supabase Storage signed URL
+      setUploadProgress(
+        `2/2 上傳檔案到 Storage：${formatSize(file.size)}…`,
+      );
+      const putRes = await fetch(metaData.signed_url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type,
+          // signed upload URL 不需 Authorization header（signed URL 內含 token）
+          'x-upsert': 'false',
+        },
+        body: file,
+      });
+      if (!putRes.ok) {
+        const errText = await putRes.text().catch(() => '');
+        setAttError(
+          `Storage 上傳失敗 (HTTP ${putRes.status})${
+            errText ? `：${errText.slice(0, 200)}` : ''
+          }`,
+        );
+        return;
+      }
+
+      // Step 3: 把 server 給的 attachment_template 加進 form state
+      setAttachments([
+        ...attachments,
+        metaData.attachment_template as Attachment,
+      ]);
       setUploadProgress(null);
-    } catch {
-      setAttError('上傳時網路錯誤，請稍後再試');
+    } catch (err) {
+      setAttError(
+        `上傳時錯誤：${(err as Error).message || '網路問題'}`,
+      );
     } finally {
       setUploading(false);
     }
