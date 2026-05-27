@@ -13,6 +13,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getServerClient } from '@/lib/supabase/server';
 import { readSession, canManageDept } from '@/lib/auth/session';
+import { attachmentsArraySchema } from '@/lib/attachment';
 
 const UUID_RE = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
 const MAX_BODY_BYTES = 32 * 1024;
@@ -70,22 +71,7 @@ const patchSchema = z.object({
   version: z.number().int().positive(),
   title: z.string().min(1).max(120).optional(),
   content: z.string().min(1).max(20480).optional(),
-  attachments: z
-    .array(
-      z.object({
-        name: z.string().min(1).max(120),
-        gdrive_id: z.string().regex(/^[A-Za-z0-9_-]{20,60}$/),
-        type: z.enum([
-          'file',
-          'folder',
-          'document',
-          'spreadsheet',
-          'presentation',
-        ]),
-      }),
-    )
-    .max(10)
-    .optional(),
+  attachments: attachmentsArraySchema.optional(),
   pinned: z.boolean().optional(),
   published: z.boolean().optional(),
 });

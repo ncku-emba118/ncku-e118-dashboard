@@ -1,29 +1,23 @@
 /**
- * 附件 server component — 渲染 GDrive iframe / 連結
+ * 附件 server component — 渲染 GDrive iframe + Supabase Storage 檔案
  *
- * 對應 ARCHITECTURE.md v3 第 9 章「Google Drive 附件嵌入」+ Codex Sec F8 + P0-1 修正：
- *   • iframe sandbox="allow-scripts allow-popups allow-forms"
- *     ⚠ P0-1: 拿掉 allow-same-origin — allow-scripts + allow-same-origin 並存是 well-known
- *     sandbox escape，embedded 頁面可改 sandbox attr 完全跳出沙箱。GDrive preview 在僅
- *     allow-scripts 下仍能正常顯示文件。
- *   • referrerpolicy="no-referrer"
- *   • loading="lazy" 不阻塞 first paint
- *   • host 由 lib/gdrive.ts 嚴格白名單
+ * 雙源支援：
+ *   • source='gdrive': iframe embed (drive.google.com / docs.google.com)
+ *     對應 ARCHITECTURE.md v3 第 9 章 + Codex Sec F8（sandbox 不含 allow-same-origin）
+ *   • source='supabase': public URL — 圖片 inline、PDF iframe、其他下載連結
+ *     對應 2026-05-27 加上的 /api/board/upload 直傳路徑
  */
 import {
-  type GdriveAttachment,
-  embedUrl,
-  viewUrl,
-  isEmbeddable,
-  typeLabel,
-  typeEmoji,
-} from '@/lib/gdrive';
+  type Attachment,
+  attachmentTypeLabel,
+  attachmentEmoji,
+  formatSize,
+  isImage,
+  isPdf,
+} from '@/lib/attachment';
+import { embedUrl, viewUrl, isEmbeddable } from '@/lib/gdrive';
 
-export default function Attachments({
-  items,
-}: {
-  items: GdriveAttachment[];
-}) {
+export default function Attachments({ items }: { items: Attachment[] }) {
   if (!items?.length) return null;
 
   return (
@@ -46,105 +40,197 @@ export default function Attachments({
           fontFamily: 'ui-monospace, Menlo, monospace',
         }}
       >
-        📎 附件 · {items.length} 個（Google Drive）
+        📎 附件 · {items.length} 個
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {items.map((att, i) => {
-          const embed = isEmbeddable(att.type) ? embedUrl(att) : '';
-          const view = viewUrl(att);
-          return (
-            <div
-              key={`${att.gdrive_id}-${i}`}
-              style={{
-                border: '1px solid rgba(26,22,18,0.08)',
-                borderRadius: 4,
-                overflow: 'hidden',
-              }}
-            >
-              {/* Header bar with name + open link */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 14px',
-                  background: '#FAF7F2',
-                  borderBottom: embed ? '1px solid rgba(26,22,18,0.08)' : 'none',
-                  gap: 12,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  <span style={{ fontSize: 18 }}>{typeEmoji(att.type)}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontFamily: "'Noto Serif TC', serif",
-                        fontWeight: 600,
-                        fontSize: 14,
-                        color: '#1A1612',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {att.name}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: '#8A7F73',
-                        fontFamily: 'ui-monospace, Menlo, monospace',
-                        letterSpacing: '0.05em',
-                      }}
-                    >
-                      {typeLabel(att.type)}
-                    </div>
-                  </div>
-                </div>
-                <a
-                  href={view}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  referrerPolicy="no-referrer"
-                  style={{
-                    color: '#8B1F2F',
-                    fontSize: 12,
-                    textDecoration: 'none',
-                    padding: '4px 10px',
-                    border: '1px solid #D9CDB8',
-                    borderRadius: 3,
-                    fontWeight: 500,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  在 Drive 開啟 ↗
-                </a>
-              </div>
-
-              {/* Embed iframe — folder 不嵌入 */}
-              {embed && (
-                <iframe
-                  src={embed}
-                  // ⚠ P0-1: 不可加 allow-same-origin（與 allow-scripts 並存可逃逸 sandbox）
-                  sandbox="allow-scripts allow-popups allow-forms"
-                  referrerPolicy="no-referrer"
-                  loading="lazy"
-                  title={att.name}
-                  style={{
-                    display: 'block',
-                    border: 0,
-                    width: '100%',
-                    height: 480,
-                    background: '#fff',
-                  }}
-                />
-              )}
-            </div>
-          );
-        })}
+        {items.map((att, i) => (
+          <AttachmentCard key={i} att={att} index={i} />
+        ))}
       </div>
     </section>
+  );
+}
+
+function AttachmentCard({ att, index }: { att: Attachment; index: number }) {
+  const typeLabel = attachmentTypeLabel(att);
+  const emoji = attachmentEmoji(att);
+
+  return (
+    <div
+      key={index}
+      style={{
+        border: '1px solid rgba(26,22,18,0.08)',
+        borderRadius: 4,
+        overflow: 'hidden',
+      }}
+    >
+      <Header att={att} typeLabel={typeLabel} emoji={emoji} />
+      <Preview att={att} />
+    </div>
+  );
+}
+
+function Header({
+  att,
+  typeLabel,
+  emoji,
+}: {
+  att: Attachment;
+  typeLabel: string;
+  emoji: string;
+}) {
+  const openHref =
+    att.source === 'gdrive' ? viewUrl(att) : att.public_url;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '10px 14px',
+        background: '#FAF7F2',
+        borderBottom: '1px solid rgba(26,22,18,0.08)',
+        gap: 12,
+        flexWrap: 'wrap',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          minWidth: 0,
+        }}
+      >
+        <span style={{ fontSize: 18 }}>{emoji}</span>
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontFamily: "'Noto Serif TC', serif",
+              fontWeight: 600,
+              fontSize: 14,
+              color: '#1A1612',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {att.name}
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: '#8A7F73',
+              fontFamily: 'ui-monospace, Menlo, monospace',
+              letterSpacing: '0.05em',
+            }}
+          >
+            {typeLabel}
+            {att.source === 'supabase' && att.size ? (
+              <> · {formatSize(att.size)}</>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      <a
+        href={openHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        referrerPolicy="no-referrer"
+        style={{
+          color: '#8B1F2F',
+          fontSize: 12,
+          textDecoration: 'none',
+          padding: '4px 10px',
+          border: '1px solid #D9CDB8',
+          borderRadius: 3,
+          fontWeight: 500,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {att.source === 'gdrive' ? '在 Drive 開啟 ↗' : '開啟 / 下載 ↗'}
+      </a>
+    </div>
+  );
+}
+
+function Preview({ att }: { att: Attachment }) {
+  // GDrive iframe path
+  if (att.source === 'gdrive') {
+    if (!isEmbeddable(att.type)) return null;
+    return (
+      <iframe
+        src={embedUrl(att)}
+        // ⚠ P0-1: 不可加 allow-same-origin（與 allow-scripts 並存可逃逸 sandbox）
+        sandbox="allow-scripts allow-popups allow-forms"
+        referrerPolicy="no-referrer"
+        loading="lazy"
+        title={att.name}
+        style={{
+          display: 'block',
+          border: 0,
+          width: '100%',
+          height: 480,
+          background: '#fff',
+        }}
+      />
+    );
+  }
+
+  // Supabase Storage rendering — 依 MIME 不同走不同分支
+  // 圖片：inline <img> max-width 100%
+  if (isImage(att)) {
+    return (
+      <img
+        src={att.public_url}
+        alt={att.name}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        style={{
+          display: 'block',
+          width: '100%',
+          height: 'auto',
+          maxHeight: 700,
+          objectFit: 'contain',
+          background: '#FAF7F2',
+        }}
+      />
+    );
+  }
+
+  // PDF: iframe 預覽（瀏覽器內建 PDF viewer）
+  if (isPdf(att)) {
+    return (
+      <iframe
+        src={att.public_url}
+        sandbox="allow-scripts allow-popups allow-forms allow-downloads"
+        loading="lazy"
+        title={att.name}
+        style={{
+          display: 'block',
+          border: 0,
+          width: '100%',
+          height: 600,
+          background: '#fff',
+        }}
+      />
+    );
+  }
+
+  // Office docs / 純文字 / CSV — 沒辦法 inline 預覽，給下載提示
+  return (
+    <div
+      style={{
+        padding: '16px 18px',
+        fontSize: 13,
+        color: '#4A413A',
+        background: '#fff',
+        textAlign: 'center',
+      }}
+    >
+      此檔案類型無法直接預覽，請點上方「開啟 / 下載」按鈕。
+    </div>
   );
 }

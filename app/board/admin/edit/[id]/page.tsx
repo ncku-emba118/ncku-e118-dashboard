@@ -11,7 +11,7 @@ import {
 } from '@/lib/auth/session';
 import { getServerClient } from '@/lib/supabase/server';
 import PostForm, { type PostFormInitial } from '@/components/PostForm';
-import type { GdriveAttachment } from '@/lib/gdrive';
+import { normalizeAttachments } from '@/lib/attachment';
 
 const UUID_RE = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
 
@@ -20,7 +20,7 @@ type LoadedPost = {
   department_id: string;
   title: string;
   content: string;
-  attachments: GdriveAttachment[];
+  attachments: unknown;
   pinned: boolean;
   version: number;
 };
@@ -63,7 +63,7 @@ export default async function EditPostPage({
     title: post.title,
     content: post.content,
     pinned: post.pinned,
-    attachments: post.attachments || [],
+    attachments: normalizeAttachments(post.attachments),
     version: post.version,
   };
 

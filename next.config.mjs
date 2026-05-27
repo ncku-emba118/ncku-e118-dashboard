@@ -20,9 +20,11 @@ const CSP_DIRECTIVES = [
   "default-src 'self'",
   SCRIPT_SRC,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "img-src 'self' data: blob: https://drive.google.com https://*.googleusercontent.com",
+  // *.supabase.co: 新增 board-attachments storage public URL（圖片附件 inline 顯示）
+  "img-src 'self' data: blob: https://drive.google.com https://*.googleusercontent.com https://*.supabase.co",
   // calendar.google.com: /calendar 嵌入班級行事曆 iframe；P0-7 漏掉導致 calendar 全空白
-  "frame-src https://drive.google.com https://docs.google.com https://calendar.google.com",
+  // *.supabase.co: PDF 附件用瀏覽器內建 viewer 渲染（iframe src 指向 Storage public URL）
+  "frame-src https://drive.google.com https://docs.google.com https://calendar.google.com https://*.supabase.co",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
   "font-src 'self' https://fonts.gstatic.com data:",
   "object-src 'none'",

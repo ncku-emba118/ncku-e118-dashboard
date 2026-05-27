@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { getServerClient } from '@/lib/supabase/server';
 import { readSession, canManageDept, ALL_DEPTS } from '@/lib/auth/session';
 import { processQueuedJobs } from '@/lib/push/dispatcher';
+import { attachmentsArraySchema } from '@/lib/attachment';
 
 const DEPT_IDS = ALL_DEPTS.map((d) => d.id) as readonly string[];
 
@@ -22,22 +23,7 @@ const createSchema = z.object({
   client_request_id: z.string().uuid(),
   title: z.string().min(1).max(120),
   content: z.string().min(1).max(20480),
-  attachments: z
-    .array(
-      z.object({
-        name: z.string().min(1).max(120),
-        gdrive_id: z.string().regex(/^[A-Za-z0-9_-]{20,60}$/),
-        type: z.enum([
-          'file',
-          'folder',
-          'document',
-          'spreadsheet',
-          'presentation',
-        ]),
-      }),
-    )
-    .max(10)
-    .optional(),
+  attachments: attachmentsArraySchema.optional(),
   pinned: z.boolean().optional(),
 });
 

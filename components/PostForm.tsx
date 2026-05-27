@@ -7,12 +7,18 @@
  *   create: POST /api/board/posts，含 client_request_id 防雙擊
  *   edit:   PATCH /api/board/posts/[id]，含 version optimistic lock
  *
- * 抽取自原 NewPostForm，加 edit 支援。
+ * 附件雙源（2026-05-27 加 Supabase Storage 直傳）：
+ *   • 主要：📁 從電腦選檔上傳（直傳 /api/board/upload → Supabase Storage）
+ *   • 次要：🔗 貼 Google Drive 網址（舊流程、給已熟悉 GDrive 工作流的 user）
+ *
+ * 錯誤提示加大、加色塊、放在輸入區下方明顯位置。
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { parseGdriveUrl, type GdriveAttachment } from '@/lib/gdrive';
+import { parseGdriveUrl } from '@/lib/gdrive';
+import type { Attachment } from '@/lib/attachment';
+import { attachmentEmoji, formatSize } from '@/lib/attachment';
 
 type Dept = { id: string; name: string; color: string };
 
@@ -21,7 +27,7 @@ export type PostFormInitial = {
   title: string;
   content: string;
   pinned: boolean;
-  attachments: GdriveAttachment[];
+  attachments: Attachment[];
   version: number;
 };
 
@@ -42,8 +48,6 @@ export default function PostForm({
 }) {
   const router = useRouter();
   const isEdit = mode === 'edit';
-
-  // 一次性 idempotency key (只 create mode 需要)
   const clientRequestId = useMemo(() => crypto.randomUUID(), []);
 
   const [departmentId, setDepartmentId] = useState(
@@ -52,16 +56,69 @@ export default function PostForm({
   const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
   const [pinned, setPinned] = useState(initial?.pinned ?? false);
-  const [attachments, setAttachments] = useState<GdriveAttachment[]>(
+  const [attachments, setAttachments] = useState<Attachment[]>(
     initial?.attachments ?? [],
   );
+  const [attError, setAttError] = useState<string | null>(null);
+
+  // ── File upload state ──
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+
+  // ── URL paste state ──
+  const [showUrlPaste, setShowUrlPaste] = useState(false);
   const [attUrl, setAttUrl] = useState('');
   const [attName, setAttName] = useState('');
-  const [attError, setAttError] = useState<string | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function addAttachment() {
+  function openFilePicker() {
+    setAttError(null);
+    if (attachments.length >= 10) {
+      setAttError('每篇公告最多 10 個附件');
+      return;
+    }
+    fileInputRef.current?.click();
+  }
+
+  async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset input so the same file can be re-selected later
+    if (e.target) e.target.value = '';
+    if (!file) return;
+
+    if (attachments.length >= 10) {
+      setAttError('每篇公告最多 10 個附件');
+      return;
+    }
+    setAttError(null);
+    setUploading(true);
+    setUploadProgress(`上傳中：${file.name}（${formatSize(file.size)}）…`);
+
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/board/upload', {
+        method: 'POST',
+        body: form,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAttError(data.error || `上傳失敗（HTTP ${res.status}）`);
+        return;
+      }
+      setAttachments([...attachments, data.attachment as Attachment]);
+      setUploadProgress(null);
+    } catch {
+      setAttError('上傳時網路錯誤，請稍後再試');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function addGdriveAttachment() {
     setAttError(null);
     if (!attUrl.trim()) {
       setAttError('請填 Google Drive 網址');
@@ -73,13 +130,21 @@ export default function PostForm({
     }
     const parsed = parseGdriveUrl(attUrl);
     if (!parsed) {
-      setAttError('不是有效的 Google Drive / Docs / Sheets / Slides 網址');
+      setAttError(
+        '不是有效的 Google Drive / Docs / Sheets / Slides 網址。請從 Drive 點分享 → 複製連結，格式如 https://drive.google.com/file/d/XXXX/view',
+      );
       return;
     }
-    const name = attName.trim() || `${parsed.type}-${attachments.length + 1}`;
+    const name =
+      attName.trim() || `${parsed.type}-${attachments.length + 1}`;
     setAttachments([
       ...attachments,
-      { name, gdrive_id: parsed.gdrive_id, type: parsed.type },
+      {
+        source: 'gdrive',
+        name,
+        gdrive_id: parsed.gdrive_id,
+        type: parsed.type,
+      },
     ]);
     setAttUrl('');
     setAttName('');
@@ -137,7 +202,10 @@ export default function PostForm({
               '公告已被其他人改過，請重新整理取最新版本後再編輯',
           );
         } else {
-          setError(data.error || `${isEdit ? '更新' : '發布'}失敗（HTTP ${res.status}）`);
+          setError(
+            data.error ||
+              `${isEdit ? '更新' : '發布'}失敗（HTTP ${res.status}）`,
+          );
         }
         return;
       }
@@ -154,6 +222,7 @@ export default function PostForm({
   const titleLen = title.length;
   const contentLen = content.length;
   const ctaLabel = isEdit ? '儲存變更' : '發布公告';
+  const reachedLimit = attachments.length >= 10;
 
   return (
     <main
@@ -356,42 +425,38 @@ export default function PostForm({
               letterSpacing: '0.05em',
             }}
           >
-            📎 Google Drive 附件（選填 · 最多 10 個）
+            📎 附件（選填 · 最多 10 個 · 每檔 ≤ 25 MB）
           </label>
+
           <div
             style={{
-              padding: '12px 14px',
+              padding: '14px 16px',
               background: '#FAF7F2',
               border: '1px solid #D9CDB8',
               borderRadius: 4,
               marginBottom: 18,
             }}
           >
+            {/* Existing attachments list */}
             {attachments.length > 0 && (
-              <div style={{ marginBottom: 12 }}>
+              <div style={{ marginBottom: 14 }}>
                 {attachments.map((att, i) => (
                   <div
                     key={i}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 8,
+                      gap: 10,
                       padding: '8px 10px',
                       background: '#fff',
                       border: '1px solid #D9CDB8',
                       borderRadius: 4,
                       marginBottom: 6,
-                      fontSize: 12,
+                      fontSize: 13,
                     }}
                   >
-                    <span
-                      style={{
-                        color: '#8A7F73',
-                        fontFamily: 'ui-monospace, Menlo, monospace',
-                        minWidth: 70,
-                      }}
-                    >
-                      [{att.type}]
+                    <span style={{ fontSize: 16 }}>
+                      {attachmentEmoji(att)}
                     </span>
                     <span
                       style={{
@@ -403,15 +468,27 @@ export default function PostForm({
                     >
                       {att.name}
                     </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: '#8A7F73',
+                        fontFamily: 'ui-monospace, Menlo, monospace',
+                      }}
+                    >
+                      {att.source === 'supabase'
+                        ? formatSize(att.size)
+                        : att.source}
+                    </span>
                     <button
                       type="button"
                       onClick={() => removeAttachment(i)}
-                      disabled={submitting}
+                      disabled={submitting || uploading}
                       style={{
                         background: 'transparent',
                         border: '1px solid #D9CDB8',
                         color: '#8B1F2F',
-                        cursor: submitting ? 'not-allowed' : 'pointer',
+                        cursor:
+                          submitting || uploading ? 'not-allowed' : 'pointer',
                         padding: '2px 8px',
                         borderRadius: 3,
                         fontSize: 11,
@@ -424,84 +501,188 @@ export default function PostForm({
               </div>
             )}
 
-            <div
+            {/* ── Primary: file upload ── */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={onFileSelected}
+              disabled={submitting || uploading || reachedLimit}
+              style={{ display: 'none' }}
+              // MIME allowlist hint (browser filter — server 還會強制驗)
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+            />
+            <button
+              type="button"
+              onClick={openFilePicker}
+              disabled={submitting || uploading || reachedLimit}
               style={{
-                display: 'flex',
-                gap: 6,
-                alignItems: 'stretch',
-                flexWrap: 'wrap',
+                width: '100%',
+                padding: '14px 18px',
+                fontSize: 14,
+                fontWeight: 600,
+                background:
+                  submitting || uploading || reachedLimit
+                    ? '#A84453'
+                    : '#8B1F2F',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+                cursor:
+                  submitting || uploading || reachedLimit
+                    ? 'not-allowed'
+                    : 'pointer',
+                fontFamily: 'inherit',
+                letterSpacing: '0.05em',
+                marginBottom: 8,
               }}
             >
-              <input
-                type="text"
-                value={attName}
-                onChange={(e) => setAttName(e.target.value)}
-                disabled={submitting}
-                placeholder="附件名（選填）"
-                maxLength={120}
+              {uploading
+                ? '📤 上傳中…'
+                : reachedLimit
+                  ? '已達 10 個附件上限'
+                  : '📁 從電腦選檔上傳'}
+            </button>
+
+            {uploadProgress && (
+              <div
                 style={{
-                  flex: '0 0 140px',
-                  padding: '8px 10px',
-                  fontSize: 13,
-                  border: '1px solid #D9CDB8',
-                  borderRadius: 3,
-                  background: '#fff',
-                  fontFamily: 'inherit',
-                }}
-              />
-              <input
-                type="url"
-                value={attUrl}
-                onChange={(e) => setAttUrl(e.target.value)}
-                disabled={submitting}
-                placeholder="https://drive.google.com/... 或 https://docs.google.com/..."
-                style={{
-                  flex: 1,
-                  minWidth: 200,
-                  padding: '8px 10px',
-                  fontSize: 13,
-                  border: '1px solid #D9CDB8',
-                  borderRadius: 3,
-                  background: '#fff',
-                  fontFamily: 'inherit',
-                }}
-              />
-              <button
-                type="button"
-                onClick={addAttachment}
-                disabled={
-                  submitting || !attUrl.trim() || attachments.length >= 10
-                }
-                style={{
-                  padding: '8px 14px',
+                  marginBottom: 8,
+                  padding: '8px 12px',
+                  background: 'rgba(45, 95, 78, 0.10)',
+                  border: '1px solid rgba(45, 95, 78, 0.3)',
+                  color: '#2D5F4E',
                   fontSize: 12,
-                  background: '#fff',
-                  border: '1px solid #8B1F2F',
-                  color: '#8B1F2F',
                   borderRadius: 3,
-                  cursor:
-                    submitting || !attUrl.trim() || attachments.length >= 10
-                      ? 'not-allowed'
-                      : 'pointer',
-                  fontWeight: 600,
+                  fontFamily: 'ui-monospace, Menlo, monospace',
                 }}
               >
-                + 加附件
-              </button>
-            </div>
+                {uploadProgress}
+              </div>
+            )}
 
+            <p
+              style={{
+                fontSize: 11,
+                color: '#8A7F73',
+                marginTop: 4,
+                marginBottom: 0,
+                fontFamily: 'ui-monospace, Menlo, monospace',
+              }}
+            >
+              支援：圖片 / PDF / Word / Excel / PPT / 純文字 / CSV
+            </p>
+
+            {/* ── Secondary: GDrive URL paste (collapsible) ── */}
+            <details
+              open={showUrlPaste}
+              onToggle={(e) =>
+                setShowUrlPaste((e.target as HTMLDetailsElement).open)
+              }
+              style={{ marginTop: 14 }}
+            >
+              <summary
+                style={{
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  color: '#8B1F2F',
+                  fontWeight: 500,
+                  padding: '6px 0',
+                  userSelect: 'none',
+                }}
+              >
+                🔗 或：貼 Google Drive 網址（進階）
+              </summary>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 6,
+                  alignItems: 'stretch',
+                  flexWrap: 'wrap',
+                  marginTop: 8,
+                }}
+              >
+                <input
+                  type="text"
+                  value={attName}
+                  onChange={(e) => setAttName(e.target.value)}
+                  disabled={submitting || uploading}
+                  placeholder="附件名（選填）"
+                  maxLength={120}
+                  style={{
+                    flex: '0 0 140px',
+                    padding: '8px 10px',
+                    fontSize: 13,
+                    border: '1px solid #D9CDB8',
+                    borderRadius: 3,
+                    background: '#fff',
+                    fontFamily: 'inherit',
+                  }}
+                />
+                <input
+                  type="url"
+                  value={attUrl}
+                  onChange={(e) => setAttUrl(e.target.value)}
+                  disabled={submitting || uploading}
+                  placeholder="https://drive.google.com/file/d/.../view"
+                  style={{
+                    flex: 1,
+                    minWidth: 200,
+                    padding: '8px 10px',
+                    fontSize: 13,
+                    border: '1px solid #D9CDB8',
+                    borderRadius: 3,
+                    background: '#fff',
+                    fontFamily: 'inherit',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={addGdriveAttachment}
+                  disabled={
+                    submitting ||
+                    uploading ||
+                    !attUrl.trim() ||
+                    reachedLimit
+                  }
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: 12,
+                    background: '#fff',
+                    border: '1px solid #8B1F2F',
+                    color: '#8B1F2F',
+                    borderRadius: 3,
+                    cursor:
+                      submitting ||
+                      uploading ||
+                      !attUrl.trim() ||
+                      reachedLimit
+                        ? 'not-allowed'
+                        : 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  + 加 URL
+                </button>
+              </div>
+            </details>
+
+            {/* Prominent error message */}
             {attError && (
               <div
                 style={{
-                  marginTop: 8,
-                  padding: '6px 10px',
-                  background: 'rgba(139, 31, 47, 0.08)',
+                  marginTop: 12,
+                  padding: '10px 14px',
+                  background: 'rgba(139, 31, 47, 0.10)',
+                  border: '2px solid rgba(139, 31, 47, 0.45)',
                   color: '#8B1F2F',
-                  fontSize: 11,
-                  borderRadius: 3,
+                  fontSize: 13,
+                  borderRadius: 4,
+                  fontWeight: 500,
+                  lineHeight: 1.5,
                 }}
+                role="alert"
               >
-                {attError}
+                ⚠ {attError}
               </div>
             )}
           </div>
@@ -565,20 +746,31 @@ export default function PostForm({
             </a>
             <button
               type="submit"
-              disabled={submitting || !title.trim() || !content.trim()}
+              disabled={
+                submitting ||
+                uploading ||
+                !title.trim() ||
+                !content.trim()
+              }
               style={{
                 padding: '11px 22px',
                 fontSize: 14,
                 fontWeight: 600,
                 background:
-                  submitting || !title.trim() || !content.trim()
+                  submitting ||
+                  uploading ||
+                  !title.trim() ||
+                  !content.trim()
                     ? '#A84453'
                     : '#8B1F2F',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 4,
                 cursor:
-                  submitting || !title.trim() || !content.trim()
+                  submitting ||
+                  uploading ||
+                  !title.trim() ||
+                  !content.trim()
                     ? 'not-allowed'
                     : 'pointer',
                 fontFamily: 'inherit',

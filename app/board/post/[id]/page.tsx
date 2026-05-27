@@ -11,7 +11,7 @@ import { deptInfo, readSession, canManageDept } from '@/lib/auth/session';
 import Markdown from '@/components/Markdown';
 import Attachments from '@/components/Attachments';
 import Comments, { type Comment } from '@/components/Comments';
-import type { GdriveAttachment } from '@/lib/gdrive';
+import { normalizeAttachments } from '@/lib/attachment';
 
 const UUID_RE = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
 
@@ -20,7 +20,7 @@ type Post = {
   department_id: string;
   title: string;
   content: string;
-  attachments: GdriveAttachment[];
+  attachments: unknown;
   pinned: boolean;
   created_at: string;
   accounts: { username: string } | null;
@@ -201,8 +201,8 @@ export default async function PostDetail({
           <Markdown source={post.content} />
         </article>
 
-        {/* Attachments — GDrive iframe embed + 在 Drive 開啟連結 */}
-        <Attachments items={post.attachments || []} />
+        {/* Attachments — GDrive iframe embed + Supabase Storage 直傳檔案 */}
+        <Attachments items={normalizeAttachments(post.attachments)} />
 
         {/* Comments — Realtime 訂閱、可即時看到別人新留言 */}
         <Comments

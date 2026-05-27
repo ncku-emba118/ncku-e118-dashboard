@@ -41,6 +41,7 @@ const AUTH_RPC_FILE = path.join(__dirname, '../supabase/migrations/0002_auth_rpc
 const REALTIME_FILE = path.join(__dirname, '../supabase/migrations/0003_realtime.sql');
 const PUSH_RPC_FILE = path.join(__dirname, '../supabase/migrations/0004_push_dispatcher.sql');
 const REALTIME_HARDEN_FILE = path.join(__dirname, '../supabase/migrations/0005_realtime_hardening.sql');
+const STORAGE_BUCKET_FILE = path.join(__dirname, '../supabase/migrations/0006_storage_bucket.sql');
 const DEPT_SEED_FILE = path.join(__dirname, '../supabase/seed/01-departments.sql');
 
 const BCRYPT_COST = 12;
@@ -182,6 +183,22 @@ async function main() {
       } else {
         throw err;
       }
+    }
+
+    // 3f. Storage bucket for attachments (0006)
+    console.log('\n── Step 1f: Storage bucket board-attachments (0006) ──');
+    const storageBucketSql = fs.readFileSync(STORAGE_BUCKET_FILE, 'utf8');
+    await client.query(storageBucketSql);
+    const bucketCheck = await client.query(
+      `SELECT id, public, file_size_limit FROM storage.buckets WHERE id = 'board-attachments'`,
+    );
+    if (bucketCheck.rows.length > 0) {
+      const b = bucketCheck.rows[0];
+      console.log(
+        `✓ Bucket: ${b.id} (public=${b.public}, file_size_limit=${Math.round(b.file_size_limit/1024/1024)} MiB)`,
+      );
+    } else {
+      console.warn('⚠ Bucket not created');
     }
 
     // 4. Apply departments seed
