@@ -116,20 +116,41 @@ export default async function BoardHome() {
                 Announcements
               </h1>
             </div>
-            <a
-              href="/board/admin"
-              style={{
-                color: '#8B1F2F',
-                fontSize: 13,
-                letterSpacing: '0.05em',
-                textDecoration: 'none',
-                padding: '8px 14px',
-                border: '1px solid #D9CDB8',
-                borderRadius: 4,
-              }}
-            >
-              部門登入 →
-            </a>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* 主要 CTA: 訂閱推播（99% 同學要的） */}
+              <a
+                href="/board/subscribe"
+                style={{
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  letterSpacing: '0.05em',
+                  textDecoration: 'none',
+                  padding: '9px 16px',
+                  background: '#8B1F2F',
+                  borderRadius: 4,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                📢 訂閱推播
+              </a>
+              {/* 次要：部門登入（只給 9 個幹部） */}
+              <a
+                href="/board/admin"
+                style={{
+                  color: '#8B1F2F',
+                  fontSize: 13,
+                  letterSpacing: '0.05em',
+                  textDecoration: 'none',
+                  padding: '8px 14px',
+                  border: '1px solid #D9CDB8',
+                  borderRadius: 4,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                部門登入 →
+              </a>
+            </div>
           </div>
         </header>
 
@@ -146,9 +167,25 @@ export default async function BoardHome() {
             }}
           >
             <p style={{ fontSize: 18, marginBottom: 8 }}>還沒有公告</p>
-            <p style={{ fontSize: 13 }}>
+            <p style={{ fontSize: 13, marginBottom: 20 }}>
               7 個部門負責同學發第一則公告後會出現在這裡
             </p>
+            <a
+              href="/board/subscribe"
+              style={{
+                display: 'inline-block',
+                color: '#8B1F2F',
+                fontSize: 13,
+                fontWeight: 600,
+                textDecoration: 'none',
+                padding: '10px 18px',
+                border: '1px solid #8B1F2F',
+                borderRadius: 4,
+                letterSpacing: '0.05em',
+              }}
+            >
+              📢 先訂閱推播 — 有新公告手機馬上收到
+            </a>
           </div>
         )}
 

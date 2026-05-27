@@ -223,6 +223,10 @@ export default async function PostDetail({
           <a href="/board" style={{ color: '#8B1F2F' }}>
             ← 回公告欄
           </a>
+          <span style={{ margin: '0 10px', color: '#D9CDB8' }}>·</span>
+          <a href="/board/subscribe" style={{ color: '#8B1F2F' }}>
+            📢 訂閱推播 →
+          </a>
         </p>
       </div>
     </main>
