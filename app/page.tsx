@@ -1,5 +1,5 @@
 import HelpPopover from '../components/HelpPopover';
-import PWARegister from '../components/PWARegister';
+// PWARegister 從 2026-05-27 起搬進 app/layout.tsx，所有頁面共用一個 instance
 
 /**
  * 主 dashboard 首頁 — 從 ncku-emba118/ncku-e118-dashboard repo 既有 index.html 遷移為 Next.js App Router 結構。
@@ -14,8 +14,6 @@ import PWARegister from '../components/PWARegister';
 export default function Home() {
   return (
     <>
-      <PWARegister />
-
       <header className="top">
         <div className="container top-inner">
           <a href="#" className="brand">

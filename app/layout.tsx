@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import PWARegister from '../components/PWARegister';
 
 export const metadata: Metadata = {
   title: 'E118 Dashboard',
@@ -37,7 +38,12 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {/* PWARegister: SW register + Local dev href override +
+            sw-navigate postMessage 接收（推播點擊 fallback 導航） */}
+        <PWARegister />
+        {children}
+      </body>
     </html>
   );
 }
