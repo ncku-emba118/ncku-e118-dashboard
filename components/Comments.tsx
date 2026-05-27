@@ -110,9 +110,15 @@ export default function Comments({
         setError(data.error || '留言失敗');
         return;
       }
-      // Optimistic update — Realtime 也會推但 race 可能後到
-      if (data.comment && !comments.some((x) => x.id === data.comment.id)) {
-        setComments((prev) => [...prev, data.comment]);
+      // Optimistic update — Realtime 也會推、雙路徑 race。
+      // ⚠ 不能用 `comments.some(...)` (stale closure) 檢查；要在 functional setter
+      //   內用 fresh `prev` 比對才不會跟 Realtime 已 add 的同筆 dupe。
+      if (data.comment) {
+        setComments((prev) =>
+          prev.some((x) => x.id === data.comment.id)
+            ? prev
+            : [...prev, data.comment],
+        );
       }
       if (data.pending) {
         setInfo(data.message || '留言已送出、含網址需審核後才公開');
