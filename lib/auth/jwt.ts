@@ -18,7 +18,14 @@ const ISSUER = 'emba.aqualux.dev';
 const AUDIENCE = 'emba.aqualux.dev';
 const ALG = 'HS256';
 
-export const COOKIE_NAME = 'sid';
+/**
+ * P0-9 修正：prod 用 `__Host-sid` 前綴
+ *   • 瀏覽器強制：Secure flag 必開 + Path=/ + 無 Domain 屬性
+ *   • 防止子網域 / proxy 設假 cookie 偽造 session
+ *   • Dev 無法用（localhost 不是 https），用 `sid` 代替
+ */
+export const COOKIE_NAME =
+  process.env.NODE_ENV === 'production' ? '__Host-sid' : 'sid';
 
 const SessionPayloadSchema = z.object({
   sub: z.string().uuid(),

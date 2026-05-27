@@ -13,9 +13,15 @@ import { COOKIE_NAME, verifySession } from './lib/auth/jwt';
 
 /**
  * 白名單：這些 path 不需登入即可訪問（所有 method）。
+ *
+ * ⚠ Codex Round-3 fix: `/api/board/push/dispatch` 加白名單。
+ *   原本 middleware 一律 401，但 dispatch route 自己已實作雙路徑驗證
+ *   (Bearer CRON_SECRET || super session)。middleware 攔截會讓 Netlify cron
+ *   永遠進不到 route → cron 失效。route 端為 source of truth。
  */
 const PUBLIC_API_PATHS = new Set<string>([
   '/api/board/login',
+  '/api/board/push/dispatch',
 ]);
 
 /**

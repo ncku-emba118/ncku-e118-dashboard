@@ -29,6 +29,9 @@ const envSchema = z.object({
   PUSH_BATCH_SIZE: z.coerce.number().int().positive().default(100),
   PUSH_CONCURRENCY: z.coerce.number().int().positive().default(20),
   PUSH_PER_CALL_TIMEOUT_MS: z.coerce.number().int().positive().default(3000),
+
+  // P0-2: cron / scheduled function 用 secret，避免 dispatch endpoint 被任何登入帳號狂打
+  CRON_SECRET: z.string().min(32).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

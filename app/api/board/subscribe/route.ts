@@ -12,14 +12,27 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { getServerClient } from '@/lib/supabase/server';
 import { isAllowedPushEndpoint } from '@/lib/push/endpoint-allowlist';
+import { resolveClientIp } from '@/lib/ip-resolve';
+import { ALL_DEPTS } from '@/lib/depts';
+
+const DEPT_IDS = ALL_DEPTS.map((d) => d.id) as readonly string[];
 
 const MAX_BODY_BYTES = 8192;
 
+/**
+ * P0-4 修正：
+ *   • dept_filter 改 .min(1) + 嚴格 enum，禁止 client 送 []（空陣列原本被當「訂閱全部」
+ *     反直覺；改為「不選則無法訂閱」強制 user 明示選擇）
+ *   • dept ID 用 enum 鎖死，不可送任意字串
+ */
 const subscribeSchema = z.object({
   endpoint: z.string().url().max(1000),
   p256dh: z.string().min(20).max(200),
   auth: z.string().min(10).max(200),
-  dept_filter: z.array(z.string().max(20)).max(7),
+  dept_filter: z
+    .array(z.enum(DEPT_IDS as [string, ...string[]]))
+    .min(1)
+    .max(7),
   management_token: z.string().min(32).max(128),
   user_agent: z.string().max(300).optional(),
 });
@@ -40,16 +53,7 @@ function checkIpLimit(ip: string): boolean {
   return true;
 }
 
-function getClientIp(req: NextRequest): string {
-  return (
-    req.headers.get('x-nf-client-connection-ip') ||
-    (process.env.NODE_ENV !== 'production'
-      ? req.headers.get('x-forwarded-for')?.split(',')[0].trim() || null
-      : null) ||
-    req.headers.get('x-real-ip') ||
-    'unknown'
-  );
-}
+// P0-3: IP 抽取統一走 lib/ip-resolve，抓不到時 reject 503
 
 function tr(traceId: string): HeadersInit {
   return { 'x-trace-id': traceId };
@@ -66,7 +70,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const ip = getClientIp(req);
+  const ip = resolveClientIp(req);
+  if (!ip) {
+    console.warn('[push.subscribe.no_client_ip]', { traceId });
+    return NextResponse.json(
+      { error: '系統無法識別來源，請稍後再試' },
+      { status: 503, headers: tr(traceId) },
+    );
+  }
   if (!checkIpLimit(ip)) {
     return NextResponse.json(
       { error: '訂閱嘗試過多，請稍後再試' },

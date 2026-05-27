@@ -40,6 +40,7 @@ const SCHEMA_FILE = path.join(__dirname, '../supabase/migrations/0001_initial.sq
 const AUTH_RPC_FILE = path.join(__dirname, '../supabase/migrations/0002_auth_rpc.sql');
 const REALTIME_FILE = path.join(__dirname, '../supabase/migrations/0003_realtime.sql');
 const PUSH_RPC_FILE = path.join(__dirname, '../supabase/migrations/0004_push_dispatcher.sql');
+const REALTIME_HARDEN_FILE = path.join(__dirname, '../supabase/migrations/0005_realtime_hardening.sql');
 const DEPT_SEED_FILE = path.join(__dirname, '../supabase/seed/01-departments.sql');
 
 const BCRYPT_COST = 12;
@@ -167,6 +168,21 @@ async function main() {
       `SELECT proname FROM pg_proc WHERE proname = 'claim_push_jobs'`,
     );
     console.log(`✓ Push dispatcher RPC: ${pushFnCheck.rows.map((r) => r.proname).join(', ') || '(none)'}`);
+
+    // 3e. Realtime publication hardening — drop posts from publication (P0-6)
+    console.log('\n── Step 1e: Realtime publication hardening (0005) ──');
+    const realtimeHardenSql = fs.readFileSync(REALTIME_HARDEN_FILE, 'utf8');
+    try {
+      await client.query(realtimeHardenSql);
+      console.log('✓ Realtime publication hardened (posts removed)');
+    } catch (err: any) {
+      // 42704 = undefined_object (already removed); 42883 = function not found
+      if (err.code === '42704' || /is not in publication/i.test(err.message || '')) {
+        console.log('✓ posts already not in publication, skip');
+      } else {
+        throw err;
+      }
+    }
 
     // 4. Apply departments seed
     console.log('\n── Step 2: Seed 7 departments ──');

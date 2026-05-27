@@ -1,8 +1,11 @@
 /**
  * 附件 server component — 渲染 GDrive iframe / 連結
  *
- * 對應 ARCHITECTURE.md v3 第 9 章「Google Drive 附件嵌入」+ Codex Sec F8：
- *   • iframe sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+ * 對應 ARCHITECTURE.md v3 第 9 章「Google Drive 附件嵌入」+ Codex Sec F8 + P0-1 修正：
+ *   • iframe sandbox="allow-scripts allow-popups allow-forms"
+ *     ⚠ P0-1: 拿掉 allow-same-origin — allow-scripts + allow-same-origin 並存是 well-known
+ *     sandbox escape，embedded 頁面可改 sandbox attr 完全跳出沙箱。GDrive preview 在僅
+ *     allow-scripts 下仍能正常顯示文件。
  *   • referrerpolicy="no-referrer"
  *   • loading="lazy" 不阻塞 first paint
  *   • host 由 lib/gdrive.ts 嚴格白名單
@@ -124,8 +127,8 @@ export default function Attachments({
               {embed && (
                 <iframe
                   src={embed}
-                  // Sandbox: 允許 GDrive 內部 JS / 同源 / 跳到新分頁 / 表單
-                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                  // ⚠ P0-1: 不可加 allow-same-origin（與 allow-scripts 並存可逃逸 sandbox）
+                  sandbox="allow-scripts allow-popups allow-forms"
                   referrerPolicy="no-referrer"
                   loading="lazy"
                   title={att.name}

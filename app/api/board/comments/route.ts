@@ -13,6 +13,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getServerClient } from '@/lib/supabase/server';
 import { hashIp } from '@/lib/ip-hash';
+import { resolveClientIp } from '@/lib/ip-resolve';
 
 const MAX_BODY_BYTES = 4096;
 
@@ -26,16 +27,7 @@ const createSchema = z.object({
 const ipBuckets = new Map<string, number>(); // ip → lastPostTime
 const PER_IP_WINDOW_MS = 30 * 1000;
 
-function getClientIp(req: NextRequest): string {
-  return (
-    req.headers.get('x-nf-client-connection-ip') ||
-    (process.env.NODE_ENV !== 'production'
-      ? req.headers.get('x-forwarded-for')?.split(',')[0].trim() || null
-      : null) ||
-    req.headers.get('x-real-ip') ||
-    'unknown'
-  );
-}
+// P0-3: IP 抽取統一走 lib/ip-resolve，抓不到時 reject 503（不歸到 'unknown' bucket）
 
 const URL_RE = /\bhttps?:\/\/\S+/i;
 
@@ -56,7 +48,14 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. IP rate limit (30s)
-  const ip = getClientIp(req);
+  const ip = resolveClientIp(req);
+  if (!ip) {
+    console.warn('[comments.create.no_client_ip]', { traceId });
+    return NextResponse.json(
+      { error: '系統無法識別來源，請稍後再試' },
+      { status: 503, headers: traceHeaders(traceId) },
+    );
+  }
   const now = Date.now();
   const last = ipBuckets.get(ip) ?? 0;
   if (now - last < PER_IP_WINDOW_MS) {

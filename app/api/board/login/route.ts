@@ -37,6 +37,7 @@ import { getServerClient } from '@/lib/supabase/server';
 import { signSession, COOKIE_NAME } from '@/lib/auth/jwt';
 import { comparePassword } from '@/lib/auth/password';
 import { getEnv } from '@/lib/env';
+import { resolveClientIp } from '@/lib/ip-resolve';
 
 // ── In-memory IP rate limit（Netlify Function instance scope）──
 const ipBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -56,22 +57,8 @@ function checkIpRateLimit(ip: string): boolean {
   return true;
 }
 
-/**
- * ⚠ Sec F2 fix: prod 優先用 Netlify 設定的 x-nf-client-connection-ip。
- * X-Forwarded-For 是 client controllable header — prod 不可信任。
- */
-function getClientIp(req: NextRequest): string {
-  const netlifyIp = req.headers.get('x-nf-client-connection-ip');
-  if (netlifyIp) return netlifyIp;
-
-  // Dev 環境才回退 XFF（用 NODE_ENV 判斷而非 protocol）
-  if (process.env.NODE_ENV !== 'production') {
-    const xff = req.headers.get('x-forwarded-for')?.split(',')[0].trim();
-    if (xff) return xff;
-  }
-
-  return req.headers.get('x-real-ip') || 'unknown';
-}
+// P0-3 修正：IP 抽取統一走 lib/ip-resolve，prod 也接受 XFF（Netlify/CF/Vercel
+// 都會自行覆寫掉 client 端偽造值），抓不到時 caller 直接 reject 503。
 
 /**
  * ⚠ Sec F4 fix: cookie Secure 判斷涵蓋 reverse-proxy + prod env，不只看 nextUrl.protocol
@@ -100,7 +87,15 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 2. IP rate limit ──
-  const ip = getClientIp(req);
+  const ip = resolveClientIp(req);
+  if (!ip) {
+    console.warn('[auth.login.no_client_ip]', { traceId });
+    return jsonResponse(
+      { error: '系統無法識別來源，請稍後再試' },
+      503,
+      traceId,
+    );
+  }
   if (!checkIpRateLimit(ip)) {
     console.info('[auth.login.rate_limit]', { traceId, ip });
     return jsonResponse({ error: '嘗試次數過多，請稍後再試' }, 429, traceId);
