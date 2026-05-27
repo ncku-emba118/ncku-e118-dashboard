@@ -181,17 +181,22 @@ function Preview({ att }: { att: Attachment }) {
 
   // Supabase Storage rendering — 依 MIME 不同走不同分支
   // 圖片：inline <img> max-width 100%
+  //
+  // ⚠ 不用 loading="lazy"：圖片在還沒下載時 intrinsic size = 0，
+  //   `<img>` 元素 height=0 → Chrome lazy-load heuristic 不認為元素 "in view" →
+  //   永不下載 → 永遠 height=0 (deadlock)。改 eager + min-height 預留空間。
   if (isImage(att)) {
     return (
       <img
         src={att.public_url}
         alt={att.name}
-        loading="lazy"
+        loading="eager"
         referrerPolicy="no-referrer"
         style={{
           display: 'block',
           width: '100%',
           height: 'auto',
+          minHeight: 200,
           maxHeight: 700,
           objectFit: 'contain',
           background: '#FAF7F2',
@@ -201,6 +206,7 @@ function Preview({ att }: { att: Attachment }) {
   }
 
   // PDF: iframe 預覽（瀏覽器內建 PDF viewer）
+  // iframe 已有 height:600 explicit dimensions，lazy 沒有 deadlock 問題、保留
   if (isPdf(att)) {
     return (
       <iframe
