@@ -1,0 +1,19 @@
+# Netlify build + plugin configuration for E118 dashboard (Next.js 15)
+# 主 dashboard 升級為 Next.js 後、Netlify 從純靜態網站切到 SSR + API routes。
+#
+# 部署架構：
+#   • main branch push → 觸發 build
+#   • npm run build → next build 產出 .next/
+#   • @netlify/plugin-nextjs → 自動把 SSR / API routes 包成 Netlify Functions
+#   • 既有靜態頁面 (/、/calendar) 用 Next.js SSG export 仍是純靜態 HTML，效能不變
+#   • /board/* + /api/board/* 走 dynamic SSR + Function
+
+[build]
+  command = "npm run build"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Scheduled function: 每分鐘 ping /api/board/push/dispatch、處理 stale push_jobs
+# 對應 ARCHITECTURE.md v3 第 7 章 outbox worker
+# 實際 cron 在 netlify/functions/push-cron.mts 內 export const config = { schedule }
