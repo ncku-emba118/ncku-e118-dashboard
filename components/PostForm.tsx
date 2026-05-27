@@ -1,30 +1,60 @@
 'use client';
 
+/**
+ * PostForm — 公告寫作/編輯共用 form
+ *
+ * Modes:
+ *   create: POST /api/board/posts，含 client_request_id 防雙擊
+ *   edit:   PATCH /api/board/posts/[id]，含 version optimistic lock
+ *
+ * 抽取自原 NewPostForm，加 edit 支援。
+ */
+
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseGdriveUrl, type GdriveAttachment } from '@/lib/gdrive';
 
 type Dept = { id: string; name: string; color: string };
 
-export default function NewPostForm({
+export type PostFormInitial = {
+  department_id: string;
+  title: string;
+  content: string;
+  pinned: boolean;
+  attachments: GdriveAttachment[];
+  version: number;
+};
+
+export default function PostForm({
+  mode,
   depts,
   isSuper,
   username,
+  postId,
+  initial,
 }: {
+  mode: 'create' | 'edit';
   depts: Dept[];
   isSuper: boolean;
   username: string;
+  postId?: string;
+  initial?: PostFormInitial;
 }) {
   const router = useRouter();
+  const isEdit = mode === 'edit';
 
-  // 一次性 idempotency key — 整個 form lifetime 共用一個 UUID，防雙擊重複建公告
+  // 一次性 idempotency key (只 create mode 需要)
   const clientRequestId = useMemo(() => crypto.randomUUID(), []);
 
-  const [departmentId, setDepartmentId] = useState(depts[0]?.id ?? '');
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [pinned, setPinned] = useState(false);
-  const [attachments, setAttachments] = useState<GdriveAttachment[]>([]);
+  const [departmentId, setDepartmentId] = useState(
+    initial?.department_id ?? depts[0]?.id ?? '',
+  );
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [content, setContent] = useState(initial?.content ?? '');
+  const [pinned, setPinned] = useState(initial?.pinned ?? false);
+  const [attachments, setAttachments] = useState<GdriveAttachment[]>(
+    initial?.attachments ?? [],
+  );
   const [attUrl, setAttUrl] = useState('');
   const [attName, setAttName] = useState('');
   const [attError, setAttError] = useState<string | null>(null);
@@ -47,7 +77,10 @@ export default function NewPostForm({
       return;
     }
     const name = attName.trim() || `${parsed.type}-${attachments.length + 1}`;
-    setAttachments([...attachments, { name, gdrive_id: parsed.gdrive_id, type: parsed.type }]);
+    setAttachments([
+      ...attachments,
+      { name, gdrive_id: parsed.gdrive_id, type: parsed.type },
+    ]);
     setAttUrl('');
     setAttName('');
   }
@@ -73,26 +106,45 @@ export default function NewPostForm({
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch('/api/board/posts', {
-        method: 'POST',
+      const url = isEdit ? `/api/board/posts/${postId}` : '/api/board/posts';
+      const method = isEdit ? 'PATCH' : 'POST';
+      const body = isEdit
+        ? {
+            version: initial!.version,
+            title: title.trim(),
+            content,
+            attachments,
+            pinned: isSuper ? pinned : undefined,
+          }
+        : {
+            department_id: departmentId,
+            client_request_id: clientRequestId,
+            title: title.trim(),
+            content,
+            pinned: isSuper ? pinned : false,
+            attachments,
+          };
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          department_id: departmentId,
-          client_request_id: clientRequestId,
-          title: title.trim(),
-          content,
-          pinned: isSuper ? pinned : false,
-          attachments,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || `發布失敗（HTTP ${res.status}）`);
+        if (res.status === 409) {
+          setError(
+            data.error ||
+              '公告已被其他人改過，請重新整理取最新版本後再編輯',
+          );
+        } else {
+          setError(data.error || `${isEdit ? '更新' : '發布'}失敗（HTTP ${res.status}）`);
+        }
         return;
       }
-      router.push(`/board/post/${data.post_id}`);
+      const targetId = isEdit ? postId! : data.post_id;
+      router.push(`/board/post/${targetId}`);
       router.refresh();
-    } catch (err) {
+    } catch {
       setError('網路錯誤，請稍後再試');
     } finally {
       setSubmitting(false);
@@ -101,6 +153,7 @@ export default function NewPostForm({
 
   const titleLen = title.length;
   const contentLen = content.length;
+  const ctaLabel = isEdit ? '儲存變更' : '發布公告';
 
   return (
     <main
@@ -122,11 +175,16 @@ export default function NewPostForm({
             marginBottom: 20,
           }}
         >
-          <a href="/board/admin" style={{ color: '#8A7F73', textDecoration: 'none' }}>
+          <a
+            href="/board/admin"
+            style={{ color: '#8A7F73', textDecoration: 'none' }}
+          >
             後台
           </a>
           <span style={{ margin: '0 8px' }}>›</span>
-          <span style={{ color: '#8B1F2F' }}>寫新公告</span>
+          <span style={{ color: '#8B1F2F' }}>
+            {isEdit ? '編輯公告' : '寫新公告'}
+          </span>
         </nav>
 
         <h1
@@ -138,7 +196,7 @@ export default function NewPostForm({
             margin: '0 0 4px',
           }}
         >
-          New Post
+          {isEdit ? 'Edit Post' : 'New Post'}
         </h1>
         <p
           style={{
@@ -148,7 +206,9 @@ export default function NewPostForm({
             fontFamily: 'ui-monospace, Menlo, monospace',
           }}
         >
-          發布者：{username} · {isSuper ? 'SUPER 可選任意部門' : '僅可發自己部門'}
+          {isEdit ? '編輯者' : '發布者'}：{username} ·{' '}
+          {isSuper ? 'SUPER' : 'DEPT'}
+          {isEdit && initial && ` · version ${initial.version}`}
         </p>
 
         <form
@@ -171,21 +231,22 @@ export default function NewPostForm({
               letterSpacing: '0.05em',
             }}
           >
-            部門
+            部門 {isEdit && '（編輯模式鎖定）'}
           </label>
           <select
             value={departmentId}
             onChange={(e) => setDepartmentId(e.target.value)}
-            disabled={submitting || depts.length === 1}
+            disabled={submitting || depts.length === 1 || isEdit}
             style={{
               width: '100%',
               padding: '10px 14px',
               fontSize: 14,
               border: '1px solid #D9CDB8',
               borderRadius: 4,
-              background: '#FAF7F2',
+              background: isEdit ? '#EDE6D6' : '#FAF7F2',
               marginBottom: 18,
               fontFamily: 'inherit',
+              color: isEdit ? '#8A7F73' : 'inherit',
             }}
           >
             {depts.map((d) => (
@@ -257,7 +318,7 @@ export default function NewPostForm({
             disabled={submitting}
             rows={12}
             placeholder={
-              '可直接換行寫公告內容\n\n下個版本會加 markdown + GDrive 附件嵌入'
+              '可直接換行寫公告內容\n\n# 大標題\n## 小標題\n- 列表項\n[連結](https://...)'
             }
             style={{
               width: '100%',
@@ -284,7 +345,7 @@ export default function NewPostForm({
             {(contentLen / 1024).toFixed(1)} KB / 20 KB
           </div>
 
-          {/* Attachments — Google Drive */}
+          {/* Attachments */}
           <label
             style={{
               display: 'block',
@@ -306,7 +367,6 @@ export default function NewPostForm({
               marginBottom: 18,
             }}
           >
-            {/* 既有附件列表 */}
             {attachments.length > 0 && (
               <div style={{ marginBottom: 12 }}>
                 {attachments.map((att, i) => (
@@ -324,7 +384,13 @@ export default function NewPostForm({
                       fontSize: 12,
                     }}
                   >
-                    <span style={{ color: '#8A7F73', fontFamily: 'ui-monospace, Menlo, monospace', minWidth: 70 }}>
+                    <span
+                      style={{
+                        color: '#8A7F73',
+                        fontFamily: 'ui-monospace, Menlo, monospace',
+                        minWidth: 70,
+                      }}
+                    >
                       [{att.type}]
                     </span>
                     <span
@@ -358,8 +424,14 @@ export default function NewPostForm({
               </div>
             )}
 
-            {/* 新增 row */}
-            <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', flexWrap: 'wrap' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: 6,
+                alignItems: 'stretch',
+                flexWrap: 'wrap',
+              }}
+            >
               <input
                 type="text"
                 value={attName}
@@ -397,7 +469,9 @@ export default function NewPostForm({
               <button
                 type="button"
                 onClick={addAttachment}
-                disabled={submitting || !attUrl.trim() || attachments.length >= 10}
+                disabled={
+                  submitting || !attUrl.trim() || attachments.length >= 10
+                }
                 style={{
                   padding: '8px 14px',
                   fontSize: 12,
@@ -430,18 +504,6 @@ export default function NewPostForm({
                 {attError}
               </div>
             )}
-
-            <div
-              style={{
-                marginTop: 8,
-                fontSize: 10,
-                color: '#8A7F73',
-                fontFamily: 'ui-monospace, Menlo, monospace',
-                lineHeight: 1.5,
-              }}
-            >
-              支援 GDrive 檔案 / 資料夾 + Google 文件 / 試算表 / 簡報。請先在 GDrive 把檔案設「知道連結的人可看」。
-            </div>
           </div>
 
           {/* Pinned (only super) */}
@@ -467,7 +529,6 @@ export default function NewPostForm({
             </label>
           )}
 
-          {/* Error */}
           {error && (
             <div
               style={{
@@ -484,7 +545,6 @@ export default function NewPostForm({
             </div>
           )}
 
-          {/* Actions */}
           <div
             style={{
               display: 'flex',
@@ -494,7 +554,7 @@ export default function NewPostForm({
             }}
           >
             <a
-              href="/board/admin"
+              href={isEdit ? `/board/post/${postId}` : '/board/admin'}
               style={{
                 color: '#8A7F73',
                 fontSize: 13,
@@ -525,23 +585,14 @@ export default function NewPostForm({
                 letterSpacing: '0.05em',
               }}
             >
-              {submitting ? '發布中…' : '發布公告'}
+              {submitting
+                ? isEdit
+                  ? '儲存中…'
+                  : '發布中…'
+                : ctaLabel}
             </button>
           </div>
         </form>
-
-        <p
-          style={{
-            marginTop: 16,
-            fontSize: 11,
-            color: '#8A7F73',
-            fontFamily: 'ui-monospace, Menlo, monospace',
-            letterSpacing: '0.03em',
-            textAlign: 'center',
-          }}
-        >
-          雙擊「發布」會自動去重（idempotency key {clientRequestId.slice(0, 8)}…）
-        </p>
       </div>
     </main>
   );

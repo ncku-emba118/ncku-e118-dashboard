@@ -7,6 +7,7 @@
 import { redirect } from 'next/navigation';
 import { readSession, deptInfo } from '@/lib/auth/session';
 import { getServerClient } from '@/lib/supabase/server';
+import AdminPostRowActions from '@/components/AdminPostRowActions';
 
 type AdminPost = {
   id: string;
@@ -231,9 +232,8 @@ export default async function AdminHome() {
             {posts.map((p, i) => {
               const dept = deptInfo(p.department_id);
               return (
-                <a
+                <div
                   key={p.id}
-                  href={`/board/post/${p.id}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -243,8 +243,6 @@ export default async function AdminHome() {
                       i < posts.length - 1
                         ? '1px solid rgba(26,22,18,0.08)'
                         : 'none',
-                    textDecoration: 'none',
-                    color: 'inherit',
                   }}
                 >
                   <span
@@ -263,7 +261,15 @@ export default async function AdminHome() {
                   >
                     {dept.name}
                   </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <a
+                    href={`/board/post/${p.id}`}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      textDecoration: 'none',
+                      color: 'inherit',
+                    }}
+                  >
                     <div
                       style={{
                         fontFamily: "'Noto Serif TC', serif",
@@ -288,6 +294,21 @@ export default async function AdminHome() {
                         </span>
                       )}
                       {p.title}
+                      {!p.published && (
+                        <span
+                          style={{
+                            marginLeft: 8,
+                            fontSize: 10,
+                            color: '#8A7F73',
+                            background: '#EDE6D6',
+                            padding: '1px 6px',
+                            borderRadius: 2,
+                            letterSpacing: '0.05em',
+                          }}
+                        >
+                          DRAFT
+                        </span>
+                      )}
                     </div>
                     <div
                       style={{
@@ -298,8 +319,9 @@ export default async function AdminHome() {
                     >
                       {formatDate(p.created_at)} · 👤 {p.accounts?.username ?? '—'}
                     </div>
-                  </div>
-                </a>
+                  </a>
+                  <AdminPostRowActions postId={p.id} title={p.title} />
+                </div>
               );
             })}
           </div>
