@@ -89,9 +89,11 @@ export default function SubscribeButton({
       // 取現有 subscription 或建新的
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
+        // TS strict: PushSubscriptionOptions.applicationServerKey 需 BufferSource
+        // Uint8Array<ArrayBufferLike> 不被當 BufferSource，cast 過去
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID),
+          applicationServerKey: urlBase64ToUint8Array(VAPID) as unknown as BufferSource,
         });
       }
 

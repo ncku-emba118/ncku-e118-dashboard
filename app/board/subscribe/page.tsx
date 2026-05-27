@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ALL_DEPTS } from '@/lib/auth/session';
+import { ALL_DEPTS } from '@/lib/depts';
 import SubscribeButton from '@/components/SubscribeButton';
 
 export default function SubscribePage() {
