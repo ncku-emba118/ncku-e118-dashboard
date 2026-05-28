@@ -414,8 +414,36 @@ export default function PostForm({
               letterSpacing: '0.05em',
             }}
           >
-            內容（≤ 20 KB · 支援 markdown：**粗體** *斜體* # 標題 - 列表 [連結](https://...) ```code```）
+            內容（最多 20 KB · 可用簡單排版）
           </label>
+          <div
+            style={{
+              fontSize: 11.5,
+              color: '#6B5D4F',
+              marginBottom: 10,
+              lineHeight: 1.85,
+              background: '#FAF7F2',
+              border: '1px solid #E5DECF',
+              borderRadius: 6,
+              padding: '10px 12px',
+            }}
+          >
+            <div style={{ fontWeight: 600, color: '#8B1F2F', marginBottom: 4 }}>
+              排版小幫手（直接這樣打、發布後自動套用）
+            </div>
+            <span style={{ fontWeight: 700 }}>粗體</span>：打{' '}
+            <code style={{ background: '#F4EFE6', padding: '1px 5px', borderRadius: 3, fontFamily: 'ui-monospace, Menlo, monospace' }}>**文字**</code>
+            （兩個星號包住）　·
+            <span style={{ fontStyle: 'italic' }}>斜體</span>：打{' '}
+            <code style={{ background: '#F4EFE6', padding: '1px 5px', borderRadius: 3, fontFamily: 'ui-monospace, Menlo, monospace' }}>*文字*</code>
+            （一個星號）
+            <br />
+            大標題：<code style={{ background: '#F4EFE6', padding: '1px 5px', borderRadius: 3, fontFamily: 'ui-monospace, Menlo, monospace' }}>#</code> 開頭加空格　·
+            項目清單：<code style={{ background: '#F4EFE6', padding: '1px 5px', borderRadius: 3, fontFamily: 'ui-monospace, Menlo, monospace' }}>-</code> 開頭加空格　·
+            連結：<code style={{ background: '#F4EFE6', padding: '1px 5px', borderRadius: 3, fontFamily: 'ui-monospace, Menlo, monospace' }}>[顯示文字](網址)</code>
+            <br />
+            <span style={{ color: '#8A7F73' }}>換行直接按 Enter 就好、不用特別符號。</span>
+          </div>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}

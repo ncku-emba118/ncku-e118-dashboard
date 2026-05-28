@@ -34,14 +34,18 @@ type Props = {
  * 中文用戶常見的 markdown 寫法 normalize：
  * - `#新生體檢` → `# 新生體檢` (heading 後缺空格)
  * - `##一、` → `## 一、`
- * - `-項目1` → `- 項目1` (list 後缺空格)
+ * - `-項目1` → `- 項目1` (dash list 後缺空格)
  *
- * 不動：`* 斜體 *`, `**粗體**`, 程式碼區塊內、原本就有空格的 heading/list。
+ * ⚠ 重要：list 只處理 `-`（dash），**絕對不碰 `*`**。
+ *   之前用 `/^(-|\*)(?=\S)/` 會把行首的 `**粗體**` / `*斜體*` 的星號
+ *   當成列表符號插空格 → `* *粗體**` → 渲染成「項目清單 + 斜體 + 殘留星號」。
+ *   `*` 在 markdown 同時是 list / bold / italic 標記、語意太重疊、一律不動。
+ *   要打項目清單請用 `- ` 開頭。
  */
 function normalizeMarkdown(src: string): string {
   return src
-    .replace(/^(#{1,6})(?=[^\s#])/gm, '$1 ')
-    .replace(/^(-|\*)(?=\S)/gm, '$1 ');
+    .replace(/^(#{1,6})(?=[^\s#])/gm, '$1 ')   // #標題 → # 標題
+    .replace(/^(-)(?=[^\s-])/gm, '$1 ');        // -項目 → - 項目（dash 後接非空白非 dash）
 }
 
 export default function Markdown({ source, className }: Props) {
