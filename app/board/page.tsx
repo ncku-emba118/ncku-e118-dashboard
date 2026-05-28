@@ -38,9 +38,28 @@ async function loadPosts(): Promise<Post[]> {
   return (data || []) as unknown as Post[];
 }
 
-function excerpt(content: string, max = 140): string {
-  const t = content.trim().replace(/\s+/g, ' ');
-  return t.length > max ? `${t.slice(0, max)}…` : t;
+/**
+ * Timeline 卡片內文預覽：清掉 Markdown 符號、但**保留換行**當分隔。
+ * 視覺截斷交給 CSS line-clamp（固定 3 行），這裡只清符號 + 安全上限 240 字。
+ *
+ * 之前的問題：把 \n 壓成空格 + 保留 # ## ** - 符號 → timeline 變一坨亂碼。
+ */
+function excerpt(content: string): string {
+  return content
+    .replace(/```[\s\S]*?```/g, '')            // 程式碼區塊整段移除
+    .replace(/^#{1,6}\s*/gm, '')               // 標題符號 # ## ### → 只留文字
+    .replace(/\*\*([^*]+)\*\*/g, '$1')         // 粗體
+    .replace(/\*([^*]+)\*/g, '$1')             // 斜體
+    .replace(/~~([^~]+)~~/g, '$1')             // 刪除線
+    .replace(/`([^`]+)`/g, '$1')               // inline code
+    .replace(/^\s*[-*+]\s+/gm, '')             // 項目符號 - * +
+    .replace(/^\s*\d+\.\s+/gm, '')             // 數字列表 1. 2.
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // 連結 / 圖片 → 只留文字
+    .replace(/^>\s*/gm, '')                    // 引用 >
+    .replace(/[ \t]+/g, ' ')                   // 同行多空白壓一個（換行保留）
+    .replace(/\n{2,}/g, '\n')                  // 多個空行壓成單一換行
+    .trim()
+    .slice(0, 240);                            // 安全上限、避免 DOM 塞超長字串
 }
 
 import { formatDateTW as formatDate } from '@/lib/format';
@@ -257,10 +276,15 @@ export default async function BoardHome() {
                   <p
                     style={{
                       fontSize: 14,
-                      lineHeight: 1.6,
+                      lineHeight: 1.65,
                       color: '#4A413A',
                       margin: '0 0 10px',
-                      whiteSpace: 'pre-wrap',
+                      // 固定 3 行高度、保留換行當分隔、超過自動 … 截斷
+                      whiteSpace: 'pre-line',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
                     }}
                   >
                     {excerpt(post.content)}
