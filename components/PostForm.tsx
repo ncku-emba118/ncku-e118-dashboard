@@ -14,7 +14,7 @@
  * 錯誤提示加大、加色塊、放在輸入區下方明顯位置。
  */
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseGdriveUrl } from '@/lib/gdrive';
 import type { Attachment } from '@/lib/attachment';
@@ -418,31 +418,68 @@ export default function PostForm({
           </label>
           <div
             style={{
-              fontSize: 11.5,
+              fontSize: 12,
               color: '#6B5D4F',
               marginBottom: 10,
-              lineHeight: 1.85,
               background: '#FAF7F2',
               border: '1px solid #E5DECF',
               borderRadius: 6,
-              padding: '10px 12px',
+              padding: '12px 14px',
             }}
           >
-            <div style={{ fontWeight: 600, color: '#8B1F2F', marginBottom: 4 }}>
-              排版小幫手（直接這樣打、發布後自動套用）
+            <div style={{ fontWeight: 700, color: '#8B1F2F', marginBottom: 10 }}>
+              排版小幫手 — 左邊照著打、右邊是發布後的樣子
             </div>
-            <span style={{ fontWeight: 700 }}>粗體</span>：打{' '}
-            <code style={{ background: '#F4EFE6', padding: '1px 5px', borderRadius: 3, fontFamily: 'ui-monospace, Menlo, monospace' }}>**文字**</code>
-            （兩個星號包住）　·
-            <span style={{ fontStyle: 'italic' }}>斜體</span>：打{' '}
-            <code style={{ background: '#F4EFE6', padding: '1px 5px', borderRadius: 3, fontFamily: 'ui-monospace, Menlo, monospace' }}>*文字*</code>
-            （一個星號）
-            <br />
-            大標題：<code style={{ background: '#F4EFE6', padding: '1px 5px', borderRadius: 3, fontFamily: 'ui-monospace, Menlo, monospace' }}>#</code> 開頭加空格　·
-            項目清單：<code style={{ background: '#F4EFE6', padding: '1px 5px', borderRadius: 3, fontFamily: 'ui-monospace, Menlo, monospace' }}>-</code> 開頭加空格　·
-            連結：<code style={{ background: '#F4EFE6', padding: '1px 5px', borderRadius: 3, fontFamily: 'ui-monospace, Menlo, monospace' }}>[顯示文字](網址)</code>
-            <br />
-            <span style={{ color: '#8A7F73' }}>換行直接按 Enter 就好、不用特別符號。</span>
+            {(() => {
+              const codeStyle: React.CSSProperties = {
+                background: '#fff',
+                border: '1px solid #E0D6C0',
+                padding: '3px 8px',
+                borderRadius: 4,
+                fontFamily: 'ui-monospace, Menlo, monospace',
+                fontSize: 12,
+                color: '#1A1612',
+                whiteSpace: 'nowrap',
+              };
+              const rows: Array<[string, React.ReactNode]> = [
+                ['**期末聚餐**', <strong>期末聚餐</strong>],
+                ['*記得帶筆電*', <em>記得帶筆電</em>],
+                [
+                  '# 重要通知',
+                  <span style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Noto Serif TC', serif" }}>重要通知</span>,
+                ],
+                [
+                  '- 帶學生證',
+                  <span>• 帶學生證</span>,
+                ],
+                [
+                  '[報名表](https://…)',
+                  <span style={{ color: '#8B1F2F', textDecoration: 'underline' }}>報名表</span>,
+                ],
+              ];
+              return (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'max-content 22px 1fr',
+                    gap: '8px 10px',
+                    alignItems: 'center',
+                  }}
+                >
+                  {rows.map(([code, rendered], i) => (
+                    <Fragment key={i}>
+                      <code style={codeStyle}>{code}</code>
+                      <span style={{ color: '#E63946', fontWeight: 700, textAlign: 'center' }}>→</span>
+                      <span>{rendered}</span>
+                    </Fragment>
+                  ))}
+                </div>
+              );
+            })()}
+            <div style={{ marginTop: 10, color: '#8A7F73', lineHeight: 1.6 }}>
+              ⚠ 項目清單是「<strong style={{ color: '#6B5D4F' }}>橫槓 - + 一個空格 + 文字</strong>」、只打空格不行。<br />
+              換行直接按 Enter 就好、不用特別符號。
+            </div>
           </div>
           <textarea
             value={content}
