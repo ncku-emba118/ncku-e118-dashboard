@@ -20,3 +20,14 @@
 # Scheduled function: 每分鐘 ping /api/board/push/dispatch、處理 stale push_jobs
 # 對應 ARCHITECTURE.md v3 第 7 章 outbox worker
 # 實際 cron 在 netlify/functions/push-cron.mts 內 export const config = { schedule }
+
+# ── Function 區域 / 逾時（無法用 netlify.toml 設定，已改用 Netlify API）──────────
+#  ⚠ functions_region / functions_timeout 不是合法的 [functions] toml key
+#    （[functions] timeout=N 會被當成「名為 timeout 的 function 設定」而報錯）。
+#  正式設定（透過 `netlify api updateSite`，存在 site config、非 repo）：
+#    • functions_region = "ap-southeast-1"（新加坡）
+#        ↳ 與 Supabase 專案同區。簽核 PDF 必須 subset:false 內嵌完整中文字型 ≈4.8MB，
+#          原本 function 在 us-east-2，跨太平洋上傳要 6-9s 偶發逾時 abort；
+#          同區後上傳 <1s。改區域要重新部署才生效（function 在 deploy 時 pin 區域）。
+#    • functions_timeout = 26（Pro 上限，預設 10s）→ 給慢上傳 + retry 餘裕。
+#  另見 lib/signoff/retry.ts（上傳暫時性錯誤重試）。
