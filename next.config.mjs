@@ -48,6 +48,14 @@ const SECURITY_HEADERS = [
 const nextConfig = {
   reactStrictMode: true,
   trailingSlash: false,
+  // dev 工具列（左下「N」）關閉 — 只影響本機 dev；prod 本來就不會出現
+  devIndicators: false,
+  // ⚠ Netlify：簽核 PDF 用 fs 讀 Noto Sans TC 字型，node-file-trace 無法自動追蹤 process.cwd() 路徑，
+  //   明確把字型納入相關 function 的 bundle，否則上線會「找不到字型」。
+  outputFileTracingIncludes: {
+    '/api/board/signoff': ['./lib/signoff/assets/**'],
+    '/api/board/signoff/**': ['./lib/signoff/assets/**'],
+  },
   // 既有 dashboard 頁面用 Next.js 預設 SSG（build 後產生純靜態 HTML）
   // /board/* 後續加 SSR + API routes
   // 部署用 @netlify/plugin-nextjs（Netlify 自動偵測 Next.js）

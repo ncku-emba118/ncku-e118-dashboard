@@ -11,6 +11,18 @@ type HelpEntry = {
 
 // 對應 ARCHITECTURE.md 第 5 章「help popover 文案」— 修改任一張卡時同步更新對應 entry
 const HELP: Record<string, HelpEntry> = {
+  finance: {
+    title: '班級經費中心',
+    domain: 'emba.aqualux.dev/finance',
+    desc: '班費收支全班可查的透明專區：自動統計收支總覽、支出明細（＝跑過簽核的經費）、財務長上傳的月報。幹部可在此線上手寫簽核請款，免在 LINE 傳照片來回。',
+    steps: [
+      '同學 → 直接看收支總覽、支出明細與月報（免登入）',
+      '幹部發起 → 進「經費簽核」上傳發票／明細、指派簽核人',
+      '簽核 → 被指派幹部登入，在收件匣手寫簽名送出',
+      '全簽完 → 系統自動合成最終 PDF，支出自動顯示在透明報表',
+      '班代／副班代／秘書 → 可刪除錯誤的簽核單（保留刪除紀錄）',
+    ],
+  },
   board: {
     title: '班級公告欄',
     domain: 'emba.aqualux.dev/board',

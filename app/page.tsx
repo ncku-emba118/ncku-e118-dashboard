@@ -48,7 +48,7 @@ export default function Home() {
             </div>
             <p className="lede">班級系統控制面板，整合課程、研究、活動與資源。</p>
             <div className="hero-divider">
-              <span className="stat">8 Systems Online</span>
+              <span className="stat">9 Systems Online</span>
               <span className="line" />
               <span className="stat">Est. 2026</span>
             </div>
@@ -60,7 +60,7 @@ export default function Home() {
               <h2>
                 System Hub<span className="tc">系統入口</span>
               </h2>
-              <span className="count">08 / 08</span>
+              <span className="count">09 / 09</span>
             </div>
 
             <div className="app-grid">
@@ -160,6 +160,49 @@ export default function Home() {
                   7 個部門公告集中、推播到手機、留言互動
                 </div>
                 <div className="app-domain">emba.aqualux.dev/board</div>
+              </a>
+
+              {/* 班級經費中心（內部子模組）*/}
+              <a href="/finance" className="app-card" data-help="finance">
+                <div className="app-icon">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect width="20" height="12" x="2" y="6" rx="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <path d="M6 12h.01M18 12h.01" />
+                  </svg>
+                </div>
+                <button
+                  type="button"
+                  className="app-help"
+                  data-help-btn="finance"
+                  aria-label="查看「班級經費中心」操作說明"
+                >
+                  ?
+                </button>
+                <div className="app-arrow">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M7 7h10v10M7 17L17 7" />
+                  </svg>
+                </div>
+                <div className="app-title">班級經費</div>
+                <div className="app-meta">班費收支透明・幹部線上簽核</div>
+                <div className="app-domain">emba.aqualux.dev/finance</div>
               </a>
 
               {/* 3. 班級雲端硬碟（外部、開新分頁）*/}
