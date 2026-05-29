@@ -8,6 +8,7 @@
 import 'server-only';
 import { getServerClient } from '../supabase/server';
 import { SIGNOFF_BUCKET, SIGNED_READ_URL_TTL_S } from './constants';
+import { retryResult, isTransientStorageError } from './retry';
 
 export type SignoffStatus = 'routing' | 'approved' | 'rejected' | 'voided';
 export type AssignmentStatus = 'pending' | 'signed' | 'rejected';
@@ -347,10 +348,22 @@ export async function uploadObject(
   upsert = false,
 ): Promise<{ error: string | null }> {
   const supabase = getServerClient();
-  const { error } = await supabase.storage
-    .from(SIGNOFF_BUCKET)
-    .upload(path, bytes, { contentType, upsert });
-  return { error: error?.message ?? null };
+  // 大檔（簽核 PDF ≈ 4.8MB、subset:false 內嵌完整中文字型）上傳偶發
+  // 'This operation was aborted'：慢上傳逼近 Netlify function timeout / 網路抖動。
+  // 對暫時性錯誤重試最多 3 次；重試時強制 upsert，避免前一次中斷殘留造成「已存在」。
+  return retryResult(
+    async (attempt) => {
+      const { error } = await supabase.storage
+        .from(SIGNOFF_BUCKET)
+        .upload(path, bytes, { contentType, upsert: upsert || attempt > 1 });
+      return { error: error?.message ?? null };
+    },
+    {
+      maxAttempts: 3,
+      shouldRetry: (r) => isTransientStorageError(r.error),
+      delayMs: (n) => 500 * (n - 1), // 第 2 次等 500ms、第 3 次等 1000ms
+    },
+  );
 }
 
 // ── accounts 查詢（驗指派人存在 + 取 username）──────────────
