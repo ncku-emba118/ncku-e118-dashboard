@@ -39,7 +39,6 @@ export default async function FinancePage() {
   const approved = expenses.filter((e) => e.status === 'approved');
   const spent = Math.round(approved.reduce((s, e) => s + n(e.amount), 0));
   const balance = income - spent;
-  const pending = expenses.filter((e) => e.status === 'routing').length;
 
   const catMap = new Map<string, number>();
   for (const e of approved) {
@@ -145,7 +144,7 @@ export default async function FinancePage() {
           <div style={{ fontSize: 11, color: MUTE, letterSpacing: '.1em', marginBottom: 10 }}>🔒 幹部專區</div>
           <a href="/finance/signoff" style={{ ...officer, marginBottom: 10 }}>
             <div style={{ fontFamily: 'serif', fontSize: 16, fontWeight: 700 }}>經費簽核</div>
-            <span style={badge}>待簽核 {pending} 件 →</span>
+            <span style={badge}>發起 / 簽核 →</span>
           </a>
           <a href="/finance/income" style={officer}>
             <div style={{ fontFamily: 'serif', fontSize: 16, fontWeight: 700 }}>收入管理</div>
