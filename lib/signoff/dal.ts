@@ -517,6 +517,79 @@ export async function listFinanceReports(): Promise<FinanceReportRow[]> {
   return (data ?? []) as FinanceReportRow[];
 }
 
+// ── 收入明細帳本（feature B）：財務長 / super 記帳；公開頁加總顯示 ──
+export type FinanceIncome = {
+  id: string;
+  occurred_on: string;
+  category: string;
+  amount: string;
+  note: string | null;
+  created_at: string;
+};
+
+export async function listFinanceIncome(): Promise<FinanceIncome[]> {
+  const supabase = getServerClient();
+  const { data } = await supabase
+    .from('finance_income')
+    .select('id, occurred_on, category, amount, note, created_at')
+    .order('occurred_on', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1000); // 班級量遠低於此；總計需涵蓋完整集合
+  return (data ?? []) as FinanceIncome[];
+}
+
+export async function createFinanceIncome(input: {
+  occurred_on: string;
+  category: string;
+  amount: number;
+  note: string | null;
+  created_by: string;
+}): Promise<{ id: string | null; error: string | null }> {
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from('finance_income')
+    .insert({
+      occurred_on: input.occurred_on,
+      category: input.category,
+      amount: input.amount,
+      note: input.note,
+      created_by: input.created_by,
+    })
+    .select('id')
+    .single();
+  if (error) return { id: null, error: error.message };
+  return { id: data.id as string, error: null };
+}
+
+export async function deleteFinanceIncome(
+  id: string,
+  deletedBy: string,
+): Promise<{ error: string | null }> {
+  const supabase = getServerClient();
+  // 稽核：刪除前先 snapshot → 寫 append-only tombstone → 再硬刪（Codex 審查 #6）。
+  const { data: row, error: selErr } = await supabase
+    .from('finance_income')
+    .select('id, occurred_on, category, amount, note, created_by')
+    .eq('id', id)
+    .maybeSingle();
+  if (selErr) return { error: selErr.message };
+  if (!row) return { error: null }; // 已不存在 → 視為刪除成功（idempotent）
+
+  const { error: logErr } = await supabase.from('finance_income_deletion_log').insert({
+    income_id: row.id,
+    occurred_on: row.occurred_on,
+    category: row.category,
+    amount: row.amount,
+    note: row.note,
+    original_created_by: row.created_by,
+    deleted_by: deletedBy,
+  });
+  if (logErr) return { error: logErr.message };
+
+  const { error: delErr } = await supabase.from('finance_income').delete().eq('id', id);
+  return { error: delErr?.message ?? null };
+}
+
 // ── 刪除（super only）：受控 admin 刪除 RPC + storage 清檔 ──
 export async function deleteSignoffDocument(args: {
   documentId: string;

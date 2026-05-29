@@ -7,8 +7,10 @@ import {
   getFinanceSettings,
   listFinanceExpenses,
   listFinanceReports,
+  listFinanceIncome,
   createSignedReadUrl,
 } from '@/lib/signoff/dal';
+import { sumIncome } from '@/lib/finance/income';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,12 +28,14 @@ const STATUS = {
 } as const;
 
 export default async function FinancePage() {
-  const [settings, expenses, reportRows] = await Promise.all([
+  const [settings, expenses, reportRows, incomeRows] = await Promise.all([
     getFinanceSettings(),
     listFinanceExpenses(),
     listFinanceReports(),
+    listFinanceIncome(),
   ]);
-  const income = Math.round(n(settings.income_total));
+  // 班費收入 = 收入明細帳本（feature B）加總；finance_settings.income_total 已停用
+  const income = Math.round(sumIncome(incomeRows));
   const approved = expenses.filter((e) => e.status === 'approved');
   const spent = Math.round(approved.reduce((s, e) => s + n(e.amount), 0));
   const balance = income - spent;
@@ -88,6 +92,23 @@ export default async function FinancePage() {
         <div style={divider} />
 
         <section style={sec}>
+          <div style={secH}><h2 style={h2}>收入明細</h2><span style={tag}>班費・補收・利息</span></div>
+          {incomeRows.length === 0 && <p style={{ color: MUTE, fontSize: 13 }}>目前沒有收入紀錄。</p>}
+          {incomeRows.map((r) => (
+            <div key={r.id} style={incCard}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{r.category}</span>
+                <span style={{ fontFamily: 'serif', fontWeight: 700, fontSize: 15, color: OK }}>+{fmt(Math.round(n(r.amount)))}</span>
+              </div>
+              <div style={{ marginTop: 5, fontSize: 11.5, color: MUTE }}>
+                {r.occurred_on}{r.note ? ` · ${r.note}` : ''}
+              </div>
+            </div>
+          ))}
+        </section>
+        <div style={divider} />
+
+        <section style={sec}>
           <div style={secH}><h2 style={h2}>月報下載</h2><span style={tag}>財務長上傳</span></div>
           {reports.length === 0 && <p style={{ color: MUTE, fontSize: 13 }}>尚無月報。</p>}
           {reports.map((r, i) => (
@@ -121,10 +142,14 @@ export default async function FinancePage() {
         <div style={divider} />
 
         <section style={sec}>
-          <a href="/finance/signoff" style={officer}>
-            <div><div style={{ fontSize: 11, color: GOLD_SOFT, letterSpacing: '.1em' }}>🔒 幹部專區</div>
-              <div style={{ fontFamily: 'serif', fontSize: 16, fontWeight: 700, marginTop: 3 }}>經費簽核</div></div>
+          <div style={{ fontSize: 11, color: MUTE, letterSpacing: '.1em', marginBottom: 10 }}>🔒 幹部專區</div>
+          <a href="/finance/signoff" style={{ ...officer, marginBottom: 10 }}>
+            <div style={{ fontFamily: 'serif', fontSize: 16, fontWeight: 700 }}>經費簽核</div>
             <span style={badge}>待簽核 {pending} 件 →</span>
+          </a>
+          <a href="/finance/income" style={officer}>
+            <div style={{ fontFamily: 'serif', fontSize: 16, fontWeight: 700 }}>收入管理</div>
+            <span style={badge}>記班費 / 收入 →</span>
           </a>
         </section>
 
@@ -157,6 +182,7 @@ const divider: React.CSSProperties = { height: 1, background: LINE, margin: '0 2
 const repRow: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', border: `1px solid ${LINE}`, borderRadius: 8, padding: '13px 14px', marginBottom: 9 };
 const dl: React.CSSProperties = { color: WINE, fontSize: 13, fontWeight: 600, textDecoration: 'none' };
 const expCard: React.CSSProperties = { display: 'block', background: '#fff', border: `1px solid ${LINE}`, borderLeft: `4px solid ${WINE}`, borderRadius: 8, padding: '13px 14px', marginBottom: 9, textDecoration: 'none', color: INK };
+const incCard: React.CSSProperties = { display: 'block', background: '#fff', border: `1px solid ${LINE}`, borderLeft: `4px solid ${OK}`, borderRadius: 8, padding: '13px 14px', marginBottom: 9, color: INK };
 const officer: React.CSSProperties = { background: WINE_DEEP, color: '#fff', borderRadius: 10, padding: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', textDecoration: 'none' };
 const badge: React.CSSProperties = { background: GOLD, color: WINE_DEEP, fontWeight: 700, fontSize: 13, padding: '7px 14px', borderRadius: 99 };
 const ft: React.CSSProperties = { textAlign: 'center', padding: 22, color: MUTE, fontSize: 11, borderTop: `1px solid ${LINE}` };
