@@ -1,0 +1,101 @@
+[
+ {
+  "key": "calendar",
+  "title": "班級行事曆",
+  "meta": "全班課程、放假、活動 — 一鍵訂閱到手機",
+  "domain": "emba.aqualux.dev/calendar",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/><path d=\"M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01\"/></svg>",
+  "href": "https://emba.aqualux.dev/calendar/",
+  "localHref": "/calendar/",
+  "external": false,
+  "feed": "calendar"
+ },
+ {
+  "key": "board",
+  "title": "班級公告欄",
+  "meta": "7 個部門公告集中、推播到手機、留言互動",
+  "domain": "emba.aqualux.dev/board",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m3 11 18-5v12L3 14v-3z\"/><path d=\"M11.6 16.8a3 3 0 1 1-5.8-1.6\"/></svg>",
+  "href": "/board",
+  "localHref": null,
+  "external": false,
+  "feed": "board"
+ },
+ {
+  "key": "finance",
+  "title": "班級經費",
+  "meta": "班費收支透明・幹部線上簽核",
+  "domain": "emba.aqualux.dev/finance",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/><path d=\"M6 12h.01M18 12h.01\"/></svg>",
+  "href": "/finance",
+  "localHref": null,
+  "external": false,
+  "feed": null
+ },
+ {
+  "key": "drive",
+  "title": "班級雲端硬碟",
+  "meta": "Google Drive · 共享資源",
+  "domain": "drive.google.com",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9\"/></svg>",
+  "href": "https://drive.google.com/drive/folders/1q3ULP_ASkMnmBDhI0ed-yQ8QChXuTojd?usp=drive_link",
+  "localHref": null,
+  "external": true,
+  "feed": null
+ },
+ {
+  "key": "thesis",
+  "title": "論文查詢系統",
+  "meta": "學位論文資料庫檢索",
+  "domain": "thesis.e118.aqualux.dev",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 2v8l3-3l3 3V2\"/><path d=\"M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20\"/></svg>",
+  "href": "https://thesis.e118.aqualux.dev",
+  "localHref": null,
+  "external": true,
+  "feed": null
+ },
+ {
+  "key": "reports",
+  "title": "課程報告",
+  "meta": "期末／期中分組報告整理",
+  "domain": "reports.e118.aqualux.dev",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0zM22 10v6\"/><path d=\"M6 12.5V16a6 3 0 0 0 12 0v-3.5\"/></svg>",
+  "href": "https://reports.e118.aqualux.dev",
+  "localHref": null,
+  "external": true,
+  "feed": null
+ },
+ {
+  "key": "activities",
+  "title": "班級活動歷程",
+  "meta": "依時間軸瀏覽歷次活動與照片",
+  "domain": "activities.e118.aqualux.dev",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" ry=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21\"/></svg>",
+  "href": "https://activities.e118.aqualux.dev",
+  "localHref": null,
+  "external": true,
+  "feed": null
+ },
+ {
+  "key": "field-study",
+  "title": "職業參訪",
+  "meta": "企業參訪行程與分組",
+  "domain": "field-study.e118.aqualux.dev",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 12h4m-4-4h4m0 13v-3a2 2 0 0 0-4 0v3\"/><path d=\"M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2\"/><path d=\"M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16\"/></svg>",
+  "href": "https://field-study.e118.aqualux.dev",
+  "localHref": null,
+  "external": true,
+  "feed": null
+ },
+ {
+  "key": "members",
+  "title": "班級成員圖鑑",
+  "meta": "依專業領域 / 地區 / 產業瀏覽同學",
+  "domain": "members.e118.aqualux.dev",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M18 21a8 8 0 0 0-16 0\"/><circle cx=\"10\" cy=\"8\" r=\"5\"/><path d=\"M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3\"/></svg>",
+  "href": "https://members.e118.aqualux.dev",
+  "localHref": null,
+  "external": true,
+  "feed": null
+ }
+]
