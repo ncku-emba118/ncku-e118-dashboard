@@ -548,23 +548,60 @@
       margin-bottom: 28px;
     }
     .pwa-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
+    /* 用 <details> 做下拉，summary 是標題列，展開後才看到步驟 */
     .pwa-card {
-      background: rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.55);
       border: 1px solid var(--ncku-line);
-      padding: 22px 22px 20px;
+      border-radius: 6px;
+      padding: 0;
       position: relative;
+      transition: border-color .2s, background .2s;
+    }
+    .pwa-card[open] {
+      background: rgba(255, 255, 255, 0.85);
+      border-color: var(--ncku-rule);
+    }
+    .pwa-card > summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 20px;
+      user-select: none;
+    }
+    .pwa-card > summary::-webkit-details-marker { display: none; }
+    .pwa-card > summary::marker { content: ''; }
+    .pwa-card .pwa-toggle {
+      flex: none;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid var(--ncku-rule);
+      color: var(--ncku-wine);
+      font: 600 16px/1 var(--font-mono);
+      display: grid;
+      place-items: center;
+      transition: transform .2s, background .2s, color .2s;
+    }
+    .pwa-card[open] .pwa-toggle {
+      background: var(--ncku-wine);
+      color: #fff;
+      border-color: var(--ncku-wine);
+      transform: rotate(45deg);
+    }
+    .pwa-card > .pwa-card-body {
+      padding: 4px 20px 18px;
     }
     .pwa-card-head {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 14px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--ncku-rule);
     }
     .pwa-card-platform {
       font: 600 13px var(--font-tc);
@@ -641,7 +678,6 @@
     @media (max-width: 1024px) {
       .hero h1 { font-size: 76px; }
       .app-grid { grid-template-columns: repeat(2, 1fr); }
-      .pwa-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 720px) {
       .container { padding: 0 24px; }
@@ -661,7 +697,6 @@
       .app-grid { grid-template-columns: 1fr; }
       .app-card { min-height: 160px; padding: 24px 24px 22px; }
       .app-arrow { top: 24px; right: 24px; }
-      .pwa-grid { grid-template-columns: 1fr; }
       .help-modal { padding: 32px 24px 24px; }
       footer.foot { margin-top: 48px; padding: 32px 0; }
     }
@@ -674,7 +709,7 @@
 .bx-hero-h1 { font-family: "Noto Serif TC", serif; font-size: 26px; color: #8B1F2F; margin-top: 8px; font-weight: 700; }
 .bx-hero-lede { color: #8A7F73; font-size: 14px; margin-top: 8px; max-width: 60ch; line-height: 1.7; }
 .bx-wrap { padding: 18px 0 10px; }
-.bx-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; grid-auto-rows: 118px; }
+.bx-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; grid-auto-rows: 100px; }
 .bx-tile { position: relative; border-radius: 16px; padding: 16px; display: flex; flex-direction: column;
   justify-content: space-between; overflow: hidden; transition: transform .18s, box-shadow .18s;
   border: 1px solid #E8DFD0; background: #fff; text-decoration: none; color: #1A1612; }
