@@ -199,6 +199,7 @@ export default async function PostDetail({
           postId={post.id}
           initialComments={initialComments}
           canModerate={canModerate}
+          deptName={dept.name}
         />
 
         <p

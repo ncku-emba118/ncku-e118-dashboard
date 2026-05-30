@@ -709,8 +709,8 @@
 .bx-ftitle { font-family: "Noto Serif TC", serif; font-size: 15px; font-weight: 600; line-height: 1.4; color: #1A1612; }
 .bx-fexc { font-size: 11.5px; color: #5e554d; margin-top: 4px; line-height: 1.5; }
 .bx-fmeta { font-size: 11px; color: #8A7F73; margin-top: 5px; }
-/* 公告列表內可滑動：顯示 1-2 則為主、捲動看更多 */
-.bx-feed .bx-feedlist { max-height: 162px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 4px; }
+/* 公告列表內可滑動：露出最新 2 則、捲動看更多 */
+.bx-feed .bx-feedlist { max-height: 140px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 4px; }
 .bx-feed .bx-feedlist::-webkit-scrollbar { width: 5px; }
 .bx-feed .bx-feedlist::-webkit-scrollbar-thumb { background: rgba(139,31,47,.25); border-radius: 9px; }
 .bx-feedfoot { margin-top: auto; padding-top: 10px; font-size: 12.5px; font-weight: 700; }
@@ -724,14 +724,17 @@
 .bx-ctitle { font-family: "Noto Serif TC", serif; font-size: 14px; font-weight: 600; line-height: 1.35; }
 .bx-empty { color: #8A7F73; font-size: 12.5px; padding: 10px 0; }
 
-/* 班級大合照區（便當盒下方、安裝 App 上方 — 位置 B）*/
-.bx-class-photo { margin: 26px 0 8px; }
-.bx-class-photo .bxp-eyebrow { font-size: 11px; letter-spacing: .26em; color: #C9A961; text-align: center; }
-.bx-class-photo .bxp-h2 { font-family: "Noto Serif TC", serif; font-size: 20px; color: #8B1F2F; font-weight: 700; text-align: center; margin-top: 6px; }
-.bx-class-photo .bxp-sub { color: #8A7F73; font-size: 13px; text-align: center; margin: 6px 0 16px; }
-.bx-class-photo .bxp-frame { display: block; border-radius: 14px; overflow: hidden; cursor: zoom-in; border: 1px solid #E0C896; position: relative; box-shadow: 0 12px 30px rgba(107,22,34,.12); background: #faf8f4; padding: 0; width: 100%; }
-.bx-class-photo .bxp-frame img { width: 100%; height: auto; display: block; }
-.bx-class-photo .bxp-hint { position: absolute; right: 12px; bottom: 12px; background: rgba(26,22,18,.78); color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 99px; display: inline-flex; align-items: center; gap: 6px; pointer-events: none; }
+/* 啟程 彩蛋（藏在 footer 右下、點開全螢幕大合照 — C 款書脊詩行）*/
+.foot .foot-inner { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+.foot-left { min-width: 0; }
+.qicheng-egg { display: inline-flex; align-items: center; gap: 14px; background: none; border: 0; cursor: pointer; padding: 0; text-align: right; font: inherit; }
+.qicheng-egg .line { width: 42px; height: 1px; background: #C9A961; transition: width .3s ease, background .3s ease; display: block; }
+.qicheng-egg .stack { display: flex; flex-direction: column; }
+.qicheng-egg .en { font-family: "Cormorant Garamond", serif; font-style: italic; font-size: 13px; color: #8A7F73; letter-spacing: .18em; }
+.qicheng-egg .zh { font-family: "Noto Serif TC", serif; font-size: 16px; color: #8B1F2F; font-weight: 600; letter-spacing: .22em; margin-top: 3px; }
+.qicheng-egg:hover .line { background: #8B1F2F; width: 60px; }
+.qicheng-egg:hover .en { color: #6B1622; }
+@media (max-width: 560px) { .foot .foot-inner { justify-content: center; text-align: center; } .qicheng-egg { margin-top: 8px; } }
 @media (max-width: 780px) {
   .bx-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 128px; }
   .bx-lg { grid-column: span 2; grid-row: span 1; }

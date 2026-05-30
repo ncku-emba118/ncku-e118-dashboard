@@ -131,9 +131,6 @@ export default async function Home() {
             </div>
           </section>
 
-          {/* ── 班級大合照（位置 B） ── */}
-          <ClassPhotoSection />
-
           {/* ── PWA Install ── */}
           <section id="install" className="pwa-section">
             <div className="pwa-head">
@@ -183,8 +180,11 @@ export default async function Home() {
 
       <footer className="foot">
         <div className="container foot-inner">
-          <div className="foot-mark">國立成功大學 EMBA <span className="wine">·</span> E118 Class Dashboard</div>
-          <div className="foot-meta">NCKU EMBA · Class of 2026</div>
+          <div className="foot-left">
+            <div className="foot-mark">國立成功大學 EMBA <span className="wine">·</span> E118 Class Dashboard</div>
+            <div className="foot-meta">NCKU EMBA · Class of 2026</div>
+          </div>
+          <ClassPhotoSection />
         </div>
       </footer>
     </>

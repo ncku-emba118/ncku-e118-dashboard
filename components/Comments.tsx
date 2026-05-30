@@ -19,10 +19,12 @@ export default function Comments({
   postId,
   initialComments,
   canModerate,
+  deptName,
 }: {
   postId: string;
   initialComments: Comment[];
   canModerate: boolean;
+  deptName?: string;
 }) {
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [name, setName] = useState('');
@@ -357,7 +359,7 @@ export default function Comments({
           disabled={submitting}
           rows={3}
           maxLength={1000}
-          placeholder="想留言給活動長嗎？"
+          placeholder={deptName ? `想留言給${deptName}長嗎？` : '想留言給負責部門嗎？'}
           style={{
             width: '100%',
             padding: '10px 12px',
