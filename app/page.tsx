@@ -1,5 +1,6 @@
 import cards from '@/lib/dashboard/cards.json';
 import { getLatestPosts, getUpcomingEvents } from '@/lib/dashboard/feeds';
+import ClassPhotoSection from '@/components/ClassPhotoSection';
 
 /**
  * 主 dashboard 首頁 — Bento 版型（2026-05 改版）。
@@ -129,6 +130,9 @@ export default async function Home() {
               </a>
             </div>
           </section>
+
+          {/* ── 班級大合照（位置 B） ── */}
+          <ClassPhotoSection />
 
           {/* ── PWA Install ── */}
           <section id="install" className="pwa-section">

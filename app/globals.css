@@ -688,28 +688,33 @@
 .bx-lg { grid-column: span 2; grid-row: span 2; }
 .bx-gold { background: linear-gradient(135deg, #F7EFDD, #EFE2C4); border-color: #E0C896; }
 .bx-h3 { font-family: "Noto Serif TC", serif; font-size: 18px; font-weight: 700; }
-/* 即時看板 */
-.bx-feed { background: #8B1F2F; color: #fff; border-color: #6B1622; justify-content: flex-start; }
-.bx-feed .bx-ic { background: rgba(255,255,255,.14); color: #fff; }
-.bx-feed .bx-h3 { color: #fff; }
+/* 即時看板（公告 C 配色：暖米紙底 + 酒紅墨字，跟行事曆同氣質）*/
+.bx-feed { background: linear-gradient(160deg, #FBF6EC, #F3EAD6); color: #1A1612; border-color: #E0C896; border-left: 5px solid #8B1F2F; justify-content: flex-start; }
+.bx-feed .bx-ic { background: #8B1F2F; color: #fff; }
+.bx-feed .bx-h3 { color: #8B1F2F; }
 .bx-feedcal { background: linear-gradient(160deg, #FBF6EC, #F3EAD6); border-color: #E0C896; justify-content: flex-start; }
 .bx-feedcal .bx-ic { background: #8B1F2F; color: #fff; }
 .bx-feedhead { display: flex; align-items: center; gap: 11px; margin-bottom: 10px; }
 .bx-live { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; margin-top: 3px; }
-.bx-feed .bx-live { color: #E0C896; }
+.bx-feed .bx-live { color: #8B1F2F; }
 .bx-feedcal .bx-live { color: #8B1F2F; }
 .bx-dot { width: 6px; height: 6px; border-radius: 99px; background: #C9A961; animation: bxpulse 2s infinite; }
+.bx-feed .bx-dot { background: #8B1F2F; }
 .bx-feedcal .bx-dot { background: #8B1F2F; }
 @keyframes bxpulse { 0% { box-shadow: 0 0 0 0 rgba(201,169,97,.55); } 70% { box-shadow: 0 0 0 7px rgba(201,169,97,0); } 100% { box-shadow: 0 0 0 0 rgba(201,169,97,0); } }
 .bx-feedlist { display: flex; flex-direction: column; flex: 1; }
-.bx-fitem { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid rgba(255,255,255,.15); }
+.bx-fitem { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid #E0C896; }
 .bx-fitem:first-child { border-top: 0; padding-top: 2px; }
 .bx-dept { flex: none; align-self: flex-start; font-size: 11px; font-weight: 700; color: #6B1622; background: #E0C896; border-radius: 5px; padding: 2px 7px; }
-.bx-ftitle { font-family: "Noto Serif TC", serif; font-size: 15px; font-weight: 600; line-height: 1.4; }
-.bx-fexc { font-size: 11.5px; color: rgba(255,255,255,.72); margin-top: 4px; line-height: 1.5; }
-.bx-fmeta { font-size: 11px; color: rgba(255,255,255,.6); margin-top: 5px; }
+.bx-ftitle { font-family: "Noto Serif TC", serif; font-size: 15px; font-weight: 600; line-height: 1.4; color: #1A1612; }
+.bx-fexc { font-size: 11.5px; color: #5e554d; margin-top: 4px; line-height: 1.5; }
+.bx-fmeta { font-size: 11px; color: #8A7F73; margin-top: 5px; }
+/* 公告列表內可滑動：顯示 1-2 則為主、捲動看更多 */
+.bx-feed .bx-feedlist { max-height: 162px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 4px; }
+.bx-feed .bx-feedlist::-webkit-scrollbar { width: 5px; }
+.bx-feed .bx-feedlist::-webkit-scrollbar-thumb { background: rgba(139,31,47,.25); border-radius: 9px; }
 .bx-feedfoot { margin-top: auto; padding-top: 10px; font-size: 12.5px; font-weight: 700; }
-.bx-feed .bx-feedfoot { color: #E0C896; }
+.bx-feed .bx-feedfoot { color: #8B1F2F; }
 .bx-feedcal .bx-feedfoot { color: #8B1F2F; }
 .bx-citem { display: flex; gap: 11px; align-items: center; padding: 8px 0; border-top: 1px solid #E0C896; }
 .bx-citem:first-child { border-top: 0; padding-top: 2px; }
@@ -718,7 +723,15 @@
 .bx-cdate .w { font-size: 9px; opacity: .85; margin-top: 1px; }
 .bx-ctitle { font-family: "Noto Serif TC", serif; font-size: 14px; font-weight: 600; line-height: 1.35; }
 .bx-empty { color: #8A7F73; font-size: 12.5px; padding: 10px 0; }
-.bx-feed .bx-empty { color: rgba(255,255,255,.6); }
+
+/* 班級大合照區（便當盒下方、安裝 App 上方 — 位置 B）*/
+.bx-class-photo { margin: 26px 0 8px; }
+.bx-class-photo .bxp-eyebrow { font-size: 11px; letter-spacing: .26em; color: #C9A961; text-align: center; }
+.bx-class-photo .bxp-h2 { font-family: "Noto Serif TC", serif; font-size: 20px; color: #8B1F2F; font-weight: 700; text-align: center; margin-top: 6px; }
+.bx-class-photo .bxp-sub { color: #8A7F73; font-size: 13px; text-align: center; margin: 6px 0 16px; }
+.bx-class-photo .bxp-frame { display: block; border-radius: 14px; overflow: hidden; cursor: zoom-in; border: 1px solid #E0C896; position: relative; box-shadow: 0 12px 30px rgba(107,22,34,.12); background: #faf8f4; padding: 0; width: 100%; }
+.bx-class-photo .bxp-frame img { width: 100%; height: auto; display: block; }
+.bx-class-photo .bxp-hint { position: absolute; right: 12px; bottom: 12px; background: rgba(26,22,18,.78); color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 99px; display: inline-flex; align-items: center; gap: 6px; pointer-events: none; }
 @media (max-width: 780px) {
   .bx-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 128px; }
   .bx-lg { grid-column: span 2; grid-row: span 1; }
