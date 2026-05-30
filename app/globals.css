@@ -709,7 +709,7 @@
 .bx-hero-h1 { font-family: "Noto Serif TC", serif; font-size: 26px; color: #8B1F2F; margin-top: 8px; font-weight: 700; }
 .bx-hero-lede { color: #8A7F73; font-size: 14px; margin-top: 8px; max-width: 60ch; line-height: 1.7; }
 .bx-wrap { padding: 18px 0 10px; }
-.bx-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; grid-auto-rows: 100px; }
+.bx-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; grid-auto-rows: 118px; }
 .bx-tile { position: relative; border-radius: 16px; padding: 16px; display: flex; flex-direction: column;
   justify-content: space-between; overflow: hidden; transition: transform .18s, box-shadow .18s;
   border: 1px solid #E8DFD0; background: #fff; text-decoration: none; color: #1A1612; }
@@ -720,7 +720,7 @@
 .bx-meta { font-size: 11.5px; color: #8A7F73; margin-top: 3px; line-height: 1.45; }
 .bx-arr { position: absolute; top: 14px; right: 15px; color: #C9A961; font-size: 15px; opacity: 0; transition: .18s; }
 .bx-tile:hover .bx-arr { opacity: 1; }
-.bx-lg { grid-column: span 2; grid-row: span 2; }
+.bx-lg { grid-column: span 2; grid-row: span 2; height: 236px; align-self: start; }
 .bx-gold { background: linear-gradient(135deg, #F7EFDD, #EFE2C4); border-color: #E0C896; }
 .bx-h3 { font-family: "Noto Serif TC", serif; font-size: 18px; font-weight: 700; }
 /* 即時看板（公告 C 配色：暖米紙底 + 酒紅墨字，跟行事曆同氣質）*/
@@ -745,9 +745,17 @@
 .bx-fexc { font-size: 11.5px; color: #5e554d; margin-top: 4px; line-height: 1.5; }
 .bx-fmeta { font-size: 11px; color: #8A7F73; margin-top: 5px; }
 /* 公告列表內可滑動：露出最新 2 則、捲動看更多 */
-.bx-feed .bx-feedlist { max-height: 140px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 4px; }
+.bx-feed .bx-feedlist { max-height: 115px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 4px; }
 .bx-feed .bx-feedlist::-webkit-scrollbar { width: 5px; }
 .bx-feed .bx-feedlist::-webkit-scrollbar-thumb { background: rgba(139,31,47,.25); border-radius: 9px; }
+/* 行事曆：3 個事件全露出（不滑動），靠 item 瘦身塞進卡片 */
+.bx-feedcal .bx-feedlist { overflow: visible; }
+.bx-feedcal .bx-citem { padding: 4px 0; }
+.bx-feedcal .bx-citem:first-child { padding-top: 0; }
+.bx-feedcal .bx-cdate { padding: 2px 6px; min-width: 42px; }
+.bx-feedcal .bx-cdate .d { font-size: 13px; }
+.bx-feedcal .bx-cdate .w { font-size: 8px; }
+.bx-feedcal .bx-ctitle { font-size: 13px; line-height: 1.3; }
 .bx-feedfoot { margin-top: auto; padding-top: 10px; font-size: 12.5px; font-weight: 700; }
 .bx-feed .bx-feedfoot { color: #8B1F2F; }
 .bx-feedcal .bx-feedfoot { color: #8B1F2F; }
@@ -772,7 +780,8 @@
 @media (max-width: 560px) { .foot .foot-inner { justify-content: center; text-align: center; } .qicheng-egg { margin-top: 8px; } }
 @media (max-width: 780px) {
   .bx-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 128px; }
-  .bx-lg { grid-column: span 2; grid-row: span 1; }
-  .bx-lg.bx-feed, .bx-lg.bx-feedcal { grid-row: span 3; }
+  /* 手機：.lg 卡片高度自然延展，避免 desktop 的 236 鎖死搭配 grid-row span 造成空白或溢出 */
+  .bx-lg { grid-column: span 2; grid-row: span 1; height: auto; align-self: stretch; }
+  .bx-lg.bx-feed, .bx-lg.bx-feedcal { grid-row: span 2; }
 }
 @media (max-width: 560px) { .bx-hero-h1 { font-size: 22px; } }
