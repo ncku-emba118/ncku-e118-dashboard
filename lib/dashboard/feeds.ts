@@ -8,7 +8,7 @@ import 'server-only';
 import { getServerClient } from '@/lib/supabase/server';
 import { deptInfo } from '@/lib/depts';
 
-export type FeedPost = { dept: string; title: string; excerpt: string; date: string; att: number };
+export type FeedPost = { id: string; dept: string; title: string; excerpt: string; date: string; att: number };
 export type FeedEvent = { date: string; weekday: string; title: string };
 
 function excerpt(md: string | null): string {
@@ -20,17 +20,18 @@ function excerpt(md: string | null): string {
   return '';
 }
 
-export async function getLatestPosts(n = 3): Promise<FeedPost[]> {
+export async function getLatestPosts(n = 5): Promise<FeedPost[]> {
   try {
     const supabase = getServerClient();
     const { data } = await supabase
       .from('posts')
-      .select('department_id, title, content, attachments, pinned, created_at')
+      .select('id, department_id, title, content, attachments, pinned, created_at')
       .eq('published', true)
       .order('pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(n);
     return (data ?? []).map((p) => ({
+      id: (p.id as string) ?? '',
       dept: deptInfo(p.department_id as string).name,
       title: (p.title as string) ?? '',
       excerpt: excerpt(p.content as string | null),

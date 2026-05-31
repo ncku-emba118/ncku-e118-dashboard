@@ -15,8 +15,10 @@ const CORS = {
 };
 
 export async function GET() {
-  const [posts, events] = await Promise.all([getLatestPosts(3), getUpcomingEvents(3)]);
-  return NextResponse.json({ posts, events }, { headers: CORS });
+  const [posts, events] = await Promise.all([getLatestPosts(5), getUpcomingEvents(3)]);
+  // 不暴露 post UUID 給公開消費者（SLC 等跨域 site）。id 只給 emba 自己的同源 SSR 用。
+  const publicPosts = posts.map(({ id: _id, ...rest }) => rest);
+  return NextResponse.json({ posts: publicPosts, events }, { headers: CORS });
 }
 
 export async function OPTIONS() {

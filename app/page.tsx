@@ -24,7 +24,7 @@ function extAttrs(c: Card) {
 }
 
 export default async function Home() {
-  const [posts, events] = await Promise.all([getLatestPosts(3), getUpcomingEvents(3)]);
+  const [posts, events] = await Promise.all([getLatestPosts(5), getUpcomingEvents(3)]);
   const cal = byKey['calendar'];
   const board = byKey['board'];
   const members = byKey['members'];
@@ -78,28 +78,27 @@ export default async function Home() {
                 <div className="bx-feedfoot">看完整行事曆 →</div>
               </a>
 
-              {/* 公告欄 即時看板 */}
-              <a className="bx-tile bx-lg bx-feed" href={board.href}>
-                <div className="bx-feedhead">
-                  <div className="bx-ic" dangerouslySetInnerHTML={{ __html: board.svg }} />
-                  <div><h3 className="bx-h3">班級公告欄</h3><div className="bx-live"><span className="bx-dot" />最新動態 · 即時更新</div></div>
-                </div>
+              {/* 公告欄 即時看板（每則公告可獨立點擊跳詳細頁）*/}
+              <div className="bx-tile bx-lg bx-feed">
+                <a className="bx-feedhead-link" href={board.href}>
+                  <div className="bx-feedhead">
+                    <div className="bx-ic" dangerouslySetInnerHTML={{ __html: board.svg }} />
+                    <div><h3 className="bx-h3">班級公告欄</h3><div className="bx-live"><span className="bx-dot" />最新動態 · 即時更新</div></div>
+                  </div>
+                </a>
                 <div className="bx-feedlist">
                   {posts.length === 0 ? (
                     <div className="bx-empty">目前沒有公告</div>
-                  ) : posts.map((p, i) => (
-                    <div className="bx-fitem" key={i}>
+                  ) : posts.filter((p) => p.id).map((p) => (
+                    <a className="bx-fitem" key={p.id} href={`/board/post/${p.id}`}>
                       <span className="bx-dept">{p.dept}</span>
-                      <div>
-                        <div className="bx-ftitle">{p.title}</div>
-                        {i === 0 && p.excerpt ? <div className="bx-fexc">{p.excerpt}</div> : null}
-                        <div className="bx-fmeta">{p.date}{p.att ? ` · ${p.att} 份附件` : ''}</div>
-                      </div>
-                    </div>
+                      <span className="bx-ftitle">{p.title}</span>
+                      <span className="bx-fmeta">{p.date}{p.att ? ` · ${p.att} 附` : ''}</span>
+                    </a>
                   ))}
                 </div>
-                <div className="bx-feedfoot">查看全部公告 →</div>
-              </a>
+                <a className="bx-feedfoot" href={board.href}>查看全部公告 →</a>
+              </div>
 
               {/* 功能卡 */}
               {SMALL.map((k) => {
