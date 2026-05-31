@@ -16,9 +16,9 @@ const CORS = {
 
 export async function GET() {
   const [posts, events] = await Promise.all([getLatestPosts(5), getUpcomingEvents(3)]);
-  // 不暴露 post UUID 給公開消費者（SLC 等跨域 site）。id 只給 emba 自己的同源 SSR 用。
-  const publicPosts = posts.map(({ id: _id, ...rest }) => rest);
-  return NextResponse.json({ posts: publicPosts, events }, { headers: CORS });
+  // id 給跨域 site（SLC）用來組 /board/post/{id} 連結。
+  // 風險面：/board/post/{id} 本身已有 published=true 過濾、UUID 不可列舉，洩漏面 ≈ 0。
+  return NextResponse.json({ posts, events }, { headers: CORS });
 }
 
 export async function OPTIONS() {
