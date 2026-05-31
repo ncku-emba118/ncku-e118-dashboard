@@ -521,131 +521,95 @@
       letter-spacing: 0.05em;
     }
 
-    /* ── PWA Install Section ── */
-    .pwa-section {
-      padding: 56px 0 32px;
+    /* ── 使用說明 + 安裝（極簡合併版，強制橫排） ── */
+    .quick-links {
+      padding: 36px 24px 20px;
       border-top: 1px dashed var(--ncku-rule);
-      margin-top: 32px;
-    }
-    .pwa-head {
+      margin-top: 36px;
       display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
       align-items: baseline;
-      gap: 16px;
-      margin-bottom: 8px;
+      gap: 0;
     }
-    .pwa-head h3 {
-      font: 400 24px/1.3 var(--font-display);
-      color: var(--ncku-ink);
-    }
-    .pwa-head .tc {
-      font: 500 15px var(--font-tc);
+    .ql-link {
+      font: 400 13px/1.5 var(--font-tc);
       color: var(--ncku-ink-soft);
+      text-decoration: none;
+      padding: 10px 14px;
+      letter-spacing: 0.02em;
+      transition: color 0.2s;
+      white-space: nowrap;
     }
-    .pwa-lede {
-      font: 400 14px/1.7 var(--font-body);
+    .ql-link:hover { color: var(--ncku-wine); }
+    .ql-meta {
       color: var(--ncku-mute);
-      max-width: 680px;
-      margin-bottom: 28px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
     }
-    .pwa-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+    .ql-dot {
+      color: var(--ncku-rule);
+      font-size: 13px;
+      user-select: none;
+      align-self: center;
     }
-    /* 用 <details> 做下拉，summary 是標題列，展開後才看到步驟 */
-    .pwa-card {
-      background: rgba(255, 255, 255, 0.55);
-      border: 1px solid var(--ncku-line);
-      border-radius: 6px;
-      padding: 0;
-      position: relative;
-      transition: border-color .2s, background .2s;
-    }
-    .pwa-card[open] {
-      background: rgba(255, 255, 255, 0.85);
-      border-color: var(--ncku-rule);
-    }
-    .pwa-card > summary {
+    .ql-install > summary {
       list-style: none;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      padding: 16px 20px;
-      user-select: none;
-    }
-    .pwa-card > summary::-webkit-details-marker { display: none; }
-    .pwa-card > summary::marker { content: ''; }
-    .pwa-card .pwa-toggle {
-      flex: none;
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      border: 1px solid var(--ncku-rule);
-      color: var(--ncku-wine);
-      font: 600 16px/1 var(--font-mono);
-      display: grid;
-      place-items: center;
-      transition: transform .2s, background .2s, color .2s;
-    }
-    .pwa-card[open] .pwa-toggle {
-      background: var(--ncku-wine);
-      color: #fff;
-      border-color: var(--ncku-wine);
-      transform: rotate(45deg);
-    }
-    .pwa-card > .pwa-card-body {
-      padding: 4px 20px 18px;
-    }
-    .pwa-card-head {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .pwa-card-platform {
-      font: 600 13px var(--font-tc);
-      color: var(--ncku-wine);
-      letter-spacing: 0.04em;
-    }
-    .pwa-card-platform-en {
-      font: 500 10px var(--font-mono);
-      letter-spacing: 0.1em;
-      color: var(--ncku-mute);
-      text-transform: uppercase;
-    }
-    .pwa-steps {
-      list-style: none;
-      counter-reset: pwastep;
-    }
-    .pwa-steps li {
-      counter-increment: pwastep;
-      position: relative;
-      padding: 6px 0 6px 26px;
-      font: 400 13px/1.6 var(--font-body);
+      font: 400 13px/1.5 var(--font-tc);
       color: var(--ncku-ink-soft);
+      padding: 10px 14px;
+      letter-spacing: 0.02em;
+      transition: color 0.2s;
+      white-space: nowrap;
     }
-    .pwa-steps li::before {
-      content: counter(pwastep);
-      position: absolute;
-      left: 0;
-      top: 7px;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: var(--ncku-paper);
-      border: 1px solid var(--ncku-line);
-      color: var(--ncku-wine);
-      font: 600 10px/16px var(--font-mono);
+    .ql-install > summary:hover { color: var(--ncku-wine); }
+    .ql-install > summary::-webkit-details-marker { display: none; }
+    .ql-install > summary::marker { content: ''; }
+    .ql-install[open] {
+      flex-basis: 100%;
       text-align: center;
     }
-    .pwa-note {
-      margin-top: 24px;
-      padding: 14px 18px;
-      background: rgba(201, 169, 97, 0.08);
-      border-left: 2px solid var(--ncku-gold);
-      font: 400 12px/1.6 var(--font-body);
+    .ql-install[open] > summary {
+      color: var(--ncku-wine);
+      font-weight: 500;
+      display: inline-block;
+    }
+    .ql-install-body {
+      margin: 8px auto 0;
+      padding: 14px 20px;
+      background: rgba(201, 169, 97, 0.06);
+      border: 1px solid var(--ncku-rule);
+      border-radius: 6px;
+      max-width: 480px;
+      text-align: left;
+    }
+    .ql-row {
+      font: 400 12.5px/1.8 var(--font-body);
       color: var(--ncku-ink-soft);
+      padding: 3px 0;
+    }
+    .ql-row strong {
+      color: var(--ncku-wine);
+      font-weight: 600;
+      margin-right: 4px;
+    }
+    .ql-row-note {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--ncku-rule);
+      font-size: 11px;
+      color: var(--ncku-mute);
+    }
+    .ql-row-note a {
+      color: var(--ncku-wine);
+      text-decoration: underline;
+    }
+    @media (max-width: 560px) {
+      .quick-links { padding: 28px 12px 16px; }
+      .ql-link, .ql-install > summary { padding: 10px 10px; font-size: 12.5px; }
+      .ql-meta { font-size: 10.5px; }
     }
 
     /* ── Footer ── */

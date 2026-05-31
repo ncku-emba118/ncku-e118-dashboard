@@ -43,6 +43,7 @@ export default async function Home() {
           </a>
           <ul className="nav-links">
             <li><a href="#apps">系統入口</a></li>
+            <li><a href="#help">使用說明</a></li>
             <li><a href="#install">安裝 App</a></li>
           </ul>
         </div>
@@ -131,64 +132,27 @@ export default async function Home() {
             </div>
           </section>
 
-          {/* ── PWA Install ── */}
-          <section id="install" className="pwa-section">
-            <div className="pwa-head">
-              <h3>Install as App</h3>
-              <span className="tc">安裝到桌面，像 App 一樣使用</span>
-            </div>
-            <p className="pwa-lede">
-              E118 Dashboard 採用 PWA（Progressive Web App）格式設計。把網址加到主畫面後，會在桌面產生一個 App 圖示，
-              點開即直接進入 Dashboard，無瀏覽器網址列、開啟速度更快，視覺體驗等同原生 App。
-            </p>
-            <div className="pwa-grid">
-              <details className="pwa-card">
-                <summary>
-                  <div className="pwa-card-head"><div><div className="pwa-card-platform">iPhone / iPad</div><div className="pwa-card-platform-en">iOS · Safari</div></div></div>
-                  <span className="pwa-toggle" aria-hidden="true">+</span>
-                </summary>
-                <div className="pwa-card-body">
-                  <ol className="pwa-steps">
-                    <li>用 <strong>Safari</strong> 打開本頁面（Chrome 不支援）</li>
-                    <li>點下方工具列正中央「<strong>分享</strong>」圖示（方框 + 上箭頭）</li>
-                    <li>下滑選單，點「<strong>加入主畫面</strong>」</li>
-                    <li>名稱保留「E118」，按右上「<strong>加入</strong>」</li>
-                  </ol>
-                </div>
-              </details>
-              <details className="pwa-card">
-                <summary>
-                  <div className="pwa-card-head"><div><div className="pwa-card-platform">Android 手機</div><div className="pwa-card-platform-en">Android · Chrome</div></div></div>
-                  <span className="pwa-toggle" aria-hidden="true">+</span>
-                </summary>
-                <div className="pwa-card-body">
-                  <ol className="pwa-steps">
-                    <li>用 <strong>Chrome</strong> 打開本頁面</li>
-                    <li>點網址列右側「<strong>⋮</strong>」（三個點）</li>
-                    <li>選「<strong>安裝應用程式</strong>」或「加到主畫面」</li>
-                    <li>確認後，桌面會出現 E118 圖示</li>
-                  </ol>
-                </div>
-              </details>
-              <details className="pwa-card">
-                <summary>
-                  <div className="pwa-card-head"><div><div className="pwa-card-platform">電腦桌機</div><div className="pwa-card-platform-en">Mac / Windows · Chrome / Edge</div></div></div>
-                  <span className="pwa-toggle" aria-hidden="true">+</span>
-                </summary>
-                <div className="pwa-card-body">
-                  <ol className="pwa-steps">
-                    <li>用 <strong>Chrome</strong> 或 <strong>Edge</strong> 開啟本頁面</li>
-                    <li>網址列右側會出現「<strong>安裝</strong>」小圖示（螢幕 + 下箭頭）</li>
-                    <li>點下去，按「<strong>安裝</strong>」</li>
-                    <li>會在 Dock / 工作列產生獨立 App 圖示</li>
-                  </ol>
-                </div>
-              </details>
-            </div>
-            <div className="pwa-note">
-              <strong>小提醒：</strong>安裝後若 Dashboard 有更新，App 會自動同步最新內容（連網時）。
-              如需移除：iOS 長按圖示 → 刪除；Android 長按 → 解除安裝；桌機開啟 App 後右上「⋮」→ 解除安裝。
-            </div>
+          {/* ── 使用說明 + 安裝（極簡合併版） ── */}
+          <section id="help" className="quick-links">
+            <a
+              href="/assets/E118-guide.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ql-link"
+              aria-label="開啟 E118 班網使用指南 PDF（16 頁，於新分頁瀏覽）"
+            >
+              📘 使用指南<span className="ql-meta"> · PDF</span>
+            </a>
+            <span className="ql-dot" aria-hidden="true">·</span>
+            <details id="install" className="ql-install">
+              <summary>📱 安裝成 App<span className="ql-meta"> · 3 步驟</span></summary>
+              <div className="ql-install-body">
+                <div className="ql-row"><strong>iPhone / iPad</strong>　Safari → 分享 → 加入主畫面</div>
+                <div className="ql-row"><strong>Android</strong>　Chrome → ⋮ → 安裝應用程式</div>
+                <div className="ql-row"><strong>桌機</strong>　Chrome / Edge 網址列右側「安裝」icon</div>
+                <div className="ql-row-note">完整圖文步驟見 <a href="/assets/E118-guide.pdf" target="_blank" rel="noopener noreferrer">使用指南 PDF</a> 第 4 頁。</div>
+              </div>
+            </details>
           </section>
         </div>
       </main>
