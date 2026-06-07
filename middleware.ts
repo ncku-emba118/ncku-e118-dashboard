@@ -22,6 +22,9 @@ import { COOKIE_NAME, verifySession } from './lib/auth/jwt';
 const PUBLIC_API_PATHS = new Set<string>([
   '/api/board/login',
   '/api/board/push/dispatch',
+  // L1: LINE Bot 對帳收款連動。route 自己用 timing-safe Bearer BOT_SYNC_SECRET 把關
+  // （同 push/dispatch 模式：機器對機器，無 session cookie，middleware 放行、route 為 source of truth）
+  '/api/board/finance/income/sync',
 ]);
 
 /**
