@@ -32,6 +32,9 @@ const envSchema = z.object({
 
   // P0-2: cron / scheduled function 用 secret，避免 dispatch endpoint 被任何登入帳號狂打
   CRON_SECRET: z.string().min(32).optional(),
+
+  // L1: LINE Bot 對帳收款連動用 secret（Bearer），保護 /api/board/finance/income/sync
+  BOT_SYNC_SECRET: z.string().min(32).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
