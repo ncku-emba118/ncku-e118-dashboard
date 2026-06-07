@@ -561,6 +561,43 @@ export async function createFinanceIncome(input: {
   return { id: data.id as string, error: null };
 }
 
+/**
+ * L1 · LINE Bot 對帳收款連動：每個班務活動一列，以 source_ref ("bot:<活動ID>") UPSERT。
+ * 每次對帳完覆蓋成當前已入帳總額 → 冪等、永不重複、自我修正。created_by=null（系統）。
+ */
+export async function upsertBotIncome(input: {
+  source_ref: string;
+  occurred_on: string;
+  category: string;
+  amount: number;
+  note: string | null;
+}): Promise<{ error: string | null }> {
+  const supabase = getServerClient();
+  const { error } = await supabase
+    .from('finance_income')
+    .upsert(
+      {
+        source_ref: input.source_ref,
+        occurred_on: input.occurred_on,
+        category: input.category,
+        amount: input.amount,
+        note: input.note,
+        created_by: null,
+      },
+      { onConflict: 'source_ref' },
+    );
+  return { error: error ? error.message : null };
+}
+
+/** 該活動已入帳歸零 / 全退時，移除其 bot 收入列，避免殘留虛增收入。 */
+export async function deleteBotIncomeByRef(
+  source_ref: string,
+): Promise<{ error: string | null }> {
+  const supabase = getServerClient();
+  const { error } = await supabase.from('finance_income').delete().eq('source_ref', source_ref);
+  return { error: error ? error.message : null };
+}
+
 export async function deleteFinanceIncome(
   id: string,
   deletedBy: string,
