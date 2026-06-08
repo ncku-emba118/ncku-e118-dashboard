@@ -6,12 +6,14 @@
  * 下個 commit 加 markdown 渲染（rehype-sanitize 防 XSS）+ 留言區
  */
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import { getServerClient } from '@/lib/supabase/server';
 import { deptInfo, readSession, canManageDept } from '@/lib/auth/session';
 import Markdown from '@/components/Markdown';
 import Attachments from '@/components/Attachments';
 import Comments, { type Comment } from '@/components/Comments';
 import { normalizeAttachments } from '@/lib/attachment';
+import { logPostView } from '@/lib/board/view_logger';
 
 const UUID_RE = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
 
@@ -63,11 +65,16 @@ export default async function PostDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [post, sessionResult] = await Promise.all([
+  const [post, sessionResult, h] = await Promise.all([
     loadPost(id),
     readSession(),
+    headers(),
   ]);
   if (!post) notFound();
+
+  // 記一次閱讀（fail-soft、不 await 不阻塞 render；用 void 避免 floating promise warning）
+  // dedup 在 DB 端：同 visitor 同 post 同天只算 1 筆。table 不存在時 logger 自吞錯。
+  void logPostView(post.id, h);
 
   const initialComments = await loadComments(post.id);
   const canModerate =

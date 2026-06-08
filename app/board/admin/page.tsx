@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 import { readSession, deptInfo } from '@/lib/auth/session';
 import { getServerClient } from '@/lib/supabase/server';
 import AdminPostsTable from '@/components/AdminPostsTable';
+import { getPostViewCounts } from '@/lib/board/view_logger';
 
 type AdminPost = {
   id: string;
@@ -370,6 +371,8 @@ export default async function AdminHome() {
   const isSuper = session.role === 'super';
   // 只有 super（秘書長）看推播統計
   const pushStats = isSuper ? await loadPushStats() : null;
+  // 撈 view counts（fail-soft；DB 沒這個表會回空 Map → 顯示 0）
+  const viewCounts = await getPostViewCounts(posts.map((p) => p.id));
   const deptLabel = isSuper
     ? '全部 7 部門'
     : deptInfo(session.home_dept_id).name;
@@ -523,8 +526,8 @@ export default async function AdminHome() {
           </section>
         )}
 
-        {/* Posts list — client component, 內含搜尋框 + 手機 responsive */}
-        <AdminPostsTable posts={posts} />
+        {/* Posts list — client component, 內含搜尋框 + 手機 responsive + 閱讀數 */}
+        <AdminPostsTable posts={posts} viewCounts={Object.fromEntries(viewCounts)} />
       </div>
     </main>
   );

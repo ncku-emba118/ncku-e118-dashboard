@@ -25,7 +25,13 @@ type AdminPost = {
   accounts: { username: string } | null;
 };
 
-export default function AdminPostsTable({ posts }: { posts: AdminPost[] }) {
+export default function AdminPostsTable({
+  posts,
+  viewCounts = {},
+}: {
+  posts: AdminPost[];
+  viewCounts?: Record<string, number>;
+}) {
   const [q, setQ] = useState('');
 
   const filtered = useMemo(() => {
@@ -213,6 +219,11 @@ export default function AdminPostsTable({ posts }: { posts: AdminPost[] }) {
                     }}
                   >
                     {formatDate(p.created_at)} · 👤 {p.accounts?.username ?? '—'}
+                    {p.published && (
+                      <span style={{ marginLeft: 8 }} title="累積閱讀數（同 visitor 同天 = 1）">
+                        · 👁 {viewCounts[p.id] ?? 0}
+                      </span>
+                    )}
                   </div>
                 </a>
                 <AdminPostRowActions postId={p.id} title={p.title} published={p.published} />
