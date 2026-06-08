@@ -81,9 +81,10 @@ body{
 .card h3{font:600 19px var(--ftc);color:var(--ink);margin-bottom:7px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .card .ctag{font:600 10px var(--fb);letter-spacing:.05em;padding:2px 8px;border-radius:5px;color:#fff;display:inline-block;margin-bottom:9px}
 .card .ci{font-size:12.5px;color:var(--ink-soft);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:40px}
-.card .meta{margin-top:13px;padding-top:11px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;font-size:11.5px;color:var(--mute)}
+.card .meta{margin-top:13px;padding-top:11px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;font-size:11.5px;color:var(--mute);transition:opacity .18s}
 .card .meta b{color:var(--wine-soft);font-weight:600}
-.card .more{position:absolute;right:16px;bottom:14px;font:600 11px var(--fb);color:var(--gold-deep);opacity:0;transition:.18s}
+.card .more{position:absolute;right:18px;bottom:16px;font:600 12px var(--fb);color:var(--gold-deep);opacity:0;transition:opacity .18s;pointer-events:none}
+.card:hover .meta{opacity:0}
 .card:hover .more{opacity:1}
 
 /* modal */
