@@ -7,7 +7,7 @@
 import { redirect } from 'next/navigation';
 import { readSession, deptInfo } from '@/lib/auth/session';
 import { getServerClient } from '@/lib/supabase/server';
-import AdminPostRowActions from '@/components/AdminPostRowActions';
+import AdminPostsTable from '@/components/AdminPostsTable';
 
 type AdminPost = {
   id: string;
@@ -498,8 +498,8 @@ export default async function AdminHome() {
             <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 22, fontWeight: 400, color: '#1A1612', margin: '24px 0 12px' }}>
               Push Subscribers
             </h2>
-            {/* 第 1 列 — 4 個 KPI 卡 */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 10 }}>
+            {/* 第 1 列 — 4 個 KPI 卡（auto-fit：手機自動換行成 2x2）*/}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 10 }}>
               <StatCard label="目前訂閱裝置" value={pushStats.totalSubs} hint="device 計，一人多裝置算多筆" />
               <StatCard label="近 24 小時新增" value={pushStats.subs24h} accent={pushStats.subs24h > 0} />
               <StatCard label="近 7 天新增" value={pushStats.subs7d} accent={pushStats.subs7d > 0} />
@@ -509,8 +509,8 @@ export default async function AdminHome() {
                 hint={pushStats.lastJob ? pushStats.lastJob.postTitle.slice(0, 14) + (pushStats.lastJob.postTitle.length > 14 ? '…' : '') : '尚無推播'}
               />
             </div>
-            {/* 第 2 列 — 裝置分佈 + 失敗訂閱 並排 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            {/* 第 2 列 — 裝置分佈 + 失敗訂閱（auto-fit 手機堆疊）*/}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10, marginBottom: 10 }}>
               <DeviceMixCard mix={pushStats.deviceMix} />
               <FailingSubsCard subs={pushStats.failingSubs} />
             </div>
@@ -523,150 +523,8 @@ export default async function AdminHome() {
           </section>
         )}
 
-        {/* Posts list */}
-        <h2
-          style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            fontSize: 22,
-            fontWeight: 400,
-            color: '#1A1612',
-            margin: '24px 0 12px',
-          }}
-        >
-          Posts ({posts.length})
-        </h2>
-
-        {posts.length === 0 ? (
-          <div
-            style={{
-              padding: '48px 32px',
-              textAlign: 'center',
-              background: '#fff',
-              border: '1px dashed #D9CDB8',
-              borderRadius: 8,
-              color: '#8A7F73',
-            }}
-          >
-            <p style={{ marginBottom: 14, fontSize: 15 }}>
-              還沒有公告
-            </p>
-            <a
-              href="/board/admin/new"
-              style={{
-                color: '#8B1F2F',
-                fontSize: 14,
-                textDecoration: 'none',
-              }}
-            >
-              ✍ 寫第一則公告 →
-            </a>
-          </div>
-        ) : (
-          <div
-            style={{
-              background: '#fff',
-              border: '1px solid #D9CDB8',
-              borderRadius: 6,
-              overflow: 'hidden',
-            }}
-          >
-            {posts.map((p, i) => {
-              const dept = deptInfo(p.department_id);
-              return (
-                <div
-                  key={p.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    padding: '14px 18px',
-                    borderBottom:
-                      i < posts.length - 1
-                        ? '1px solid rgba(26,22,18,0.08)'
-                        : 'none',
-                  }}
-                >
-                  <span
-                    style={{
-                      padding: '2px 8px',
-                      background: `${dept.color}1F`,
-                      color: dept.color,
-                      fontFamily: "'Noto Serif TC', serif",
-                      fontWeight: 500,
-                      fontSize: 11,
-                      borderRadius: 3,
-                      minWidth: 44,
-                      textAlign: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {dept.name}
-                  </span>
-                  <a
-                    href={`/board/post/${p.id}`}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      textDecoration: 'none',
-                      color: 'inherit',
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontFamily: "'Noto Serif TC', serif",
-                        fontWeight: 600,
-                        fontSize: 15,
-                        color: '#1A1612',
-                        marginBottom: 2,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {p.pinned && (
-                        <span
-                          style={{
-                            color: '#C9A961',
-                            marginRight: 6,
-                            fontSize: 11,
-                          }}
-                        >
-                          📌
-                        </span>
-                      )}
-                      {p.title}
-                      {!p.published && (
-                        <span
-                          style={{
-                            marginLeft: 8,
-                            fontSize: 10,
-                            color: '#8A7F73',
-                            background: '#EDE6D6',
-                            padding: '1px 6px',
-                            borderRadius: 2,
-                            letterSpacing: '0.05em',
-                          }}
-                        >
-                          DRAFT
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: '#8A7F73',
-                        fontFamily: 'ui-monospace, Menlo, monospace',
-                      }}
-                    >
-                      {formatDate(p.created_at)} · 👤 {p.accounts?.username ?? '—'}
-                    </div>
-                  </a>
-                  <AdminPostRowActions postId={p.id} title={p.title} />
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {/* Posts list — client component, 內含搜尋框 + 手機 responsive */}
+        <AdminPostsTable posts={posts} />
       </div>
     </main>
   );
