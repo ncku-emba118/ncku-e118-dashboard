@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 import { readSession, deptInfo } from '@/lib/auth/session';
 import { getServerClient } from '@/lib/supabase/server';
 import AdminPostsTable from '@/components/AdminPostsTable';
+import AdminLineRouting from '@/components/AdminLineRouting';
 import { getPostViewCounts } from '@/lib/board/view_logger';
 
 type AdminPost = {
@@ -525,6 +526,9 @@ export default async function AdminHome() {
             <RecentDeliveriesTable recent={pushStats.recent} />
           </section>
         )}
+
+        {/* LINE Broadcast Routing — super only（component 內含自己的 fetch + UI）*/}
+        {isSuper && <AdminLineRouting />}
 
         {/* Posts list — client component, 內含搜尋框 + 手機 responsive + 閱讀數 */}
         <AdminPostsTable posts={posts} viewCounts={Object.fromEntries(viewCounts)} />
