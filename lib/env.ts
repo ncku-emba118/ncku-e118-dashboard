@@ -35,6 +35,10 @@ const envSchema = z.object({
 
   // L1: LINE Bot 對帳收款連動用 secret（Bearer），保護 /api/board/finance/income/sync
   BOT_SYNC_SECRET: z.string().min(32).optional(),
+
+  // L2: 班網→Bot 推 LINE 班群用，GAS Web App URL
+  // 沒設定時 dispatcher 不會打 LINE（fail-soft）— web push 照樣運作
+  LINE_BOT_WEBHOOK_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

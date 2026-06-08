@@ -16,6 +16,8 @@ import { getServerClient } from '../supabase/server';
 import { getEnv } from '../env';
 import { makePayload, type PushPayload } from './payload';
 import { sendOne, type SubscriptionShape, type DeliveryResult } from './web-push';
+import { pushPostToLineGroup } from '../board/line_push';
+import { deptInfo } from '../depts';
 
 type ClaimedJob = {
   job_id: string;
@@ -143,6 +145,26 @@ async function processOneJob(
     return;
   }
   const post = postRow as unknown as PostRow;
+
+  // L2: 同步 fire-and-forget 推 LINE 班群（不阻塞下方 web push fan-out）
+  // 未設 LINE_BOT_WEBHOOK_URL / BOT_SYNC_SECRET → line_push.ts 自動 skip + 回 ok:false
+  // 任何錯誤都吞掉、只 log，不影響 web push 流程或 job 標記
+  void pushPostToLineGroup({
+    postId: post.id,
+    title: post.title,
+    deptName: deptInfo(post.department_id).name,
+  })
+    .then((r) => {
+      if (r.ok) {
+        console.info('[push.dispatcher.line_pushed]', { jobTrace, post_id: post.id, status: r.status });
+      } else if (r.reason !== 'no_url' && r.reason !== 'no_secret') {
+        // no_url / no_secret 是 expected（沒 config）— 不刷 warn log
+        console.warn('[push.dispatcher.line_push_failed]', { jobTrace, post_id: post.id, reason: r.reason, detail: r.detail });
+      }
+    })
+    .catch((err) => {
+      console.warn('[push.dispatcher.line_push_throw]', { jobTrace, post_id: post.id, error: err instanceof Error ? err.message : String(err) });
+    });
 
   // 2026-05-27 設計簡化：全班統一一條推播 channel。
   // 任何部門發新公告 → fan-out 給所有 push_subscriptions。
