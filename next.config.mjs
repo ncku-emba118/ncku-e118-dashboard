@@ -59,6 +59,10 @@ const nextConfig = {
   // 既有 dashboard 頁面用 Next.js 預設 SSG（build 後產生純靜態 HTML）
   // /board/* 後續加 SSR + API routes
   // 部署用 @netlify/plugin-nextjs（Netlify 自動偵測 Next.js）
+  // 社團總表為 public/clubs/index.html 靜態頁；rewrite 讓乾淨網址 /clubs 直接服務該檔
+  async rewrites() {
+    return [{ source: '/clubs', destination: '/clubs/index.html' }];
+  },
   async headers() {
     return [
       {

@@ -11,6 +11,18 @@ type HelpEntry = {
 
 // 對應 ARCHITECTURE.md 第 5 章「help popover 文案」— 修改任一張卡時同步更新對應 entry
 const HELP: Record<string, HelpEntry> = {
+  clubs: {
+    title: '社團總表',
+    domain: 'emba.aqualux.dev/clubs',
+    desc: '成大 EMBA 校友總會所屬 17 個社團的完整名錄，涵蓋球類競技、戶外探險、藝文品味與學習公益，方便找到興趣相投的社團加入。為保護個資，社長／總幹事僅顯示屆別＋姓名，電話不公開。',
+    steps: [
+      '首頁以卡片牆顯示全部 17 個社團（依成立年份排序）',
+      '上方 4 個類別篩選：球類競技 / 戶外探險 / 藝文品味 / 學習公益',
+      '點任一社團卡片展開詳情：社長、總幹事、例會時間地點、社費、年度活動',
+      '社長／總幹事僅顯示屆別＋姓名，個人手機號碼不公開',
+      '想加入請洽該社社長或校友總會社團窗口',
+    ],
+  },
   finance: {
     title: '班級經費中心',
     domain: 'emba.aqualux.dev/finance',

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>成功大學 EMBA 社團總表 ｜ E118</title>
+<meta name="theme-color" content="#8B1F2F" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Noto+Serif+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --wine:#8B1F2F; --wine-deep:#6B1622; --wine-soft:#A84453;
+  --gold:#C9A961; --gold-soft:#E0C896; --gold-deep:#A8853C;
+  --cream:#FAF7F2; --paper:#F4EFE6; --ivory:#EDE6D6;
+  --ink:#1A1612; --ink-soft:#4A413A; --mute:#8A7F73; --line:#D9CDB8;
+  --rule:rgba(26,22,18,.10);
+  --fd:'Cormorant Garamond','Iowan Old Style',Georgia,serif;
+  --ftc:'Noto Serif TC','PingFang TC','Songti TC',serif;
+  --fb:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,'PingFang TC','Noto Sans TC',sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{
+  background:
+    radial-gradient(circle at 0% 0%,rgba(201,169,97,.05) 0%,transparent 55%),
+    radial-gradient(circle at 100% 100%,rgba(139,31,47,.04) 0%,transparent 50%),
+    var(--cream);
+  color:var(--ink); font:15px/1.65 var(--fb);
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+
+.back{display:inline-flex;align-items:center;gap:6px;margin:22px 0 0;
+  font:600 13px var(--fb);color:var(--wine);text-decoration:none;letter-spacing:.02em;
+  padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:#fff;transition:.16s}
+.back:hover{border-color:var(--gold);background:var(--paper)}
+
+.mast{padding:22px 0 26px;border-bottom:2px solid var(--wine);position:relative;margin-top:18px}
+.mast::after{content:'';position:absolute;left:0;right:0;bottom:-5px;height:1px;background:var(--gold)}
+.kicker{font:600 11px var(--fb);letter-spacing:.34em;text-transform:uppercase;color:var(--gold-deep);margin-bottom:10px}
+.mast h1{font:700 38px/1.05 var(--ftc);color:var(--wine);letter-spacing:.01em}
+.mast .en{font:500 14px var(--fd);letter-spacing:.22em;text-transform:uppercase;color:var(--mute);margin-top:8px}
+.mast .lead{margin-top:14px;max-width:660px;color:var(--ink-soft);font-size:14px}
+
+.pii{margin:18px 0 0;display:flex;gap:10px;align-items:flex-start;
+  background:rgba(139,31,47,.05);border:1px solid var(--rule);border-left:3px solid var(--gold);
+  padding:11px 15px;border-radius:8px;font-size:12.5px;color:var(--ink-soft);max-width:760px}
+.pii b{color:var(--wine)}
+
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:24px 0 6px}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink-soft);
+  font:500 12.5px var(--fb);padding:6px 13px;border-radius:999px;cursor:pointer;transition:.16s}
+.chip:hover{border-color:var(--gold)}
+.chip.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.chip .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.c-ball{background:#8B1F2F}.c-out{background:#3E6B4F}.c-art{background:#A8853C}.c-edu{background:#3A5A7A}
+.count{font:600 13px var(--fd);letter-spacing:.12em;color:var(--mute)}
+.count b{color:var(--wine);font-size:18px}
+
+.stage{padding:22px 0 80px}
+.ic{stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.own{display:inline-flex;align-items:center;gap:4px;background:var(--gold);color:var(--wine-deep);
+  font:700 10px var(--fb);letter-spacing:.08em;padding:2px 7px;border-radius:5px;vertical-align:middle}
+.t-ball{background:#8B1F2F}.t-out{background:#3E6B4F}.t-art{background:#A8853C}.t-edu{background:#3A5A7A}
+
+/* gallery */
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 18px 18px;
+  cursor:pointer;position:relative;transition:.2s;overflow:hidden}
+.card::before{content:'';position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--wine),var(--gold))}
+.card:hover{transform:translateY(-4px);box-shadow:0 16px 34px -16px rgba(107,22,34,.4);border-color:var(--gold)}
+.card .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.iconw{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;
+  background:linear-gradient(145deg,var(--wine),var(--wine-deep));color:var(--gold-soft)}
+.iconw .ic{width:24px;height:24px;stroke-width:1.5}
+.ybadge{text-align:right}
+.ybadge .a{font:500 10px var(--fd);letter-spacing:.12em;color:var(--mute)}
+.ybadge .r{font:700 17px var(--ftc);color:var(--wine);line-height:1.1}
+.card h3{font:600 19px var(--ftc);color:var(--ink);margin-bottom:7px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.card .ctag{font:600 10px var(--fb);letter-spacing:.05em;padding:2px 8px;border-radius:5px;color:#fff;display:inline-block;margin-bottom:9px}
+.card .ci{font-size:12.5px;color:var(--ink-soft);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:40px}
+.card .meta{margin-top:13px;padding-top:11px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;font-size:11.5px;color:var(--mute)}
+.card .meta b{color:var(--wine-soft);font-weight:600}
+.card .more{position:absolute;right:16px;bottom:14px;font:600 11px var(--fb);color:var(--gold-deep);opacity:0;transition:.18s}
+.card:hover .more{opacity:1}
+
+/* modal */
+.ov{position:fixed;inset:0;background:rgba(26,22,18,.55);backdrop-filter:blur(3px);display:none;place-items:center;z-index:90;padding:24px}
+.ov.show{display:grid}
+.modal{background:var(--cream);max-width:560px;width:100%;max-height:86vh;overflow:auto;border-radius:18px;border:1px solid var(--gold);box-shadow:0 30px 80px -20px rgba(0,0,0,.5)}
+.modal .mh{background:linear-gradient(135deg,var(--wine),var(--wine-deep));color:#fff;padding:26px 26px 22px;position:relative}
+.modal .mh .micon{width:52px;height:52px;border-radius:13px;background:rgba(255,255,255,.12);display:grid;place-items:center;color:var(--gold-soft);margin-bottom:14px}
+.modal .mh .micon .ic{width:28px;height:28px}
+.modal .mh h2{font:700 26px var(--ftc);letter-spacing:.01em}
+.modal .mh .sub{margin-top:6px;font:500 12px var(--fb);color:var(--gold-soft);letter-spacing:.08em}
+.modal .x{position:absolute;top:18px;right:20px;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;font-size:18px;cursor:pointer;line-height:1}
+.modal .mb{padding:22px 26px 28px}
+.modal .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;margin-bottom:8px}
+.modal .gi .k{font:600 10.5px var(--fb);letter-spacing:.1em;text-transform:uppercase;color:var(--gold-deep);margin-bottom:3px}
+.modal .gi .v{font-size:13.5px;color:var(--ink)}
+.modal .sec{margin-top:16px}
+.modal .sec h4{font:600 13px var(--ftc);color:var(--wine);margin-bottom:6px;display:flex;align-items:center;gap:7px}
+.modal .sec h4::before{content:'';width:14px;height:2px;background:var(--gold)}
+.modal .sec p{font-size:13px;color:var(--ink-soft);line-height:1.75}
+
+.foot{border-top:1px solid var(--rule);padding:22px 0 40px;color:var(--mute);font-size:12px}
+.foot b{color:var(--wine-soft)}
+
+@media(max-width:560px){
+  .wrap{padding:0 18px}
+  .mast h1{font-size:29px}
+  .modal .grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">← 返回班級面板</a>
+  <header class="mast">
+    <div class="kicker">National Cheng Kung University · EMBA</div>
+    <h1>成功大學 EMBA 社團總表</h1>
+    <div class="en">Alumni Clubs &amp; Societies Directory</div>
+    <p class="lead">校友總會所屬 17 個社團，涵蓋球類競技、戶外探險、藝文品味與學習公益四大類，記錄自 2002 年至今的社群風貌。點擊任一社團卡片可展開完整資訊。</p>
+    <div class="pii"><span>🔒</span><div><b>個資處理：</b>本表社長／總幹事僅顯示「屆別＋姓名」，<b>所有個人手機號碼一律不公開</b>。需聯絡請洽班級通訊錄或校友總會社團窗口。</div></div>
+  </header>
+
+  <div class="toolbar">
+    <div class="chips" id="chips"></div>
+    <div class="count">共 <b id="cnt">17</b> 個社團</div>
+  </div>
+  <div class="stage"><div class="gal" id="gal"></div></div>
+
+  <footer class="foot">資料來源：成大 EMBA 校友總會社團介紹詳表 · 由 <b>E118</b> 班整理上線 · 個資（聯絡電話）已移除。</footer>
+</div>
+
+<div class="ov" id="ov"><div class="modal" id="modal"></div></div>
+
+<script>
+const CATS={ball:{label:'球類競技',cls:'ball'},out:{label:'戶外探險',cls:'out'},art:{label:'藝文品味',cls:'art'},edu:{label:'學習公益',cls:'edu'}};
+const ICONS={
+ flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
+ racket:'<ellipse cx="9.5" cy="9" rx="6.2" ry="7"/><line x1="13.6" y1="13.8" x2="20" y2="20.5"/><path d="M6 7.5h7M6.5 10.5h6.5M9.5 4v10"/>',
+ wine:'<path d="M8 22h8M12 15v7M7 4h10c-.3 4-1.5 7.5-5 7.5S7.3 8 7 4Z"/>',
+ music:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+ activity:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+ sparkles:'<path d="M12 3l1.8 5L19 10l-5.2 2L12 17l-1.8-5L5 10l5.2-2L12 3Z"/><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14Z"/>',
+ grad:'<path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1 2.7 3 6 3s6-2 6-3v-5"/>',
+ bike:'<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>',
+ ball:'<circle cx="12" cy="12" r="9"/><path d="M12 3a15 15 0 0 0 0 18"/><path d="M12 3a15 15 0 0 1 0 18"/><path d="M3.5 8.5h17M3.5 15.5h17"/>',
+ gauge:'<path d="m12 13 4-4"/><path d="M3.4 18a9 9 0 1 1 17.2 0"/><circle cx="12" cy="13" r="1.4"/>',
+ compass:'<circle cx="12" cy="12" r="9.5"/><polygon points="16 8 13.8 13.8 8 16 10.2 10.2 16 8"/>',
+ mountain:'<path d="M3 20h18L13.5 6 9.5 13l-2-3L3 20Z"/><path d="m9.5 13 1.6 2.4"/>',
+ waves:'<path d="M2 7c.6.5 1.3 1 2.6 1C7.2 8 7.2 6 9.8 6c2.6 0 2.4 2 5 2 2.6 0 2.6-2 5.2-2 1.3 0 2 .5 2.6 1"/><path d="M2 13c.6.5 1.3 1 2.6 1 2.6 0 2.6-2 5.2-2 2.6 0 2.4 2 5 2 2.6 0 2.6-2 5.2-2 1.3 0 2 .5 2.6 1"/><path d="M2 19c.6.5 1.3 1 2.6 1 2.6 0 2.6-2 5.2-2 2.6 0 2.4 2 5 2 2.6 0 2.6-2 5.2-2 1.3 0 2 .5 2.6 1"/>',
+ target:'<circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.6"/>'
+};
+const CLUBS=[
+{n:'高爾夫球隊',ad:2002,cat:'ball',ic:'flag',pres:'E117 陳芊葳',mgr:'E117 莊文君',time:'每週五 19:00–21:00',place:'台南府城高爾夫球練習場',fee:'年繳：學長 10,000／學姐 8,000／師長 5,000',mem:'144 位',intro:'由 EMBA／AMBA／IMBA 學長姊組成，將原有球敘轉為有組織球社，藉球敘聯誼運動強身、增進情誼、提升凝聚力。',ann:'校友盃、全國 EMBA 高爾夫球賽、月例賽、院長盃、會長盃'},
+{n:'羽球社',ad:2009,cat:'ball',ic:'racket',pres:'E117 楊俊哲',mgr:'E117 游東穎',time:'週四 19:00–21:00、週日 17:00–20:00',place:'週四依公告／週日成大新館 4F',fee:'年繳 10,000（眷屬 7 折 7,000）；可半年繳；零打 200',mem:'不設限',intro:'秉持「以校為榮、以社為耀」，藉球聚聯誼達成各屆交流互動，展現傳承精神，推廣羽球成為全民運動。',ann:'成大羽球公開賽、全國 EMBA 羽球賽'},
+{n:'品酒社',ad:2009,cat:'art',ic:'wine',pres:'E115 傅菽駗',mgr:'E112 林麗容',time:'每月最後一週擇一天（偶於假日）',place:'每月初通知',fee:'年繳 1,500',mem:'不設限',intro:'品嘗及認識各種酒類文化與酒莊背景，讓校友定期聚會放鬆、交流資訊與心得；分知識／玩耍／交友／藝術四型品酒會。',ann:'年度海上遊艇品酒會、酒神慶典拍賣會、頂級空中品酒會（私人飛機飛往法國）'},
+{n:'音樂社',ad:2015,cat:'art',ic:'music',pres:'E109 楊昇翰',mgr:'E110 楊惠茹',time:'每月第二或第三週六 17:00–21:00',place:'南市青年音樂研習中心（勝利路 69 號 5F）',fee:'年繳 3,000（7/1–6/30，中途按月）',mem:'管院師生（不限）',intro:'由愛好音樂、對各類樂器有興趣的學長姐組成，在繁忙生活中享受音樂薰陶，於校園大小活動展現才華。',ann:'不定期樂器學習成果展'},
+{n:'慢跑社',ad:2016,cat:'out',ic:'activity',pres:'E117 李念勳',mgr:'E117 陳美如',time:'每週六 16:30',place:'光復校區操場',fee:'年繳 3,000（9 月底前繳）',mem:'管院師生（不限）',intro:'由愛好運動的學長姐組成，藉慢跑訓練舒壓鍛鍊身心，並代表成大參與全國馬拉松賽事為校爭光。',ann:'全國 EMBA 馬拉松接力賽、曾文水庫馬拉松、台南古都馬拉松、玉井蜜旺果盃芒果路跑'},
+{n:'舞蹈社',ad:2016,cat:'art',ic:'sparkles',pres:'E111 單淑青',mgr:'E103 劉仁龍',time:'週一 19:00–21:00',place:'西門路二段 351 號 5F',fee:'年繳 8,000',mem:'不設限',intro:'劉子銘老師領銜授課，現代創作舞蹈含探戈、華爾滋、恰恰、爵士、騷莎、倫巴等，成果於校內重要晚會發表。',ann:'校內重要晚會發表'},
+{n:'躍榕盟',ad:2016,cat:'edu',ic:'grad',pres:'E116 辜素真',mgr:'E116 林志明',time:'不定期',place:'依社團公布',fee:'年繳 3,000',mem:'不設限',intro:'以成大管院師資群為師，透過講座與個案研討培養獨立思辨、提升解決實務問題能力；以「把愛傳出去」促進人文關懷。',ann:'不定期講座與研討會、「把愛傳出去」關懷活動'},
+{n:'單車社',ad:2017,cat:'out',ic:'bike',pres:'E117 吳坤祐',mgr:'E117 陳芊葳',time:'每月不定期不定點',place:'全省各處，依群組公告',fee:'入社費 3,000',mem:'不限',intro:'推廣自行車運動，增進身心健康，分享騎乘喜樂與節能減碳的新生活文化。',ann:'鐵馬論劍及各大比賽'},
+{n:'籃球社',ad:2017,cat:'ball',ic:'ball',pres:'E116 李政諭',mgr:'E117 范良定',time:'每週六 17:00–19:00',place:'台南一中體育館 3F（健美洋行）',fee:'5,000／學年',mem:'不設限',intro:'由愛好球類運動的學長姐組成，在繁忙生活中享受運動活力，增進情誼、提升凝聚力並推廣成大知名度。',ann:'興傳盃邀請賽、籃球社迎新、全國 EMBA 籃球賽'},
+{n:'重機社',ad:2018,cat:'out',ic:'gauge',pres:'E109 楊昇翰',mgr:'—',time:'每月 1 次（時間不定）',place:'地點不定',fee:'2,000／年',mem:'20 人',intro:'與全國 EMBA 重機同好共享騎乘樂趣，每季小跑、年度大跑，發現台灣美好的一面，並辦愛心小跑把 EMBA 的愛送到需要的角落。',ann:'每季小跑、每半年大跑（2 日）、每年環島（3 日）、年度愛心小跑'},
+{n:'壘球社',ad:2018,cat:'ball',ic:'ball',pres:'E116 吳和泰',mgr:'E117 范良定',time:'每週六或日 07:00–11:00',place:'自強校區棒球場、忠孝／湖東球場',fee:'年繳 6,000（每年 10 月）',mem:'不設限',intro:'廣邀愛好棒壘球的學長姐，享受運動場地與賽事，體驗球隊向心力，藉賽事提升凝聚力、增進各屆情誼。',ann:'全國 EMBA 壘球賽（每年 9–11 月）'},
+{n:'戈友會',ad:2018,cat:'out',ic:'compass',pres:'E110 陳雅芬',mgr:'E116 林楷頤',time:'—',place:'—',fee:'3,000／學年',mem:'300 人',intro:'以「挑戰自我、永不放棄、運動強身」精神鼓勵學長姐參加戈壁挑戰賽，做好行前準備安全完賽，推動成大 EMBA 活躍國際舞台。',ann:'每年 5 月戈壁挑戰賽'},
+{n:'登山社',ad:2019,cat:'out',ic:'mountain',pres:'E102 鄭明',mgr:'E109 陳宏銘',time:'—',place:'—',fee:'入社費 5,000',mem:'不限',intro:'提倡正當休閒、鍛鍊堅強體魄，從事登山知識與技術訓練，培養同學團結、友愛、樂觀、奮鬥之精神。',ann:'年度社慶、登山講座、全國成大校友會登山大會師、大小百岳、谷關七雄訓練營'},
+{n:'熱舞社',ad:2021,cat:'art',ic:'sparkles',pres:'E102 鄭明',mgr:'E117 劉洪真',time:'每週三 18:30–20:30',place:'成大健康休閒中心（勝利校區）韻律教室',fee:'半年 5,000／一年 10,000（含表演服裝）',mem:'不限',intro:'師資莊雪香老師。藉流行創意舞蹈美化線條、氣韻昇華，引領時尚，於各式晚會與交接活動受邀表演。',ann:'校友會理事長交接、新生迎新、跨年晚會、春酒、畢業晚會表演'},
+{n:'桌球社',ad:2021,cat:'ball',ic:'ball',pres:'E96 黃元碩',mgr:'E98 郝立智',time:'每週三 20:00–22:00',place:'台南一中體育館',fee:'年費 1,500',mem:'上限 20',intro:'由愛好桌球的學長姐組成，在繁忙生活中享受運動活力，增進情誼、提升凝聚力並推廣成大知名度。',ann:'理事長盃球賽'},
+{n:'海洋運動社',ad:2024,cat:'out',ic:'waves',pres:'E112 蘇敬舜',mgr:'E117 王修凡',time:'每月 1 次（時間不定）',place:'地點不定',fee:'首次入社費 1,000＋社費 5,000，次年起僅社費',mem:'不限',intro:'將海洋運動與 MBA 課程結合，規劃帆船、潛水、衝浪、SUP 等活動，於團隊合作中學習領導、溝通與應變，全方位提升自我。',ann:'自由潛水／衝浪／SUP 體驗、國內外帆船賽事、國際帆船認證班、跳島旅遊'},
+{n:'匹克球社',ad:2026,cat:'ball',ic:'target',pres:'E118 卓彤穎',mgr:'—',time:'每週二 19:00–21:00',place:'羽潮匹克球館—永康勁拍館',fee:'年費 3,000；零打 200',mem:'120 人',intro:'成大 EMBA 第 1 屆匹克球社（2026 創立）。結合網球、羽球與桌球特色，趣味、運動與策略兼具，老少咸宜易上手。',ann:'跨校 EMBA 友誼賽、各地賽事、全國 EMBA 匹克球邀請賽'}
+];
+
+const $=s=>document.querySelector(s);
+const svg=(ic,sz)=>`<svg class="ic" width="${sz}" height="${sz}" viewBox="0 0 24 24">${ICONS[ic]}</svg>`;
+const isOwn=c=>c.pres.startsWith('E118')||c.mgr.startsWith('E118');
+const ownBadge=c=>isOwn(c)?'<span class="own">★ E118 本班</span>':'';
+let cat='all';
+const filtered=()=>cat==='all'?CLUBS:CLUBS.filter(c=>c.cat===cat);
+
+const chipDefs=[['all','全部','']].concat(Object.entries(CATS).map(([k,v])=>[k,v.label,v.cls]));
+$('#chips').innerHTML=chipDefs.map(([k,l,c])=>`<button class="chip ${k==='all'?'on':''}" data-c="${k}">${c?`<span class="dot c-${c}"></span>`:''}${l}</button>`).join('');
+
+function render(){
+  const d=filtered(); $('#cnt').textContent=d.length;
+  $('#gal').innerHTML=d.map(c=>{const i=CLUBS.indexOf(c);return `
+   <div class="card" data-open="${i}">
+     <div class="top"><div class="iconw">${svg(c.ic,24)}</div>
+       <div class="ybadge"><div class="a">EST.</div><div class="r">${c.ad}</div></div></div>
+     <h3>${c.n} ${ownBadge(c)}</h3>
+     <span class="ctag t-${CATS[c.cat].cls}">${CATS[c.cat].label}</span>
+     <div class="ci">${c.intro}</div>
+     <div class="meta"><span>例會 <b>${c.time==='—'?'不定期':c.time.split('、')[0]}</b></span><span>社員 <b>${c.mem}</b></span></div>
+     <span class="more">詳情 ›</span>
+   </div>`;}).join('');
+}
+function openModal(i){const c=CLUBS[i];
+  $('#modal').innerHTML=`
+   <div class="mh"><div class="micon">${svg(c.ic,28)}</div><button class="x" aria-label="關閉">×</button>
+     <h2>${c.n} ${ownBadge(c)}</h2><div class="sub">${CATS[c.cat].label} · 成立於 ${c.ad}</div></div>
+   <div class="mb">
+     <div class="grid">
+       <div class="gi"><div class="k">社長</div><div class="v">${c.pres}</div></div>
+       <div class="gi"><div class="k">總幹事</div><div class="v">${c.mgr}</div></div>
+       <div class="gi"><div class="k">例會時間</div><div class="v">${c.time}</div></div>
+       <div class="gi"><div class="k">例會地點</div><div class="v">${c.place}</div></div>
+       <div class="gi"><div class="k">社費</div><div class="v">${c.fee}</div></div>
+       <div class="gi"><div class="k">社員人數</div><div class="v">${c.mem}</div></div>
+     </div>
+     <div class="sec"><h4>社團簡介</h4><p>${c.intro}</p></div>
+     <div class="sec"><h4>年度活動</h4><p>${c.ann}</p></div>
+   </div>`;
+  $('#ov').classList.add('show');
+}
+document.addEventListener('click',e=>{
+  const ch=e.target.closest('.chip'); if(ch){cat=ch.dataset.c;document.querySelectorAll('.chip').forEach(b=>b.classList.toggle('on',b.dataset.c===cat));render();return;}
+  const cd=e.target.closest('[data-open]'); if(cd){openModal(+cd.dataset.open);return;}
+  if(e.target.closest('.x')||e.target.id==='ov'){$('#ov').classList.remove('show');}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#ov').classList.remove('show');});
+render();
+</script>
+</body>
+</html>
