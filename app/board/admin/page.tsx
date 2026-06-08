@@ -19,6 +19,63 @@ type AdminPost = {
   accounts: { username: string } | null;
 };
 
+type PushStats = {
+  totalSubs: number;
+  subs24h: number;
+  subs7d: number;
+  lastJob: {
+    postTitle: string;
+    sent: number;
+    failed: number;
+    pending: number;
+    sentAt: string | null;
+  } | null;
+};
+
+async function loadPushStats(): Promise<PushStats> {
+  const supabase = getServerClient();
+  const now = new Date();
+  const d1 = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  // 三個 count query 並行
+  const [{ count: totalSubs }, { count: subs24h }, { count: subs7d }] = await Promise.all([
+    supabase.from('push_subscriptions').select('id', { count: 'exact', head: true }),
+    supabase.from('push_subscriptions').select('id', { count: 'exact', head: true }).gte('created_at', d1),
+    supabase.from('push_subscriptions').select('id', { count: 'exact', head: true }).gte('created_at', d7),
+  ]);
+
+  // 最近一則 push_job + 其 deliveries
+  let lastJob: PushStats['lastJob'] = null;
+  const { data: latestJob } = await supabase
+    .from('push_jobs')
+    .select('id, post_id, finished_at, posts(title)')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (latestJob) {
+    const { data: deliveries } = await supabase
+      .from('push_deliveries')
+      .select('status')
+      .eq('job_id', latestJob.id);
+    const rows = deliveries || [];
+    lastJob = {
+      postTitle: ((latestJob as unknown as { posts: { title: string } | null }).posts?.title) ?? '(已刪除)',
+      sent: rows.filter((d) => d.status === 'sent').length,
+      failed: rows.filter((d) => d.status === 'failed' || d.status === 'gone').length,
+      pending: rows.filter((d) => d.status === 'pending' || d.status === 'timeout_retryable').length,
+      sentAt: (latestJob as unknown as { finished_at: string | null }).finished_at,
+    };
+  }
+
+  return {
+    totalSubs: totalSubs ?? 0,
+    subs24h: subs24h ?? 0,
+    subs7d: subs7d ?? 0,
+    lastJob,
+  };
+}
+
 async function loadManageablePosts(
   role: 'super' | 'dept',
   homeDeptId: string | null,
@@ -47,12 +104,34 @@ async function loadManageablePosts(
 
 import { formatDateTW as formatDate } from '@/lib/format';
 
+/** 小型 KPI 卡 — 訂閱統計用 */
+function StatCard({ label, value, hint, accent }: { label: string; value: number | string; hint?: string; accent?: boolean }) {
+  return (
+    <div style={{
+      background: accent ? 'rgba(139,31,47,0.06)' : '#fff',
+      border: `1px solid ${accent ? 'rgba(139,31,47,0.25)' : '#D9CDB8'}`,
+      borderRadius: 6,
+      padding: '14px 16px',
+      minHeight: 78,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+    }}>
+      <div style={{ fontSize: 11, color: '#8A7F73', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 28, fontWeight: 600, color: accent ? '#8B1F2F' : '#1A1612', lineHeight: 1.1, marginTop: 4 }}>{value}</div>
+      {hint && <div style={{ fontSize: 10.5, color: '#8A7F73', marginTop: 4, lineHeight: 1.4 }}>{hint}</div>}
+    </div>
+  );
+}
+
 export default async function AdminHome() {
   const session = await readSession();
   if (!session) redirect('/board/login?next=/board/admin');
 
   const posts = await loadManageablePosts(session.role, session.home_dept_id);
   const isSuper = session.role === 'super';
+  // 只有 super（秘書長）看推播統計
+  const pushStats = isSuper ? await loadPushStats() : null;
   const deptLabel = isSuper
     ? '全部 7 部門'
     : deptInfo(session.home_dept_id).name;
@@ -174,6 +253,25 @@ export default async function AdminHome() {
             · 可管 {deptLabel}
           </span>
         </div>
+
+        {/* Push stats（只給 super 看）*/}
+        {pushStats && (
+          <section style={{ marginBottom: 20 }}>
+            <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 22, fontWeight: 400, color: '#1A1612', margin: '24px 0 12px' }}>
+              Push Subscribers
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              <StatCard label="目前訂閱裝置" value={pushStats.totalSubs} hint="device 計，一人多裝置算多筆" />
+              <StatCard label="近 24 小時新增" value={pushStats.subs24h} accent={pushStats.subs24h > 0} />
+              <StatCard label="近 7 天新增" value={pushStats.subs7d} accent={pushStats.subs7d > 0} />
+              <StatCard
+                label="最近一則送達"
+                value={pushStats.lastJob ? `${pushStats.lastJob.sent}/${pushStats.lastJob.sent + pushStats.lastJob.failed + pushStats.lastJob.pending}` : '—'}
+                hint={pushStats.lastJob ? pushStats.lastJob.postTitle.slice(0, 14) + (pushStats.lastJob.postTitle.length > 14 ? '…' : '') : '尚無推播'}
+              />
+            </div>
+          </section>
+        )}
 
         {/* Posts list */}
         <h2
