@@ -589,6 +589,47 @@ export async function upsertBotIncome(input: {
   return { error: error ? error.message : null };
 }
 
+// ── 群組對話記錄（年度回顧 / 風格模仿素材）─────────────────────────
+/**
+ * 寫入一則群組訊息（LINE Bot 上報）。
+ * line_msg_id 去重：同一則訊息重送只記一次（onConflict 完整 unique index，相容 .upsert）。
+ * 偽匿名：只存 LINE userId，姓名留待批次解析；可依 user_id 整批刪除（個資）。
+ */
+export async function insertGroupMessage(input: {
+  groupId: string;
+  userId: string;
+  type: string;
+  content: string | null;
+  lineMsgId: string | null;
+  sentAt: string | null;
+}): Promise<{ error: string | null }> {
+  const supabase = getServerClient();
+  const { error } = await supabase.from('group_messages').upsert(
+    {
+      group_id: input.groupId,
+      user_id: input.userId,
+      type: input.type,
+      content: input.content,
+      line_msg_id: input.lineMsgId,
+      sent_at: input.sentAt,
+    },
+    { onConflict: 'line_msg_id', ignoreDuplicates: true },
+  );
+  return { error: error ? error.message : null };
+}
+
+/** 依 LINE userId 整批刪除其群組訊息（個資刪除 / 管理員維運用）。回傳刪除筆數。 */
+export async function deleteGroupMessagesByUser(
+  userId: string,
+  groupId?: string,
+): Promise<{ error: string | null; count: number }> {
+  const supabase = getServerClient();
+  let q = supabase.from('group_messages').delete({ count: 'exact' }).eq('user_id', userId);
+  if (groupId) q = q.eq('group_id', groupId);
+  const { error, count } = await q;
+  return { error: error ? error.message : null, count: count ?? 0 };
+}
+
 /** 該活動已入帳歸零 / 全退時，移除其 bot 收入列，避免殘留虛增收入。 */
 export async function deleteBotIncomeByRef(
   source_ref: string,

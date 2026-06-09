@@ -25,6 +25,8 @@ const PUBLIC_API_PATHS = new Set<string>([
   // L1: LINE Bot 對帳收款連動。route 自己用 timing-safe Bearer BOT_SYNC_SECRET 把關
   // （同 push/dispatch 模式：機器對機器，無 session cookie，middleware 放行、route 為 source of truth）
   '/api/board/finance/income/sync',
+  // 群組對話記錄：LINE Bot 上報群組發言（route 用 timing-safe Bearer BOT_SYNC_SECRET 把關，機器對機器）
+  '/api/board/group-log',
 ]);
 
 /**
