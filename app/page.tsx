@@ -15,7 +15,7 @@ type Card = {
   href: string; localHref: string | null; external: boolean; feed: string | null;
 };
 const byKey = Object.fromEntries((cards as Card[]).map((c) => [c.key, c]));
-const SMALL = ['finance', 'drive', 'thesis', 'reports', 'clubs', 'activities', 'field-study'];
+const SMALL = ['finance', 'drive', 'thesis', 'reports', 'credits', 'clubs', 'activities', 'field-study'];
 const OFFICER_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>';
 

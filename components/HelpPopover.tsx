@@ -11,6 +11,18 @@ type HelpEntry = {
 
 // 對應 ARCHITECTURE.md 第 5 章「help popover 文案」— 修改任一張卡時同步更新對應 entry
 const HELP: Record<string, HelpEntry> = {
+  credits: {
+    title: '學分追蹤',
+    domain: 'emba.aqualux.dev/credits',
+    desc: '個人畢業學分自我試算工具：依成大 EMBA 修課規則（畢業 45 學分，分基礎／核心／必修／專業必選／選修五類），把修過的課打勾即自動計算進度，並可自填新生營、運動賽事等活動學分。資料只存在自己手機、不上傳，換手機可用備份連結還原。',
+    steps: [
+      '點各類別卡片展開，把修過的課打勾，上方進度環即時更新',
+      '「其他／活動學分」可自填新生營、運動賽事、海外參訪等有學分的活動',
+      '隨時看「離畢業還差幾學分」與各類別缺額',
+      '換手機：按「備份／換手機」，把專屬連結用 LINE 傳給自己，新手機點開即還原',
+      '採認與歸類以系辦公告為準，此表僅供個人自我追蹤',
+    ],
+  },
   clubs: {
     title: '社團總表',
     domain: 'emba.aqualux.dev/clubs',

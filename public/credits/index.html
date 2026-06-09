@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>學分追蹤 · 儀表板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4EEE2; --paper2:#FBF7EE; --ink:#231E1A; --ink2:#6E645A;
+  --wine:#8A2E3B; --wine-d:#6E1F2B; --gold:#B0813A; --line:#E0D5C2;
+  --good:#3E7C54; --shadow:0 1px 2px rgba(60,40,20,.06),0 8px 24px -12px rgba(80,40,20,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:"Noto Sans TC",system-ui,sans-serif;color:var(--ink);
+  background:
+    radial-gradient(120% 80% at 100% 0%,#FBF6EB 0%,transparent 55%),
+    radial-gradient(100% 70% at 0% 100%,#F0E7D5 0%,transparent 50%),
+    var(--paper);
+  min-height:100dvh;line-height:1.5;padding:0 0 calc(100px + env(safe-area-inset-bottom));
+}
+.wrap{max-width:760px;margin:0 auto;padding:0 18px}
+.num{font-family:"Fraunces",serif;font-variant-numeric:tabular-nums;font-feature-settings:"ss01"}
+
+header{padding:26px 0 8px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.brand{font-family:"Noto Serif TC",serif;font-weight:700;font-size:22px;letter-spacing:.01em}
+.brand small{display:block;font-family:"Noto Sans TC";font-weight:400;font-size:12px;color:var(--ink2);letter-spacing:.18em;margin-top:2px}
+.kicker{font-size:11px;letter-spacing:.16em;color:var(--gold);text-transform:uppercase;font-weight:700}
+
+.hero{
+  background:linear-gradient(180deg,var(--paper2),#F7F1E6);
+  border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);
+  padding:24px;margin-top:14px;display:flex;gap:22px;align-items:center;position:relative;overflow:hidden
+}
+.hero::after{content:"";position:absolute;inset:0;border-radius:22px;
+  background:radial-gradient(80% 120% at 0% 0%,rgba(138,46,59,.06),transparent 60%);pointer-events:none}
+.ring{flex:0 0 132px;width:132px;height:132px;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .pct{font-size:38px;font-weight:600;line-height:1;color:var(--wine)}
+.ring .pct sup{font-size:16px;font-weight:600;margin-left:1px}
+.ring .lab{font-size:11px;color:var(--ink2);letter-spacing:.1em;margin-top:3px}
+.hero-r{flex:1;min-width:0}
+.bignum{font-size:15px;color:var(--ink2);margin-bottom:2px}
+.bignum b{font-family:"Fraunces";font-size:30px;font-weight:600;color:var(--ink);margin-right:2px}
+.headline{font-family:"Noto Serif TC",serif;font-weight:700;font-size:21px;margin:8px 0 4px;line-height:1.3}
+.headline .hl{color:var(--wine)}
+.sub{font-size:13px;color:var(--ink2)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{font-size:12px;padding:5px 10px;border-radius:999px;background:#F3E3E4;color:var(--wine-d);border:1px solid #ecccce;font-weight:500}
+.chip.ok{background:#E7F1E9;color:var(--good);border-color:#cfe6d5}
+.chip.act{background:#F6ECD8;color:var(--gold);border-color:#e8d4ab}
+
+.sec-h{display:flex;align-items:center;gap:10px;margin:26px 2px 12px}
+.sec-h h2{font-family:"Noto Serif TC",serif;font-size:16px;font-weight:600}
+.sec-h .rule{flex:1;height:1px;background:var(--line)}
+.cards{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--paper2);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.card.act{border-color:#e6d3a8;background:linear-gradient(180deg,#FCF6E8,#FBF3E2)}
+.card-top{display:flex;align-items:center;gap:14px;padding:16px 18px;cursor:pointer;user-select:none;min-height:64px}
+.cn{flex:1;min-width:0}
+.cn .t{font-weight:700;font-size:15.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cn .t .req{font-size:11px;font-weight:600;color:var(--ink2);background:#efe6d4;padding:3px 8px;border-radius:6px}
+.cn .t .req.act{background:#efdcb4;color:#7d5a18}
+.cn .n{font-size:12px;color:var(--ink2);margin-top:3px}
+.cn .hint{font-size:11px;color:var(--gold);margin-top:4px;font-weight:600;display:flex;align-items:center;gap:4px}
+.card.open .cn .hint{display:none}
+.cstat{text-align:right;flex:0 0 auto}
+.cstat .big{font-family:"Fraunces";font-size:22px;font-weight:600;line-height:1}
+.cstat .big.done{color:var(--good)}
+.cstat .big.act{color:var(--gold)}
+.cstat .of{font-size:12px;color:var(--ink2)}
+.chevbtn{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;color:var(--ink2);margin-right:-8px}
+.chevbtn svg{transition:transform .3s}
+.card.open .chevbtn svg{transform:rotate(90deg)}
+.bar{height:7px;border-radius:99px;background:#ece2cf;margin:0 18px 14px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--wine),var(--gold));transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.bar i.full{background:linear-gradient(90deg,#3E7C54,#5fa873)}
+
+.courses{max-height:0;overflow:hidden;transition:max-height .45s ease}
+.card.open .courses{max-height:2200px}
+.crow{display:flex;align-items:center;gap:13px;padding:14px 8px 14px 18px;border-top:1px dashed var(--line);cursor:pointer;min-height:52px}
+.crow:active{background:#f6edda}
+.box{flex:0 0 24px;width:24px;height:24px;border-radius:7px;border:2px solid #cbbfa8;display:grid;place-items:center;transition:.2s;background:#fff}
+.crow.done .box{background:var(--good);border-color:var(--good)}
+.box svg{opacity:0;transform:scale(.5);transition:.2s}
+.crow.done .box svg{opacity:1;transform:scale(1)}
+.cname{flex:1;font-size:14.5px}
+.crow.done .cname{color:var(--ink2);text-decoration:line-through;text-decoration-color:#cbbfa8}
+.ck{font-family:"Fraunces";font-size:14px;color:var(--ink2);font-weight:600;flex:0 0 auto}
+.rowdel{flex:0 0 44px;width:44px;height:44px;border:none;background:none;color:#c08;color:#b6473f;opacity:.55;display:grid;place-items:center;cursor:pointer;border-radius:10px}
+.rowdel:active{background:#f3e0de;opacity:1}
+.addrow{padding:15px 18px;border-top:1px dashed var(--line);color:var(--gold);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:48px}
+.addrow:active{background:#f6edda}
+.addrow.big{justify-content:center;color:#fff;background:var(--gold);border-radius:0}
+.addrow.big:active{background:#9c7230}
+.emptyhint{padding:14px 18px;border-top:1px dashed var(--line)}
+.emptyhint p{font-size:12.5px;color:var(--ink2);margin-bottom:10px;line-height:1.6}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.preset{font-size:13px;padding:9px 13px;border-radius:999px;background:#fff;border:1px solid #e6d3a8;color:#7d5a18;font-weight:600;cursor:pointer;min-height:40px;display:flex;align-items:center;gap:5px}
+.preset:active{background:#f6ecd8}
+
+.toolbar{position:fixed;left:0;right:0;bottom:0;padding:10px 18px calc(12px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,rgba(244,238,226,0),var(--paper) 36%)}
+.toolbar .inner{max-width:760px;margin:0 auto;display:flex;gap:10px}
+.btn{flex:1;border:1px solid var(--line);background:var(--paper2);color:var(--ink);border-radius:14px;
+  padding:15px;min-height:52px;font-family:inherit;font-size:15px;font-weight:700;box-shadow:var(--shadow);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn.primary{background:var(--wine);color:#fff;border-color:var(--wine-d)}
+.btn.ghost{flex:0 0 auto;padding:15px 18px}
+.btn:active{transform:translateY(1px)}
+
+.scrim{position:fixed;inset:0;background:rgba(40,28,18,.45);backdrop-filter:blur(3px);display:none;align-items:flex-end;justify-content:center;z-index:50}
+.scrim.on{display:flex}
+.sheet{background:var(--paper2);width:100%;max-width:760px;border-radius:22px 22px 0 0;padding:22px 20px calc(26px + env(safe-area-inset-bottom));box-shadow:0 -12px 40px rgba(40,20,10,.25);animation:up .32s cubic-bezier(.2,.8,.2,1);position:relative}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.xclose{position:absolute;top:12px;right:12px;width:44px;height:44px;border:none;background:#efe6d4;color:var(--ink2);border-radius:50%;font-size:20px;cursor:pointer;display:grid;place-items:center;line-height:1}
+.xclose:active{background:#e4d6bd}
+.sheet h3{font-family:"Noto Serif TC",serif;font-size:18px;margin-bottom:6px;padding-right:44px}
+.sheet p{font-size:13px;color:var(--ink2);margin-bottom:14px}
+.field{width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;padding:14px;font-family:inherit;font-size:16px;color:var(--ink);resize:none}
+.linkbox{display:flex;gap:8px;margin:10px 0}
+.linkbox input{flex:1;border:1px solid var(--line);background:#fbf6ec;border-radius:12px;padding:14px 12px;font-size:13px;color:var(--ink);font-family:ui-monospace,monospace;min-height:50px}
+.mini{border:none;background:var(--wine);color:#fff;border-radius:12px;padding:0 18px;min-height:50px;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+.row2{display:flex;gap:10px;margin-top:16px}
+.row2 .btn{flex:1}
+.hint2{font-size:12px;color:var(--gold);margin-top:10px;line-height:1.6}
+.selwrap{display:flex;gap:8px;margin-top:10px}
+.selwrap select,.selwrap input{border:1px solid var(--line);background:#fff;border-radius:12px;padding:14px;font-family:inherit;font-size:16px}
+.selwrap input{flex:1;width:auto}
+.selwrap select{flex:1.4}
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;opacity:0;transition:.3s;z-index:60;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.foot{font-size:12px;color:var(--ink2);text-align:center;margin:24px 0 4px;line-height:1.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="kicker">NCKU EMBA</div>
+      <div class="brand">學分追蹤表<small>畢業進度一覽</small></div>
+    </div>
+    <div style="text-align:right"><div class="num" id="todayN" style="font-size:13px;color:var(--ink2)"></div></div>
+  </header>
+
+  <section class="hero">
+    <div class="ring">
+      <svg width="132" height="132" viewBox="0 0 132 132">
+        <circle cx="66" cy="66" r="56" fill="none" stroke="#e8ddc8" stroke-width="13"/>
+        <circle id="ringFg" cx="66" cy="66" r="56" fill="none" stroke="url(#g1)" stroke-width="13"
+          stroke-linecap="round" stroke-dasharray="351.8" stroke-dashoffset="351.8"/>
+        <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#8A2E3B"/><stop offset="1" stop-color="#B0813A"/></linearGradient></defs>
+      </svg>
+      <div class="mid"><div class="pct num"><span id="pct">0</span><sup>%</sup></div><div class="lab">已修畢</div></div>
+    </div>
+    <div class="hero-r">
+      <div class="bignum"><b class="num" id="doneCr">0</b> / <span class="num">45</span> 學分</div>
+      <div class="headline" id="headline">開始記錄你的學分</div>
+      <div class="sub" id="subline">點下方各類別，把修過的課打勾</div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </section>
+
+  <div class="sec-h"><h2>各類別進度</h2><div class="rule"></div></div>
+  <div class="cards" id="cards"></div>
+
+  <p class="foot">
+    依成大 EMBA 修課規則：畢業 45 學分（基礎9／核心15／必修3／專業必選3／選修15），論文 6 學分另計。<br>
+    「其他／活動學分」之採認與歸類以系辦公告為準。此表僅供個人自我追蹤。<br>
+    資料只存在你這支手機，不會上傳。
+  </p>
+</div>
+
+<div class="toolbar"><div class="inner">
+  <button class="btn primary" onclick="openBackup()">📲 備份／換手機</button>
+  <button class="btn ghost" onclick="openRestore()">↺ 還原</button>
+</div></div>
+
+<!-- backup -->
+<div class="scrim" id="scrimB"><div class="sheet">
+  <button class="xclose" onclick="closeAll()" aria-label="關閉">✕</button>
+  <h3>備份 · 換手機</h3>
+  <p>你的紀錄只存在這支手機。要換手機或備份，把下面這條「專屬連結」用 LINE 傳給自己，<b>在新手機點開連結就會自動還原</b>。</p>
+  <div class="linkbox"><input id="bLink" readonly><button class="mini" onclick="copy('bLink','已複製連結')">複製</button></div>
+  <p style="margin:14px 0 4px">或複製這段短代碼，到新手機按「還原」貼上：</p>
+  <div class="linkbox"><input id="bCode" readonly><button class="mini" onclick="copy('bCode','已複製代碼')">複製</button></div>
+  <div class="hint2">💡 建議傳給自己的 LINE「Keep 記事」，永遠找得到。</div>
+</div></div>
+
+<!-- restore -->
+<div class="scrim" id="scrimR"><div class="sheet">
+  <button class="xclose" onclick="closeAll()" aria-label="關閉">✕</button>
+  <h3>還原紀錄</h3>
+  <p>貼上你之前備份的「連結」或「短代碼」，把打勾紀錄搬過來。</p>
+  <textarea class="field" id="rIn" rows="3" placeholder="在這裡貼上連結或代碼…"></textarea>
+  <div class="row2"><button class="btn primary" onclick="doRestore()">還原</button></div>
+</div></div>
+
+<!-- add -->
+<div class="scrim" id="scrimA"><div class="sheet">
+  <button class="xclose" onclick="closeAll()" aria-label="關閉">✕</button>
+  <h3 id="addTitle">新增課程</h3>
+  <p id="addDesc">母清單沒有的課？自己加進來，一樣會算進學分。</p>
+  <input class="field" id="aName" placeholder="名稱（例：新生營、運動賽事）">
+  <div class="selwrap">
+    <select id="aCat"></select>
+    <input id="aCr" type="number" inputmode="decimal" placeholder="學分" value="">
+  </div>
+  <div class="row2"><button class="btn primary" onclick="doAdd()">新增並打勾</button></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/credits/data.js"></script>
+<script src="/credits/core.js"></script>
+<script>
+const $=s=>document.querySelector(s), C=2*Math.PI*56;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._);t._=setTimeout(()=>t.classList.remove('on'),1700)}
+function copy(id,m){const el=document.getElementById(id);el.select();navigator.clipboard?.writeText(el.value).then(()=>toast(m)).catch(()=>{document.execCommand('copy');toast(m)})}
+const CK='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6"/></svg>';
+const TRASH='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2m-9 0v14a1 1 0 001 1h8a1 1 0 001-1V6"/></svg>';
+
+function courseRow(c){
+  const done=Tracker.isDone(c.id), cust=String(c.id).startsWith('x');
+  return `<div class="crow ${done?'done':''}" onclick="tog('${c.id}')">
+    <div class="box">${CK}</div>
+    <div class="cname">${c.n}</div>
+    <div class="ck">${c.k}</div>
+    ${cust?`<button class="rowdel" onclick="event.stopPropagation();delC('${c.id}')" aria-label="刪除">${TRASH}</button>`:''}
+  </div>`;
+}
+
+function render(){
+  const r=Tracker.compute();
+  $('#ringFg').style.strokeDashoffset = C*(1-r.percent/100);
+  $('#pct').textContent=r.percent;
+  $('#doneCr').textContent=r.totalDone;
+
+  if(r.graduated){
+    $('#headline').innerHTML='🎓 學分已修滿，恭喜！';
+    $('#subline').textContent='五大類與總學分都達標，準備畢業吧。';
+  }else if(r.remaining>0){
+    $('#headline').innerHTML='離畢業還差 <span class="hl num">'+r.remaining+'</span> 學分';
+    $('#subline').textContent = r.gaps.length? '尚未補滿：'+r.gaps.map(g=>g.key+' 還差'+g.short).join('、') : '總學分還差一點，加油！';
+  }else{
+    $('#headline').innerHTML='總學分已達 45，<span class="hl">尚有類別未補滿</span>';
+    $('#subline').textContent = r.gaps.map(g=>g.key+' 還差 '+g.short).join('、');
+  }
+
+  $('#chips').innerHTML = CATEGORIES.map(cat=>{
+    const b=r.byCat[cat.key];
+    if(cat.activity) return b.done>0? `<span class="chip act">其他 +${b.done}</span>`:'';
+    const ok=b.done>=cat.req;
+    return `<span class="chip ${ok?'ok':''}">${cat.key} ${b.done}/${cat.req}${ok?' ✓':''}</span>`;
+  }).join('');
+
+  $('#cards').innerHTML = CATEGORIES.map(cat=>{
+    const b=r.byCat[cat.key];
+    if(cat.activity){
+      const rows=b.courses.map(courseRow).join('');
+      const presets=ACTIVITY_PRESETS.map(p=>`<button class="preset" onclick="quickAdd('${p}')">＋ ${p}</button>`).join('');
+      const body = b.courses.length
+        ? rows + `<div class="addrow big" onclick="openAdd('其他')">＋ 新增活動／其他學分</div>`
+        : `<div class="emptyhint"><p>參加有學分的活動（新生營、運動賽事、海外參訪…）就加進來，自己填學分、納入總計。</p><div class="presets">${presets}</div></div>
+           <div class="addrow big" onclick="openAdd('其他')">＋ 自訂新增（填名稱與學分）</div>`;
+      return `<div class="card act">
+        <div class="card-top" onclick="toggleCard(this)">
+          <div class="cn"><div class="t">其他／活動學分<span class="req act">自填</span></div><div class="n">${cat.note}</div>
+            <div class="hint">▸ 點此展開／新增</div></div>
+          <div class="cstat"><div class="big act num">${b.done}</div><div class="of">學分</div></div>
+          <div class="chevbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        </div>
+        <div class="courses">${body}</div>
+      </div>`;
+    }
+    const pct=Math.min(100,Math.round(b.done/cat.req*100)), full=b.done>=cat.req;
+    const rows=b.courses.map(courseRow).join('');
+    return `<div class="card">
+      <div class="card-top" onclick="toggleCard(this)">
+        <div class="cn"><div class="t">${cat.key}<span class="req">需 ${cat.req}</span></div><div class="n">${cat.note}</div>
+          <div class="hint">▸ 點此展開課程清單</div></div>
+        <div class="cstat"><div class="big num ${full?'done':''}">${b.done}</div><div class="of">/ ${cat.req} 學分</div></div>
+        <div class="chevbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      </div>
+      <div class="bar"><i class="${full?'full':''}" style="width:${pct}%"></i></div>
+      <div class="courses">${rows}<div class="addrow" onclick="openAdd('${cat.key}')">＋ 新增「${cat.key}」課程</div></div>
+    </div>`;
+  }).join('');
+}
+function toggleCard(el){el.parentNode.classList.toggle('open')}
+function tog(id){Tracker.toggle(id)}
+function delC(id){ if(confirm('確定刪除這筆自訂項目？')) Tracker.removeCustom(id); }
+
+let addCat='選修';
+function openBackup(){$('#bLink').value=Tracker.backupLink();$('#bCode').value=Tracker.code();$('#scrimB').classList.add('on')}
+function openRestore(){$('#rIn').value='';$('#scrimR').classList.add('on')}
+function fillCatSelect(sel){$('#aCat').innerHTML=CATEGORIES.map(c=>`<option ${c.key===sel?'selected':''}>${c.key}${c.activity?'（活動）':''}</option>`).join('')
+  .replace(/（活動）/g,'');}
+function openAdd(cat){addCat=cat;$('#aName').value='';$('#aCr').value='';
+  const act = cat==='其他';
+  $('#addTitle').textContent = act?'新增活動／其他學分':'新增課程';
+  $('#addDesc').textContent = act?'例如新生營、運動賽事、海外參訪等有學分的活動，自己填學分數。':'母清單沒有的課？自己加進來，一樣會算進學分。';
+  $('#aName').placeholder = act?'活動名稱（例：新生營）':'課程名稱';
+  fillCatSelect(cat);
+  $('#scrimA').classList.add('on');}
+function quickAdd(name){openAdd('其他');$('#aName').value=name;setTimeout(()=>$('#aCr').focus(),100)}
+function closeAll(){document.querySelectorAll('.scrim').forEach(s=>s.classList.remove('on'))}
+function doRestore(){
+  const v=$('#rIn').value.trim();
+  if(!v)return toast('請先貼上連結或代碼');
+  if(!confirm('確定要還原嗎？\n還原會覆蓋你目前的打勾紀錄。'))return;
+  try{Tracker.importCode(v);closeAll();toast('已還原 ✓')}catch(e){toast('代碼無法辨識')}
+}
+function doAdd(){const n=$('#aName').value.trim();const cr=parseFloat($('#aCr').value);
+  if(!n)return toast('請輸入名稱');
+  if(isNaN(cr)||cr<0)return toast('請輸入學分數');
+  Tracker.addCustom(n,$('#aCat').value,cr);closeAll();toast('已新增 ✓');}
+
+document.querySelectorAll('.scrim').forEach(s=>s.addEventListener('click',e=>{if(e.target===s)closeAll()}));
+window.addEventListener('tracker:change',render);
+
+const fromUrl=Tracker.load();
+$('#todayN').textContent=new Date().toLocaleDateString('zh-TW');
+if(fromUrl && (fromUrl.d?.length||fromUrl.x?.length)){
+  setTimeout(()=>{ if(confirm('偵測到備份連結，要用它還原這支手機的紀錄嗎？')){Tracker._apply(fromUrl);Tracker.save();} render(); history.replaceState(null,'',location.pathname); },300);
+}
+render();
+</script>
+</body>
+</html>
