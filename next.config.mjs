@@ -60,11 +60,16 @@ const nextConfig = {
   // /board/* 後續加 SSR + API routes
   // 部署用 @netlify/plugin-nextjs（Netlify 自動偵測 Next.js）
   // 社團總表為 public/clubs/index.html 靜態頁；rewrite 讓乾淨網址 /clubs 直接服務該檔
-  // 學分追蹤為 public/credits/index.html 靜態頁；同理 rewrite /credits
   async rewrites() {
     return [
       { source: '/clubs', destination: '/clubs/index.html' },
-      { source: '/credits', destination: '/credits/index.html' },
+    ];
+  },
+  // 學分追蹤已獨立成 credits.e118.aqualux.dev（單一來源）；舊內嵌路徑 /credits 一律 301 轉過去
+  async redirects() {
+    return [
+      { source: '/credits', destination: 'https://credits.e118.aqualux.dev', permanent: true },
+      { source: '/credits/:path*', destination: 'https://credits.e118.aqualux.dev/:path*', permanent: true },
     ];
   },
   async headers() {

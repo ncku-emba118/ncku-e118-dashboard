@@ -13,7 +13,7 @@ type HelpEntry = {
 const HELP: Record<string, HelpEntry> = {
   credits: {
     title: '學分追蹤',
-    domain: 'emba.aqualux.dev/credits',
+    domain: 'credits.e118.aqualux.dev',
     desc: '個人畢業學分自我試算工具：依成大 EMBA 修課規則（畢業 45 學分，分基礎／核心／必修／專業必選／選修五類），把修過的課打勾即自動計算進度，並可自填新生營、運動賽事等活動學分。資料只存在自己手機、不上傳，換手機可用備份連結還原。',
     steps: [
       '點各類別卡片展開，把修過的課打勾，上方進度環即時更新',
