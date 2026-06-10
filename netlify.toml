@@ -17,6 +17,21 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# 學分追蹤已獨立成 credits.e118.aqualux.dev（單一來源）。
+# 舊內嵌 /credits 一律強制 301 轉過去；force=true 才能蓋過 public/ 靜態檔
+# （public/credits/ 已刪除，這裡再加一層保險，舊書籤也會被帶到新站）。
+[[redirects]]
+  from = "/credits"
+  to = "https://credits.e118.aqualux.dev"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/credits/*"
+  to = "https://credits.e118.aqualux.dev/:splat"
+  status = 301
+  force = true
+
 # Scheduled function: 每分鐘 ping /api/board/push/dispatch、處理 stale push_jobs
 # 對應 ARCHITECTURE.md v3 第 7 章 outbox worker
 # 實際 cron 在 netlify/functions/push-cron.mts 內 export const config = { schedule }
