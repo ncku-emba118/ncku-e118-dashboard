@@ -9,7 +9,7 @@ type HelpEntry = {
   steps: string[];
 };
 
-// 對應 ARCHITECTURE.md 第 5 章「help popover 文案」— 修改任一張卡時同步更新對應 entry
+// help popover 文案唯一正本（ARCHITECTURE.md 無此章節）— 修改任一張卡時同步更新對應 entry
 const HELP: Record<string, HelpEntry> = {
   credits: {
     title: '學分追蹤',
@@ -126,7 +126,7 @@ const HELP: Record<string, HelpEntry> = {
     steps: [
       '點開連結後，會跳轉到 Google Drive 共享資料夾',
       '若未登入 Google，請先登入（建議用本人主用帳號）',
-      '資料夾按「課程」「行政文件」「活動」「案例庫」分類',
+      '資料夾依課程與班務主題分類（企業經營專題、管理會計、課務資訊、職業參訪…）',
       '可直接線上預覽 Word / PDF / PPT；如要編輯請複製到自己 Drive 再改',
       '上傳檔案：拖曳到對應資料夾即可（請依分類擺放，不要亂丟根目錄）',
     ],
