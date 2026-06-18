@@ -45,8 +45,8 @@ export const E118_OFFICERS: Officer[] = [
   // 北班（16 人）
   { position: '班代',       name: '鄧在國', alias: 'Peter',            班別: '北班' },
   { position: '副班代',     name: '劉旻杰', alias: 'Jamison',          班別: '北班' },
-  { position: '秘書組',     name: '戴伶育', alias: 'Candy',            班別: '北班' },
-  { position: '秘書組',     name: '許育瑄', alias: 'Angela',           班別: '北班' },
+  { position: '秘書長（秘書組）', name: '戴伶育', alias: 'Candy',  班別: '北班' },
+  { position: '秘書長（秘書組）', name: '許育瑄', alias: 'Angela', 班別: '北班' },
   { position: '醫護/攝影組', name: '蔡依庭', alias: 'Carrie',          班別: '北班' },
   { position: '醫護/攝影組', name: '卓冠宏', alias: 'Joe',             班別: '北班' },
   { position: '學務組',     name: '丁國泰',                            班別: '北班' },
