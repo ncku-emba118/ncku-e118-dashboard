@@ -68,6 +68,20 @@ export async function softDeleteByUser(
   return { error: error ? error.message : null, count: count ?? 0 };
 }
 
+/** 7 天緩衝內反悔：把該 user 還在 soft-deleted 狀態的列復活。 */
+export async function restoreSoftDeleted(
+  userId: string,
+): Promise<{ error: string | null; count: number }> {
+  if (!userId) return { error: 'missing userId', count: 0 };
+  const supabase = getServerClient();
+  const { error, count } = await supabase
+    .from('bot_chat_history')
+    .update({ deleted_at: null }, { count: 'exact' })
+    .eq('user_id', userId)
+    .not('deleted_at', 'is', null);
+  return { error: error ? error.message : null, count: count ?? 0 };
+}
+
 // ── Cleanup（給 cron 用，service_role）─────────────────
 
 /**

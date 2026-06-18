@@ -122,6 +122,7 @@ export function redact(text: string): { content: string; redacted: boolean } {
 // ── 特殊指令偵測 ──
 export type SpecialCommand =
   | 'forget_me'
+  | 'restore_log'
   | 'no_memory'
   | 'resume_memory'
   | 'show_my_log';
@@ -129,6 +130,7 @@ export type SpecialCommand =
 export function detectSpecialCommand(text: string): SpecialCommand | null {
   const t = normalizeCompact(text);
   if (/^(忘掉我|忘記我|清空對話|清除對話|清空我的對話|清掉對話)$/.test(t)) return 'forget_me';
+  if (/^(還我對話|復原對話|還原對話|救回對話|後悔了|不要忘了)$/.test(t)) return 'restore_log';
   if (/^(不要記|別記|停止記錄|不要記憶|關閉記憶|不記了)$/.test(t)) return 'no_memory';
   if (/^(恢復記憶|開啟記憶|開始記錄|繼續記|要記了)$/.test(t)) return 'resume_memory';
   if (/^(我說了什麼|查我對話|查我的對話|顯示我的對話|看我紀錄)$/.test(t)) return 'show_my_log';

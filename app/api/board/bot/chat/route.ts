@@ -28,6 +28,7 @@ import {
   getRecentHistory,
   insertMessage,
   softDeleteByUser,
+  restoreSoftDeleted,
   getPrefs,
   upsertPrefs,
 } from '@/lib/bot/chat-dal';
@@ -109,6 +110,17 @@ export async function POST(req: NextRequest) {
       200,
       traceId,
     );
+  }
+  if (cmd === 'restore_log') {
+    const { error, count } = await restoreSoftDeleted(userId);
+    if (error) {
+      console.error('[bot.chat.restore_log.failed]', { traceId, e: error });
+      return jsonResp({ answer: friendlyFallback('server') }, 200, traceId);
+    }
+    if (count === 0) {
+      return jsonResp({ answer: '沒有可以救回的對話欸 🤔（可能已經過了 7 天緩衝、或從沒清過）' }, 200, traceId);
+    }
+    return jsonResp({ answer: `好，幫你救回 ${count} 條 ✨` }, 200, traceId);
   }
   if (cmd === 'no_memory') {
     await upsertPrefs(userId, { memory_enabled: false });
