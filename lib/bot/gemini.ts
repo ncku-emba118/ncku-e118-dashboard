@@ -7,7 +7,8 @@
  *   • 錯誤分類：429 (quota) / 5xx (server) / timeout → 各自友善訊息
  *   • maxOutputTokens 限制 → 強制簡短回覆，符合 LINE 體驗
  */
-import { E118_BOT_SYSTEM_PROMPT } from './system-prompt';
+import { buildSystemPrompt } from './system-prompt';
+import { getRoster, rosterAsCompactText } from './class-roster';
 import type { ChatHistoryRow } from './chat-dal';
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -37,8 +38,12 @@ export async function callGemini(opts: {
     { role: 'user', parts: [{ text: opts.currentUserText }] },
   ];
 
+  // RAG：動態抓全班名冊塞 system prompt（失敗回空、靠幹部清單兜底）
+  const roster = await getRoster();
+  const systemText = buildSystemPrompt(rosterAsCompactText(roster));
+
   const body = {
-    systemInstruction: { parts: [{ text: E118_BOT_SYSTEM_PROMPT }] },
+    systemInstruction: { parts: [{ text: systemText }] },
     contents,
     generationConfig: {
       maxOutputTokens: MAX_OUTPUT_TOKENS,
