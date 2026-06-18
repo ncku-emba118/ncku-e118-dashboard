@@ -11,7 +11,10 @@ import { buildSystemPrompt } from './system-prompt';
 import { getRoster, rosterAsCompactText } from './class-roster';
 import type { ChatHistoryRow } from './chat-dal';
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+// Gemini 2.5 Flash 免費版只有 20 req/day（2026-06 實測）→ 100 人班用不到一小時就爆。
+// Flash-Lite 免費版 1000 req/day，中文閒聊 + RAG 查資料品質夠用。
+// 用量真的爆了再升 Flash 付費版（pay-as-you-go ~$0.075/1M input tokens）。
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const TIMEOUT_MS = 8000;
 const MAX_OUTPUT_TOKENS = 400;
