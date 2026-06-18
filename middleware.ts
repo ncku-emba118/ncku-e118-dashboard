@@ -27,6 +27,10 @@ const PUBLIC_API_PATHS = new Set<string>([
   '/api/board/finance/income/sync',
   // 群組對話記錄：LINE Bot 上報群組發言（route 用 timing-safe Bearer BOT_SYNC_SECRET 把關，機器對機器）
   '/api/board/group-log',
+  // L4: Bot 私訊聊天端點（route 用 timing-safe Bearer BOT_SYNC_SECRET 把關，機器對機器）
+  '/api/board/bot/chat',
+  // L4: Bot 對話清理 cron（route 用 timing-safe Bearer CRON_SECRET 把關，daily 跑）
+  '/api/board/bot/cleanup',
 ]);
 
 /**

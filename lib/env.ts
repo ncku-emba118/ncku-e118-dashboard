@@ -39,6 +39,10 @@ const envSchema = z.object({
   // L2: 班網→Bot 推 LINE 班群用，GAS Web App URL
   // 沒設定時 dispatcher 不會打 LINE（fail-soft）— web push 照樣運作
   LINE_BOT_WEBHOOK_URL: z.string().url().optional(),
+
+  // L4: Bot 私訊聊天端點用 — Gemini 2.5 Flash API key（Google AI Studio）
+  // 沒設定時 /api/board/bot/chat 回 503（fail-soft），bot 那邊看到就跳「我這邊出狀況」
+  GEMINI_API_KEY: z.string().min(20).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
