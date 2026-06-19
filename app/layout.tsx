@@ -6,6 +6,15 @@ export const metadata: Metadata = {
   title: 'E118 Dashboard',
   description: '成大 EMBA 第 118 班 — 班級系統入口',
   manifest: '/manifest.json',
+  // browser tab favicon + apple touch icon
+  // 之前 manifest 有設 icon 但 layout 沒設 → Chrome / Safari 分頁標退回預設地球
+  icons: {
+    icon: [
+      { url: '/assets/pwa-icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/assets/pwa-icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/assets/pwa-icon-180.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
