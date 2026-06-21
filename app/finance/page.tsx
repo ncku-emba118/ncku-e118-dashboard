@@ -66,6 +66,30 @@ export default async function FinancePage() {
           <div style={transp}><span style={dot} />全班可查 · 簽核限幹部</div>
         </header>
 
+        {/* 預算報告入口 */}
+        <a
+          href="/budget"
+          style={{
+            display: 'block',
+            margin: '16px',
+            padding: '14px 16px',
+            background: 'linear-gradient(135deg, #FFF8E7 0%, #FAF7F2 100%)',
+            border: '1px solid #C9A961',
+            borderLeft: '4px solid #C9A961',
+            borderRadius: 8,
+            color: '#1A1612',
+            textDecoration: 'none',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 6 }}>
+            <strong style={{ fontFamily: 'serif', fontSize: 16, color: '#6B1622' }}>預算報告（2026 – 2028）</strong>
+            <span style={{ fontSize: 12, color: '#C9A961', fontWeight: 600 }}>查看完整說明書 →</span>
+          </div>
+          <div style={{ fontSize: 12.5, color: '#4A413A', lineHeight: 1.7, marginTop: 6 }}>
+            南班 84 人收 30,000 元/人　·　8 場活動明細　·　4 項預備金規則　·　跟北班的結算機制
+          </div>
+        </a>
+
         <section style={sec}>
           <div style={secH}><h2 style={h2}>收支總覽</h2><span style={tag}>系統自動統計</span></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
