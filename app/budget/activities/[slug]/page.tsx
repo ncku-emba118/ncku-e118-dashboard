@@ -148,18 +148,18 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
               <tbody>
                 {a.expense.items.map((it, i) => (
                   <tr key={i}>
-                    <td>{it.name}</td>
-                    <td className="num">{it.qty ?? '—'}</td>
-                    <td>{it.unit ?? '—'}</td>
-                    <td className="num">{it.unitPrice ? fmt(it.unitPrice) : '—'}</td>
-                    <td className="num strong">{fmt(it.amount)}</td>
-                    <td className="mute">{it.note ?? ''}</td>
+                    <td data-label="項目">{it.name}</td>
+                    <td className="num" data-label="數量">{it.qty ?? '—'}</td>
+                    <td data-label="單位">{it.unit ?? '—'}</td>
+                    <td className="num" data-label="單價">{it.unitPrice ? fmt(it.unitPrice) : '—'}</td>
+                    <td className="num strong" data-label="金額">{fmt(it.amount)}</td>
+                    <td className="mute" data-label="備註">{it.note ?? ''}</td>
                   </tr>
                 ))}
-                <tr>
-                  <td colSpan={4} className="num strong sub">支出合計</td>
-                  <td className="num sub" style={{ fontWeight: 700, color: INK }}>{fmt(a.expense.total)}</td>
-                  <td className="sub"></td>
+                <tr className="sub">
+                  <td colSpan={4} className="num strong" data-label="">支出合計</td>
+                  <td className="num" data-label="" style={{ fontWeight: 700 }}>{fmt(a.expense.total)}</td>
+                  <td data-label=""></td>
                 </tr>
               </tbody>
             </table>
@@ -188,24 +188,24 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
               <tbody>
                 {a.income.items.map((it, i) => (
                   <tr key={i}>
-                    <td>{it.name}</td>
-                    <td className="num">{it.qty ?? '—'}</td>
-                    <td>{it.unit ?? '—'}</td>
-                    <td className="num">{it.unitPrice ? fmt(it.unitPrice) : '—'}</td>
-                    <td className="num strong" style={{ color: OK }}>{fmt(it.amount)}</td>
-                    <td className="mute">{it.note ?? ''}</td>
+                    <td data-label="項目">{it.name}</td>
+                    <td className="num" data-label="數量">{it.qty ?? '—'}</td>
+                    <td data-label="單位">{it.unit ?? '—'}</td>
+                    <td className="num" data-label="單價">{it.unitPrice ? fmt(it.unitPrice) : '—'}</td>
+                    <td className="num strong" style={{ color: OK }} data-label="金額">{fmt(it.amount)}</td>
+                    <td className="mute" data-label="備註">{it.note ?? ''}</td>
                   </tr>
                 ))}
-                <tr>
-                  <td colSpan={4} className="num strong sub">{a.conservativeIncome !== undefined ? '收入合計（樂觀）' : '收入合計'}</td>
-                  <td className="num sub" style={{ fontWeight: 700, color: OK }}>{fmt(a.income.total)}</td>
-                  <td className="sub"></td>
+                <tr className="sub">
+                  <td colSpan={4} className="num strong" data-label="">{a.conservativeIncome !== undefined ? '收入合計（樂觀）' : '收入合計'}</td>
+                  <td className="num" data-label="" style={{ fontWeight: 700 }}>{fmt(a.income.total)}</td>
+                  <td data-label=""></td>
                 </tr>
                 {a.conservativeIncome !== undefined && (
-                  <tr>
-                    <td colSpan={4} className="num strong sub">收入合計（保守，用於淨負擔計算）</td>
-                    <td className="num sub" style={{ fontWeight: 700, color: WINE }}>{fmt(a.conservativeIncome)}</td>
-                    <td className="sub"></td>
+                  <tr className="sub">
+                    <td colSpan={4} className="num strong" data-label="">收入合計（保守，用於淨負擔計算）</td>
+                    <td className="num" data-label="" style={{ fontWeight: 700 }}>{fmt(a.conservativeIncome)}</td>
+                    <td data-label=""></td>
                   </tr>
                 )}
               </tbody>

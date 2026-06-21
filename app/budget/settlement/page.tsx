@@ -205,19 +205,19 @@ export default function SettlementPage() {
             </thead>
             <tbody>
               <tr>
-                <td className="strong">A 統一辦的活動</td>
-                <td>聖誕晚會 / 新生報到 / 新生營 / 116 午宴 / 118 畢業晚會</td>
-                <td>由南班主辦人統一付廠商；活動結束後按 84:15 比例向北班請款</td>
+                <td className="strong" data-label="費用類型">A 統一辦的活動</td>
+                <td data-label="範例">聖誕晚會 / 新生報到 / 新生營 / 116 午宴 / 118 畢業晚會</td>
+                <td data-label="結算邏輯">由南班主辦人統一付廠商；活動結束後按 84:15 比例向北班請款</td>
               </tr>
               <tr>
-                <td className="strong">B 按人頭的固定費</td>
-                <td>班服 / 校友會費</td>
-                <td>按實際數量算（如班服按各人實際訂購、校友會費按人頭）</td>
+                <td className="strong" data-label="費用類型">B 按人頭的固定費</td>
+                <td data-label="範例">班服 / 校友會費</td>
+                <td data-label="結算邏輯">按實際數量算（如班服按各人實際訂購、校友會費按人頭）</td>
               </tr>
               <tr>
-                <td className="strong">C 南班自辦活動</td>
-                <td>119 迎新晚會（南班）</td>
-                <td>南班獨自負擔、不向北班請款</td>
+                <td className="strong" data-label="費用類型">C 南班自辦活動</td>
+                <td data-label="範例">119 迎新晚會（南班）</td>
+                <td data-label="結算邏輯">南班獨自負擔、不向北班請款</td>
               </tr>
             </tbody>
           </table>

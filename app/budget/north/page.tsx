@@ -82,23 +82,23 @@ export default function NorthPage() {
           <tbody>
             {northActivities.map((a) => (
               <tr key={a.slug}>
-                <td className="strong">
+                <td className="strong" data-label="項目">
                   <Link href={`/budget/activities/${a.slug}`} style={{ color: WINE, textDecoration: 'none' }}>
                     {a.name}
                   </Link>
                 </td>
-                <td className="mute">{a.date}</td>
-                <td className="mute">{a.organizer}</td>
-                <td className="num">{fmt(a.totalNet)}</td>
-                <td className="num">{fmt(a.southNet)}</td>
-                <td className="num strong" style={{ color: WINE }}>{fmt(a.northEstimate)}</td>
+                <td className="mute" data-label="日期">{a.date}</td>
+                <td className="mute" data-label="主辦">{a.organizer}</td>
+                <td className="num" data-label="全班淨支出">{fmt(a.totalNet)}</td>
+                <td className="num" data-label="南班 84/99">{fmt(a.southNet)}</td>
+                <td className="num strong" style={{ color: WINE }} data-label="北班 15/99">{fmt(a.northEstimate)}</td>
               </tr>
             ))}
             <tr className="sub">
-              <td colSpan={3} className="strong">合計（估算）</td>
-              <td className="num strong">{fmt(northActivities.reduce((s, a) => s + a.totalNet, 0))}</td>
-              <td className="num strong">{fmt(northActivities.reduce((s, a) => s + a.southNet, 0))}</td>
-              <td className="num strong" style={{ color: WINE, fontSize: 15 }}>{fmt(NORTH_TOTAL_ESTIMATE)}</td>
+              <td colSpan={3} className="strong" data-label="">合計（估算）</td>
+              <td className="num strong" data-label="">{fmt(northActivities.reduce((s, a) => s + a.totalNet, 0))}</td>
+              <td className="num strong" data-label="">{fmt(northActivities.reduce((s, a) => s + a.southNet, 0))}</td>
+              <td className="num strong" style={{ fontSize: 15 }} data-label="">{fmt(NORTH_TOTAL_ESTIMATE)}</td>
             </tr>
           </tbody>
         </table>

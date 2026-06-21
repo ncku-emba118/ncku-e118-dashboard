@@ -62,6 +62,51 @@ const BUDGET_CSS = `
   .bdg-main { padding: 24px 16px 60px; }
   .bdg-hero { padding: 26px 22px !important; }
   .bdg-hero h1 { font-size: 24px !important; }
+
+  /* Mobile 響應式表格 — 改為上下滑（每列變卡片、欄位名用 data-label） */
+  .bdg-table-wrap { overflow-x: visible; }
+  .bdg-table { min-width: 0; border: 0; background: transparent; font-size: 13px; }
+  .bdg-table caption { padding: 4px 4px 10px; }
+  .bdg-table thead { display: none; }
+  .bdg-table tbody { display: block; }
+  .bdg-table tbody tr {
+    display: block;
+    background: #fff;
+    border: 1px solid ${LINE};
+    border-radius: 8px;
+    padding: 8px 14px;
+    margin-bottom: 10px;
+  }
+  .bdg-table tbody tr.sub {
+    background: ${WINE_DEEP};
+    color: #fff;
+    border-color: ${WINE_DEEP};
+  }
+  .bdg-table tbody tr.sub td,
+  .bdg-table tbody tr.sub td:before { color: #fff; }
+  .bdg-table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 6px 0;
+    border-bottom: 1px dashed #F4EFE6;
+    text-align: right;
+    gap: 12px;
+  }
+  .bdg-table tbody td:last-child { border-bottom: 0; }
+  .bdg-table tbody td:before {
+    content: attr(data-label);
+    color: ${MUTE};
+    font-weight: 500;
+    text-align: left;
+    font-size: 12px;
+    flex-shrink: 0;
+    min-width: 60px;
+  }
+  .bdg-table tbody td:not([data-label]):before,
+  .bdg-table tbody td[data-label=""]:before { content: none; }
+  .bdg-table tbody td.num { text-align: right; }
+  .bdg-table tbody tr.sub td:before { color: rgba(255,255,255,0.7); }
 }
 `.trim();
 

@@ -152,7 +152,7 @@ export const ACTIVITIES: Activity[] = [
       '雙主唱樂團 / 專業主持音控 / 現場拍照背板',
     ],
     budgetBasis:
-      '參考 E115 陳亭穎學姐預算，由本班修改；出席率與早鳥目標採保守估算',
+      '由本班聖誕晚宴總召陳亭穎編列預算；出席率打 6 折、早鳥目標 60 人均採保守估算',
     expense: {
       items: [
         { name: '宴會廳桌菜', qty: 30, unit: '桌', unitPrice: 14850, amount: 445500, note: '含 10% 服務費、現打果汁暢飲' },
@@ -192,7 +192,6 @@ export const ACTIVITIES: Activity[] = [
     northBurden: Math.round((534_000 * META.northMembers) / META.totalMembers),
     status: 'preparing',
     statusNote: '2026/06 已立案、訂金作業中；活動結束後全數退回班費公帳',
-    historicalReference: '參考 E115 陳亭穎學姐預算',
   },
   // 3. 116 畢業午宴 ──────────────────────────────────────────────────────────────
   {

@@ -42,9 +42,9 @@ export default function RulesPage() {
               </tr>
             </thead>
             <tbody>
-              <tr><td>同學本人 / 配偶結婚</td><td className="num strong">6,000</td><td className="mute">雙數（吉利）</td></tr>
-              <tr><td>同學本人 / 配偶生子</td><td className="num strong">3,600</td><td className="mute">雙數（含「順」音）</td></tr>
-              <tr><td>同學本人直系親屬喪事</td><td className="num strong">5,000</td><td className="mute">單數（白事禮）</td></tr>
+              <tr><td data-label="事由">同學本人 / 配偶結婚</td><td className="num strong" data-label="金額">6,000</td><td className="mute" data-label="數字理由">雙數（吉利）</td></tr>
+              <tr><td data-label="事由">同學本人 / 配偶生子</td><td className="num strong" data-label="金額">3,600</td><td className="mute" data-label="數字理由">雙數（含「順」音）</td></tr>
+              <tr><td data-label="事由">同學本人直系親屬喪事</td><td className="num strong" data-label="金額">5,000</td><td className="mute" data-label="數字理由">單數（白事禮）</td></tr>
             </tbody>
           </table>
         </div>
@@ -90,10 +90,10 @@ export default function RulesPage() {
               <tr><th scope="col">活動類型</th><th scope="col">建議補助</th><th scope="col">說明</th></tr>
             </thead>
             <tbody>
-              <tr><td>春季班遊（兩天一夜）</td><td>每人 1,500 元</td><td>住宿 / 交通部分補助，餐食自付</td></tr>
-              <tr><td>期末聚餐</td><td>桌費 50%</td><td>飲料 / 加菜自付</td></tr>
-              <tr><td>跨年 / 年節小聚</td><td>場地 + 餐費上限 10,000</td><td>視出席人數彈性調整</td></tr>
-              <tr><td>家庭日 / 雙年慶</td><td>場地 + 主視覺上限 20,000</td><td>餐食按人頭計算、補助上限 1,000 / 人</td></tr>
+              <tr><td data-label="活動類型">春季班遊（兩天一夜）</td><td data-label="建議補助">每人 1,500 元</td><td data-label="說明">住宿 / 交通部分補助，餐食自付</td></tr>
+              <tr><td data-label="活動類型">期末聚餐</td><td data-label="建議補助">桌費 50%</td><td data-label="說明">飲料 / 加菜自付</td></tr>
+              <tr><td data-label="活動類型">跨年 / 年節小聚</td><td data-label="建議補助">場地 + 餐費上限 10,000</td><td data-label="說明">視出席人數彈性調整</td></tr>
+              <tr><td data-label="活動類型">家庭日 / 雙年慶</td><td data-label="建議補助">場地 + 主視覺上限 20,000</td><td data-label="說明">餐食按人頭計算、補助上限 1,000 / 人</td></tr>
             </tbody>
           </table>
         </div>
@@ -143,11 +143,11 @@ export default function RulesPage() {
               <tr><th scope="col">項目</th><th scope="col">內容</th></tr>
             </thead>
             <tbody>
-              <tr><td className="strong">補助對象</td><td>南班同學（實際參加者）</td></tr>
-              <tr><td className="strong">補助項目</td><td>高鐵 / 油資 / 停車 + 該場餐費</td></tr>
-              <tr><td className="strong">單場上限</td><td>NT$ 25,000</td></tr>
-              <tr><td className="strong">三年累計上限</td><td>NT$ 50,000（兩場合計，額滿即止、不滾存）</td></tr>
-              <tr><td className="strong">超支處理</td><td>單場費用超過 25,000 元，多出來的部分由實際參加的南班同學自行攤付</td></tr>
+              <tr><td className="strong" data-label="項目">補助對象</td><td data-label="內容">南班同學（實際參加者）</td></tr>
+              <tr><td className="strong" data-label="項目">補助項目</td><td data-label="內容">高鐵 / 油資 / 停車 + 該場餐費</td></tr>
+              <tr><td className="strong" data-label="項目">單場上限</td><td data-label="內容">NT$ 25,000</td></tr>
+              <tr><td className="strong" data-label="項目">三年累計上限</td><td data-label="內容">NT$ 50,000（兩場合計，額滿即止、不滾存）</td></tr>
+              <tr><td className="strong" data-label="項目">超支處理</td><td data-label="內容">單場費用超過 25,000 元，多出來的部分由實際參加的南班同學自行攤付</td></tr>
             </tbody>
           </table>
         </div>
