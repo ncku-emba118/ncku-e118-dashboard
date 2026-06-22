@@ -568,13 +568,13 @@ const RESERVES_TOTAL = RESERVES.reduce((s, r) => s + r.amount, 0);
 export const SUMMARY = {
   coHosted: {
     label: 'A 合辦項目分攤（84/99）',
-    items: ['班服', '聖誕晚會', '116 畢業午宴', '119 新生報到', '119 新生營', '118 畢業晚會', '校友會費'],
+    items: ['班服', '116 畢業午宴', '119 新生報到', '119 新生營', '117 畢業相關', '校友會費', '教師節禮品'],
     totalNet: CO_HOSTED_TOTAL_NET,
     total: CO_HOSTED_SOUTH_SHARE,
   },
   southOnly: {
     label: 'B 南班自辦',
-    items: ['119 迎新晚會（南班）'],
+    items: ['119 迎新晚會（南班）', '聖誕晚會（v3 改南班自辦）'],
     total: SOUTH_ONLY_TOTAL,
   },
   reserves: {

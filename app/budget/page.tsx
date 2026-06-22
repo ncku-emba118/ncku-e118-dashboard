@@ -100,20 +100,20 @@ export default function BudgetHome() {
       <Section title="你繳的 30,000 元怎麼用" subtitle="支出採保守編列，未動用餘額按比例退回">
         <div className="bdg-grid bdg-grid-2">
           <BreakdownRow
-            band="A 合辦項目分攤（84/99）"
-            desc="7 項合辦項目，按南北人頭比例攤分後南班負擔"
+            band={`A 合辦項目分攤（84/99，共 ${SUMMARY.coHosted.items.length} 項）`}
+            desc={SUMMARY.coHosted.items.join('、')}
             amount={SUMMARY.coHosted.total}
             perPerson={Math.round(SUMMARY.coHosted.total / META.southMembers)}
           />
           <BreakdownRow
-            band="B 南班自辦"
-            desc="119 迎新晚會（南班獨立籌辦）"
+            band={`B 南班自辦（共 ${SUMMARY.southOnly.items.length} 項）`}
+            desc={SUMMARY.southOnly.items.join('、')}
             amount={SUMMARY.southOnly.total}
             perPerson={Math.round(SUMMARY.southOnly.total / META.southMembers)}
           />
           <BreakdownRow
-            band="C 南班自理（4 項）"
-            desc="聯誼機動金 + 緊急預備金 + 婚喪喜慶 + 南班參與北班補助"
+            band={`C 南班自理（共 ${SUMMARY.reserves.items.length} 項）`}
+            desc={SUMMARY.reserves.items.join(' + ')}
             amount={SUMMARY.reserves.total}
             perPerson={Math.round(SUMMARY.reserves.total / META.southMembers)}
           />
@@ -227,7 +227,7 @@ export default function BudgetHome() {
       <Section title="設計邏輯（給想知道為什麼這樣訂的同學）">
         <ul style={{ paddingLeft: 22, color: '#4A413A', lineHeight: 2, fontSize: 14 }}>
           <li>
-            <strong>南北分帳</strong>：南班 84 人、北班 15 人；合辦項目按 84:15 比例攤分，南班自辦（如 119 迎新晚會）由南班獨自負擔，北班不分攤。
+            <strong>南北分帳</strong>：南班 84 人、北班 15 人；合辦項目按 84:15 比例攤分，南班自辦（119 迎新晚會、聖誕晚會）由南班獨自負擔，北班不分攤。
           </li>
           <li>
             <strong>預備金獨立</strong>：南班的聯誼機動金、緊急預備金、婚喪喜慶、活動補助均由南班自理；北班是否要編列由北班自決。
