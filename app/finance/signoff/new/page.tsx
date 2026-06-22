@@ -104,17 +104,29 @@ export default function SignoffNewPage() {
     }
   }
 
+  const breadcrumb = (
+    <Breadcrumb items={[
+      { label: '班級面板', href: '/' },
+      { label: '班級經費中心', href: '/finance' },
+      { label: '簽核', href: '/finance/signoff' },
+      { label: '新建' },
+    ]} />
+  );
+
   if (needLogin) {
     return (
+      <>
+      {breadcrumb}
       <main style={{ minHeight: '100vh', background: CREAM, padding: 24 }}>
         <p>請先<a href="/board/login?next=/finance/signoff/new" style={{ color: WINE }}>登入幹部帳號</a>。</p>
       </main>
+      </>
     );
   }
 
   return (
     <>
-    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級經費中心', href: '/finance' }, { label: '簽核', href: '/finance/signoff' }, { label: '新建' }]} />
+    {breadcrumb}
     <main style={{ minHeight: '100vh', background: CREAM, color: INK, padding: '24px 16px' }}>
       <div style={{ maxWidth: 560, margin: '0 auto' }}>
         <h1 style={{ fontSize: 20, color: WINE }}>發起經費簽核</h1>

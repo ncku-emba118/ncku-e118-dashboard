@@ -27,22 +27,6 @@
   padding: 36px 28px 80px;
 }
 
-/* ── Back link ── */
-.calendar-route .back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 16px;
-  color: var(--ncku-mute);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 32px;
-  transition: color 0.2s;
-}
-.calendar-route .back-link:hover { color: var(--ncku-wine); }
-.calendar-route .back-link svg { stroke: currentColor; }
-
 /* ── Header ── */
 .calendar-route header { text-align: center; margin-bottom: 40px; }
 .calendar-route .icon-wrap {

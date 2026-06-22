@@ -30,21 +30,6 @@ export default function CalendarPage() {
     <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級行事曆' }]} />
     <div className="calendar-route">
       <div className="container">
-        <a href="/" className="back-link">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          Back to E118 Dashboard
-        </a>
-
         <header>
           <div className="icon-wrap">
             <svg

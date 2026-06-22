@@ -117,8 +117,14 @@ body{
 </style>
 </head>
 <body>
+<!-- Breadcrumb — 純 HTML 版本，樣式同步於 components/Breadcrumb.tsx；改 React 元件時記得同步這邊 -->
+<nav aria-label="breadcrumb" style="background:#2C0A10;color:#C9A961;padding:6px 0;font-size:12.5px;border-bottom:1px solid #4B1119;font-family:system-ui,-apple-system,'PingFang TC','Noto Sans TC',sans-serif">
+  <ol style="max-width:1100px;margin:0 auto;padding:0 20px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;list-style:none">
+    <li style="display:inline-flex;align-items:center;gap:8px"><a href="/" style="color:#C9A961;text-decoration:none;padding:2px 6px;border-radius:3px" aria-label="回到班級面板">← 班級面板</a><span aria-hidden="true" style="color:rgba(201,169,97,.5)">/</span></li>
+    <li style="display:inline-flex;align-items:center;gap:8px"><span aria-current="page" style="color:rgba(255,255,255,.85);font-weight:500">社團總表</span></li>
+  </ol>
+</nav>
 <div class="wrap">
-  <a class="back" href="../">← 返回班級面板</a>
   <header class="mast">
     <div class="kicker">National Cheng Kung University · EMBA</div>
     <h1>成功大學 EMBA 社團總表</h1>

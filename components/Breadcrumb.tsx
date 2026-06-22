@@ -9,6 +9,9 @@ type Item = { label: string; href?: string };
  * 樣式沿用 budget 站既有設計（深紅金色窄條），跟其他頁面風格區隔，
  * 強調這是「navigation chrome」而非頁面內容。
  *
+ * 使用語意 markup：<nav aria-label="breadcrumb"><ol><li> + aria-current="page"
+ * 螢幕閱讀器可正確識別為導覽階層。
+ *
  * 使用範例：
  *   <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級公告欄' }]} />
  *   <Breadcrumb items={[
@@ -19,7 +22,8 @@ type Item = { label: string; href?: string };
  */
 export default function Breadcrumb({ items }: { items: Item[] }) {
   return (
-    <div
+    <nav
+      aria-label="breadcrumb"
       style={{
         background: '#2C0A10',
         color: '#C9A961',
@@ -29,7 +33,7 @@ export default function Breadcrumb({ items }: { items: Item[] }) {
         fontFamily: 'system-ui, -apple-system, "PingFang TC", "Noto Sans TC", sans-serif',
       }}
     >
-      <div
+      <ol
         style={{
           maxWidth: 1100,
           margin: '0 auto',
@@ -38,13 +42,14 @@ export default function Breadcrumb({ items }: { items: Item[] }) {
           alignItems: 'center',
           gap: 8,
           flexWrap: 'wrap',
+          listStyle: 'none',
         }}
       >
         {items.map((it, i) => {
           const isLast = i === items.length - 1;
           const isFirst = i === 0;
           return (
-            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <li key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               {it.href && !isLast ? (
                 <Link
                   href={it.href}
@@ -59,13 +64,22 @@ export default function Breadcrumb({ items }: { items: Item[] }) {
                   {isFirst ? `← ${it.label}` : it.label}
                 </Link>
               ) : (
-                <span style={{ color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>{it.label}</span>
+                <span
+                  aria-current={isLast ? 'page' : undefined}
+                  style={{ color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}
+                >
+                  {it.label}
+                </span>
               )}
-              {!isLast && <span style={{ color: 'rgba(201,169,97,0.5)' }}>/</span>}
-            </span>
+              {!isLast && (
+                <span aria-hidden="true" style={{ color: 'rgba(201,169,97,0.5)' }}>
+                  /
+                </span>
+              )}
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ol>
+    </nav>
   );
 }
