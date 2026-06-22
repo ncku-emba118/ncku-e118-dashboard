@@ -296,7 +296,7 @@ export const ACTIVITIES: Activity[] = [
     name: 'E119 迎新晚會（南班自辦）',
     shortName: '南迎新',
     type: 'south-only',
-    date: '2026 年 9 月',
+    date: '2027 年 9 月',
     location: '台南（場地待定）',
     organizer: '南班活動長 + 公關長',
     audience: 'E119 新生、E118 南班同學、系所師長、校友會代表',

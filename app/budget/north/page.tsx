@@ -124,7 +124,7 @@ export default function NorthPage() {
         北班<strong style={{ color: WINE }}>不</strong>需分攤的項目
       </h2>
       <ul style={{ paddingLeft: 22, color: '#4A413A', lineHeight: 2, fontSize: 14 }}>
-        <li><strong>119 迎新晚會（2026 年 9 月）</strong>：南班自辦，由南班獨自負擔淨額 NT$ 256,124</li>
+        <li><strong>119 迎新晚會（2027 年 9 月）</strong>：南班自辦，由南班獨自負擔淨額 NT$ 256,124</li>
         <li><strong>南班聯誼機動金</strong>（150,000）：南班內部聯誼補助池</li>
         <li><strong>南班緊急預備金</strong>（150,000）：南班自理</li>
         <li><strong>南班婚喪喜慶</strong>（36,000）：南班同學的人情往來</li>
