@@ -96,26 +96,19 @@ export default async function PostDetail({
       }}
     >
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        {/* Breadcrumb */}
-        <nav
+        {/* 部門色標籤（原 inline 面包屑已上移至頂部 Breadcrumb） */}
+        <div
           style={{
             fontSize: 11,
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
-            color: '#8A7F73',
+            color: dept.color,
             marginBottom: 24,
+            fontWeight: 600,
           }}
         >
-          <a href="/" style={{ color: '#8A7F73', textDecoration: 'none' }}>
-            主 dashboard
-          </a>
-          <span style={{ margin: '0 8px' }}>›</span>
-          <a href="/board" style={{ color: '#8A7F73', textDecoration: 'none' }}>
-            公告欄
-          </a>
-          <span style={{ margin: '0 8px' }}>›</span>
-          <span style={{ color: dept.color }}>{dept.name}</span>
-        </nav>
+          {dept.name}
+        </div>
 
         {/* Post hero */}
         <header

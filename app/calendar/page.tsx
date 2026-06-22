@@ -187,8 +187,6 @@ export default function CalendarPage() {
         <footer>
           <p>
             NCKU EMBA E118 Class Calendar · 由秘書長辦公室維護
-            <br />
-            <a href="/">回到 E118 Dashboard</a>
           </p>
         </footer>
       </div>

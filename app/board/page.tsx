@@ -83,20 +83,6 @@ export default async function BoardHome() {
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
         {/* Header */}
         <header style={{ marginBottom: 32 }}>
-          <a
-            href="/"
-            style={{
-              color: '#8A7F73',
-              fontSize: 12,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              textDecoration: 'none',
-              marginBottom: 24,
-              display: 'inline-block',
-            }}
-          >
-            ← emba.aqualux.dev / 回主 dashboard
-          </a>
           <div
             style={{
               display: 'flex',
