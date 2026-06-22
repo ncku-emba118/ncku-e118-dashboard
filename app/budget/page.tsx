@@ -10,6 +10,7 @@ import {
   SURPLUS,
   SURPLUS_PER_PERSON,
   NORTH_TOTAL_ESTIMATE,
+  CHANGELOG,
   fmt,
 } from '@/lib/budget/data';
 
@@ -53,6 +54,40 @@ export default function BudgetHome() {
           本文件公開予全班同學與幹部，所有活動、預備金、結算機制透明可查；實際支出將定期更新於各活動頁。
         </p>
       </section>
+
+      {/* 最新版本更新提示 */}
+      {CHANGELOG[0] && (
+        <Link
+          href="/budget/changelog"
+          style={{
+            display: 'block',
+            background: 'linear-gradient(135deg, #FFF8E7 0%, #FAF7F2 100%)',
+            border: `1px solid ${GOLD}`,
+            borderLeft: `4px solid ${GOLD}`,
+            borderRadius: 8,
+            padding: '14px 18px',
+            color: INK,
+            textDecoration: 'none',
+            marginBottom: 28,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ background: GOLD, color: '#fff', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 12, letterSpacing: 1 }}>
+                最新 {CHANGELOG[0].version}
+              </span>
+              <strong style={{ fontFamily: TC, fontSize: 14.5, color: WINE_DEEP }}>
+                {CHANGELOG[0].title}
+              </strong>
+              <span style={{ fontSize: 12, color: MUTE }}>{CHANGELOG[0].date}</span>
+            </div>
+            <span style={{ fontSize: 12.5, color: GOLD, fontWeight: 600 }}>查看版本歷史 →</span>
+          </div>
+          <div style={{ fontSize: 13, color: '#4A413A', lineHeight: 1.8, marginTop: 6 }}>
+            {CHANGELOG[0].summary}
+          </div>
+        </Link>
+      )}
 
       {/* ─── 三大數字 ────────────────────────────────────────────────────── */}
       <section className="bdg-grid bdg-grid-3" style={{ marginBottom: 32 }}>

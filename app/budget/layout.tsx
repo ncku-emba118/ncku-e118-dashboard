@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { META } from '@/lib/budget/data';
 
 export const metadata: Metadata = {
   title: 'E118 南班 班費預算說明書',
@@ -127,12 +128,21 @@ export default function BudgetLayout({ children }: { children: React.ReactNode }
             <Link href="/budget/rules">申請規則</Link>
             <Link href="/budget/settlement">結算機制</Link>
             <Link href="/budget/north">北班分攤</Link>
+            <Link href="/budget/changelog">版本歷史</Link>
           </nav>
         </div>
       </header>
       <main className="bdg-main">{children}</main>
       <footer className="bdg-footer">
-        E118 南班秘書處 · 最後更新 2026-06-22 · 預算為估算值、實際以結算為準、未動用餘額按比例退回
+        <div style={{ marginBottom: 6 }}>
+          E118 南班秘書處 · 預算為估算值、實際以結算為準、未動用餘額按比例退回
+        </div>
+        <div style={{ fontSize: 11.5 }}>
+          當前版本 <strong style={{ color: '#6B1622' }}>{META.version}</strong> · 最後更新 {META.updatedAt} ·{' '}
+          <Link href="/budget/changelog" style={{ color: '#8B1F2F', textDecoration: 'underline' }}>
+            查看版本歷史
+          </Link>
+        </div>
       </footer>
     </div>
   );

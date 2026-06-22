@@ -17,6 +17,7 @@ export const META = {
   southRatio: 84 / 99, // ≈ 0.8485
   northRatio: 15 / 99, // ≈ 0.1515
   feePerPerson: 30000,
+  version: 'v3',
   updatedAt: '2026-06-22',
   drafter: '秘書長',
 } as const;
@@ -134,7 +135,7 @@ export const ACTIVITIES: Activity[] = [
     slug: 'christmas-2026',
     name: 'E118 聖誕晚宴',
     shortName: '聖誕晚宴',
-    type: 'co-hosted',
+    type: 'south-only',
     date: '2026 年 12 月 19 日（週六）18:00 – 21:00',
     location: '台南晶英酒店',
     organizer: '陳亭穎（總召）',
@@ -187,9 +188,9 @@ export const ACTIVITIES: Activity[] = [
     conservativeIncomeNote:
       '收入採保守估算：本班同學目標出席率僅 60%（90×1,200×60% ≈ 64,800），其餘各項按比例打折後合計約 156,000；班費淨負擔以此口徑計算',
     net: 534_000,
-    netNote: '690,000（支出）− 156,000（保守收入）= 534,000；若樂觀收入 260,000 達標則淨負擔降至 430,000',
-    southBurden: Math.round((534_000 * META.southMembers) / META.totalMembers),
-    northBurden: Math.round((534_000 * META.northMembers) / META.totalMembers),
+    netNote: '690,000（支出）− 156,000（保守收入）= 534,000；由南班獨自負擔（v3 起改為南班自辦，不向北班分攤）；若樂觀收入 260,000 達標則淨負擔降至 430,000',
+    southBurden: 534_000,
+    northBurden: 0,
     status: 'preparing',
     statusNote: '2026/06 已立案、訂金作業中；活動結束後全數退回班費公帳',
   },
@@ -337,19 +338,19 @@ export const ACTIVITIES: Activity[] = [
     statusNote: '南班自辦、北班不分攤',
     historicalReference: 'E115 學姐迎新晚會實際決算',
   },
-  // 6. 118 畢業晚會/謝師宴 ────────────────────────────────────────────────────
+  // 6. E117 畢業相關（典禮、晚會、謝師宴）— E118 幫 E117 學長班舉辦 ─────────────
   {
     slug: 'graduation-2028',
-    name: 'E118 畢業晚會 / 謝師宴',
-    shortName: '畢業晚會',
+    name: 'E117 畢業相關（典禮、晚會、謝師宴）',
+    shortName: '117 畢業相關',
     type: 'co-hosted',
     date: '2028 年 6 月（待確認）',
     location: '台南（場地待確認；參考 E113 採晶英）',
-    organizer: '待定（屆時活動長 + 秘書長共同籌備）',
-    audience: 'E118 全班、師長、E116/E117 學長姐、親屬、校友會',
-    estimatedAttendance: '參考 E113：晚宴 24 桌、親屬 19 位、115 級 9 位、116 級 7 位',
+    organizer: 'E118 公關組 + 活動長共同籌備（幫 E117 學長班舉辦）',
+    audience: 'E117 學長姐畢業生、師長、E116/E118 在校生代表、親屬、校友會',
+    estimatedAttendance: '參考 E113：晚宴 24 桌、親屬 19 位、學弟妹班 9 位 + 7 位',
     overview:
-      'E118 全期最後一場大型對外活動，承擔謝師、傳承、紀念三項意涵。E118 自己班費負擔淨額由南北班按 84:15 分攤，校友會餐費 30,000 自付 + 招待校友會 2 桌。',
+      'E118 幫 E117 學長班舉辦的畢業相關活動，含畢業典禮、畢業晚會、謝師宴三段。這是 E118 在學期間最大的對外公關活動，承擔對學長班「傳承」的責任。班費負擔淨額由南北班按 84:15 分攤，校友會餐費部分自付 + 招待校友會 2 桌。',
     highlights: [
       '視覺設計 + 樂團（含畢業典禮、晚宴布置）',
       '攝影團隊（動態 1 + 靜態 1）',
@@ -440,6 +441,41 @@ export const ACTIVITIES: Activity[] = [
     northBurden: Math.round((360_000 * META.northMembers) / META.totalMembers),
     status: 'planning',
     statusNote: '入學首年一次性收齊',
+  },
+  // 9. 教師節禮品（南北合辦、固定費用）— v3 新增 ────────────────────────────
+  {
+    slug: 'teacher-day-gifts',
+    name: '教師節禮品',
+    shortName: '教師節禮品',
+    type: 'fixed-cost',
+    date: '2026 / 2027 / 2028 每年 9 月',
+    location: '—',
+    organizer: '南班公關組（提案）',
+    audience: '系所師長（每年教師節）',
+    estimatedAttendance: '—',
+    overview:
+      '由公關組統籌準備教師節禮品贈與系所師長，比照 E117 學長班規格編列預算。三年共三次（2026、2027、2028），每年 36,000 元、三年合計 108,000 元。屬南北合辦固定費用，由南北班按 84:15 比例分攤。',
+    highlights: [
+      '比照 E117 學長班規格編列',
+      '每年 36,000 元、三年共 108,000 元',
+      '由南班公關組統籌規劃禮品',
+      '對象：系所教授群（南北班共同享有的師長關係）',
+    ],
+    budgetBasis: '比照 E117 學長班教師節禮品預算編列；由南班公關組提案',
+    expense: {
+      items: [
+        { name: '教師節禮品（2026）', qty: 1, unit: '式', amount: 36000, note: '由公關組規劃' },
+        { name: '教師節禮品（2027）', qty: 1, unit: '式', amount: 36000, note: '由公關組規劃' },
+        { name: '教師節禮品（2028）', qty: 1, unit: '式', amount: 36000, note: '由公關組規劃' },
+      ],
+      total: 108_000,
+    },
+    income: { items: [], total: 0 },
+    net: 108_000,
+    southBurden: Math.round((108_000 * META.southMembers) / META.totalMembers),
+    northBurden: Math.round((108_000 * META.northMembers) / META.totalMembers),
+    status: 'planning',
+    statusNote: 'v3 新增（2026-06-22）；每年 9 月教師節前由公關組準備',
   },
 ];
 
@@ -573,3 +609,71 @@ export const NORTH_TOTAL_ESTIMATE = Math.round((CO_HOSTED_TOTAL_NET * META.north
 // ──────────────────────────────────────────────────────────────────────────────
 export const fmt = (n: number) => n.toLocaleString('en-US');
 export const fmtNTD = (n: number) => `NT$ ${n.toLocaleString('en-US')}`;
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 版本歷史 — 每次重大修訂在此新增一筆，最新版放最上面
+// ──────────────────────────────────────────────────────────────────────────────
+export type ChangelogEntry = {
+  version: string;
+  date: string;
+  title: string;
+  summary: string;
+  changes: { type: 'new' | 'change' | 'fix' | 'remove'; text: string }[];
+  numbers?: { label: string; before: string; after: string; delta: string }[];
+  gitCommit?: string;
+};
+
+export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v3',
+    date: '2026-06-22',
+    title: '教師節禮品 + 主辦調整',
+    summary:
+      '新增公關組提案的教師節禮品（南北合辦、3 年共 108,000）；聖誕晚會由南北合辦改為南班自辦；E118 畢業相關活動正名為 E117 畢業相關（E118 幫 E117 學長班舉辦）。',
+    changes: [
+      { type: 'new', text: '新增「教師節禮品」項目：南北合辦、3 年共 108,000 元（每年 36,000），比照 E117 級規格，由南班公關組統籌' },
+      { type: 'change', text: '聖誕晚會由「南北合辦」改為「南班自辦」：淨負擔 534,000 全由南班負擔，北班不分攤' },
+      { type: 'change', text: '「E118 畢業晚會 / 謝師宴」更名為「E117 畢業相關（典禮、晚會、謝師宴）」— E118 幫 E117 學長班舉辦' },
+    ],
+    numbers: [
+      { label: '南班總支出', before: '2,146,899', after: '2,319,444', delta: '+172,545' },
+      { label: '南班必要支出/人', before: '25,558', after: '27,612', delta: '+2,054' },
+      { label: '統一收費（不變）', before: '30,000', after: '30,000', delta: '—' },
+      { label: '多收/人（沉澱期末退）', before: '4,442', after: '2,388', delta: '−2,054' },
+      { label: '北班合辦分攤合計', before: '268,710', after: '204,164', delta: '−64,546' },
+    ],
+  },
+  {
+    version: 'v2',
+    date: '2026-06-22',
+    title: '南北分帳定案',
+    summary:
+      '南班 84 人 / 北班 15 人正式分帳：合辦項目按 84:15 攤、南班自辦的 119 迎新晚會獨立、預備金重新評估降低、南班新增「參與北班補助」項目。統一收費仍維持 30,000 元/人、多收沉澱期末按比例退回。',
+    changes: [
+      { type: 'change', text: '正式南北分帳：合辦活動結束後按 84:15 比例向北班請款（不再混算成全班一份預算）' },
+      { type: 'new', text: '119 迎新晚會列為「南班自辦」（淨額 256,124 由南班獨自負擔，北班不分攤）' },
+      { type: 'change', text: '預備金重整：聯誼機動金 200,000 → 150,000；南班緊急預備金 300,000 → 150,000；活動補助 100,000 → 50,000' },
+      { type: 'remove', text: '北班緊急預備金 150,000 移出南班帳（由北班自決）' },
+      { type: 'new', text: '新增「南班參與北班補助」50,000：補助南班同學參加北班招生聚餐、北班聖誕晚會的車馬費與餐費' },
+      { type: 'change', text: '校友會費 360,000 按 84:15 拆分為南班 305,455 / 北班 54,545' },
+      { type: 'change', text: '婚喪喜慶 36,000 列為南班自理（北班同學由北班自決）' },
+    ],
+    numbers: [
+      { label: '全班舊預算', before: '30,000', after: '—', delta: '不再使用單一預算' },
+      { label: '南班建議收費', before: '—', after: '30,000', delta: '同（多收 4,442 沉澱期末退）' },
+      { label: '南班必要支出/人', before: '—', after: '25,558', delta: '新計算基礎' },
+    ],
+  },
+  {
+    version: 'v1',
+    date: '2026-06-18',
+    title: '初版（全班統一預算）',
+    summary: '南北班合一份預算、全班 99 人統一收費 30,000 元/人、6 場活動 + 校友會費 + 班服，預備金 5 項：聯誼機動金 200k、婚喪喜慶 36k、活動補助 100k、南班緊急 300k、北班緊急 150k。',
+    changes: [
+      { type: 'new', text: '初版預算說明：6 場活動（新生報到、聖誕晚宴、116 畢業午宴、新生營、迎新晚會、118 畢業晚會）' },
+      { type: 'new', text: '預備金 5 項：聯誼 200k、婚喪 36k、活動補助 100k、南緊急 300k、北緊急 150k' },
+      { type: 'new', text: '校友會費 360k 一次性收齊、班服 118,380 共擔' },
+      { type: 'new', text: '統一收費 30,000 元/人，未動用全數退回' },
+    ],
+  },
+];
