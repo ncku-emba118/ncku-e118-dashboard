@@ -98,7 +98,7 @@ export const ACTIVITIES: Activity[] = [
     name: 'E119 新生報到',
     shortName: '新生報到',
     type: 'co-hosted',
-    date: '2026 年 9 月',
+    date: '2026 年 11 月',
     location: '校內（場地待定）',
     organizer: '詹培梅（總籌）',
     audience: '119 新生、師長、E118 工作人員',
@@ -128,7 +128,7 @@ export const ACTIVITIES: Activity[] = [
     southBurden: Math.round((51_600 * META.southMembers) / META.totalMembers),
     northBurden: Math.round((51_600 * META.northMembers) / META.totalMembers),
     status: 'planning',
-    statusNote: '2026/06 立案，9 月執行',
+    statusNote: '2026/06 立案，11 月執行',
   },
   // 2. 聖誕晚會 ──────────────────────────────────────────────────────────────────
   {
@@ -635,7 +635,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { type: 'change', text: '「E118 畢業晚會 / 謝師宴」更名為「E117 畢業相關（典禮、晚會、謝師宴）」— E118 幫 E117 學長班舉辦' },
     ],
     numbers: [
-      { label: '南班總支出', before: '2,146,899', after: '2,319,444', delta: '+172,545' },
+      { label: '南班總支出', before: '2,146,899', after: '2,319,445', delta: '+172,546' },
       { label: '南班必要支出/人', before: '25,558', after: '27,612', delta: '+2,054' },
       { label: '統一收費（不變）', before: '30,000', after: '30,000', delta: '—' },
       { label: '多收/人（沉澱期末退）', before: '4,442', after: '2,388', delta: '−2,054' },

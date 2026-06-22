@@ -17,6 +17,12 @@ const LINE = '#E8DFD0';
 // 注入 budget 區段共用 CSS（含 RWD 斷點）
 const BUDGET_CSS = `
 .bdg-shell { background: ${CREAM}; min-height: 100vh; color: ${INK}; }
+.bdg-breadcrumb { background: #2C0A10; color: ${GOLD}; padding: 6px 0; font-size: 12.5px; border-bottom: 1px solid #4B1119; }
+.bdg-breadcrumb-inner { max-width: 1100px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 8px; }
+.bdg-breadcrumb a { color: ${GOLD}; text-decoration: none; padding: 2px 6px; border-radius: 3px; transition: background 0.15s; }
+.bdg-breadcrumb a:hover { background: rgba(201,169,97,0.15); }
+.bdg-breadcrumb .sep { color: rgba(201,169,97,0.5); }
+.bdg-breadcrumb .current { color: rgba(255,255,255,0.85); font-weight: 500; }
 .bdg-header { background: ${WINE_DEEP}; color: #fff; padding: 14px 0; border-bottom: 3px solid ${GOLD}; }
 .bdg-header-inner { max-width: 1100px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .bdg-brand { color: #fff; text-decoration: none; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
@@ -115,6 +121,13 @@ export default function BudgetLayout({ children }: { children: React.ReactNode }
   return (
     <div className="bdg-shell">
       <style dangerouslySetInnerHTML={{ __html: BUDGET_CSS }} />
+      <div className="bdg-breadcrumb">
+        <div className="bdg-breadcrumb-inner">
+          <a href="/finance" aria-label="回到班級經費中心">← 班級經費中心</a>
+          <span className="sep">/</span>
+          <span className="current">預算說明書</span>
+        </div>
+      </div>
       <header className="bdg-header">
         <div className="bdg-header-inner">
           <Link href="/budget" className="bdg-brand">
