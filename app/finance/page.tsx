@@ -192,7 +192,7 @@ function Stat({ label, value, bal }: { label: string; value: number; bal?: boole
 }
 
 const wrap: React.CSSProperties = { minHeight: '100vh', background: '#EDE6D8', padding: '20px 0', fontFamily: '"Noto Sans TC",sans-serif' };
-const phone: React.CSSProperties = { maxWidth: 460, margin: '0 auto', background: CREAM, minHeight: '90vh', boxShadow: '0 8px 40px rgba(0,0,0,.12)', overflow: 'hidden', color: INK };
+const phone: React.CSSProperties = { width: '100%', maxWidth: 1100, boxSizing: 'border-box', margin: '0 auto', background: CREAM, minHeight: '90vh', boxShadow: '0 8px 40px rgba(0,0,0,.12)', overflow: 'hidden', color: INK };
 const hd: React.CSSProperties = { background: WINE, color: '#fff', padding: '26px 22px 22px', borderBottom: `3px solid ${GOLD}` };
 const eyebrow: React.CSSProperties = { fontSize: 11, letterSpacing: '.28em', color: GOLD_SOFT };
 const transp: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 14, fontSize: 12, background: 'rgba(255,255,255,.12)', padding: '5px 11px', borderRadius: 99 };
