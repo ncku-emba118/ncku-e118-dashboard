@@ -620,7 +620,6 @@ export type ChangelogEntry = {
   summary: string;
   changes: { type: 'new' | 'change' | 'fix' | 'remove'; text: string }[];
   numbers?: { label: string; before: string; after: string; delta: string }[];
-  gitCommit?: string;
 };
 
 export const CHANGELOG: ChangelogEntry[] = [

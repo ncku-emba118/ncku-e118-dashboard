@@ -25,8 +25,6 @@ const TYPE_LABEL: Record<string, { label: string; color: string; bg: string; sym
   remove: { label: '移除', color: '#666', bg: '#EEE', symbol: '−' },
 };
 
-const GH_REPO = 'https://github.com/ncku-emba118/ncku-e118-dashboard';
-
 export default function ChangelogPage() {
   return (
     <>
@@ -36,7 +34,6 @@ export default function ChangelogPage() {
         <p style={{ fontSize: 14, color: '#4A413A', lineHeight: 1.8, maxWidth: 800 }}>
           班費預算說明書的歷次修訂記錄。每次重大調整都會在此列出「變更了什麼」與「對數字的影響」，
           作為班務討論的依據與決議的留底。
-          要查看任一版本的完整原始檔，可至 GitHub 的 commit 歷史回溯。
         </p>
         <div style={{ marginTop: 12, fontSize: 12, color: MUTE }}>
           目前最新版：<strong style={{ color: WINE, fontFamily: DISPLAY, fontSize: 14 }}>{META.version}</strong>　·　最後更新 {META.updatedAt}
@@ -171,7 +168,7 @@ export default function ChangelogPage() {
             </section>
           )}
 
-          {/* GitHub 連結 */}
+          {/* 版本狀態 */}
           <footer
             style={{
               marginTop: 18,
@@ -179,23 +176,9 @@ export default function ChangelogPage() {
               borderTop: `1px solid ${LINE}`,
               fontSize: 12,
               color: MUTE,
-              display: 'flex',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 8,
             }}
           >
-            <span>
-              {i === 0 ? '當前線上版本' : `已被 ${CHANGELOG[i - 1].version} 取代`}
-            </span>
-            <a
-              href={`${GH_REPO}/commits/main/lib/budget/data.ts`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: WINE, textDecoration: 'none', fontWeight: 500 }}
-            >
-              查看 GitHub commit 歷史 ↗
-            </a>
+            {i === 0 ? '當前線上版本' : `已被 ${CHANGELOG[i - 1].version} 取代`}
           </footer>
         </article>
       ))}
@@ -218,7 +201,7 @@ export default function ChangelogPage() {
         <ul style={{ paddingLeft: 22, margin: 0 }}>
           <li>每次重大調整（活動新增 / 預算項目變動 / 結構變更）會在此頁新增一筆版本記錄</li>
           <li>當前線上的預算說明書頁面（總覽、活動明細、預備金等）一律顯示「最新版」內容</li>
-          <li>若需查看舊版完整原始檔，可至 <a href={GH_REPO} target="_blank" rel="noopener noreferrer" style={{ color: WINE }}>GitHub repository</a> 查看 commit 歷史；或在班務群組請秘書處協助匯出</li>
+          <li>若需查看舊版完整內容，可於班務群組請秘書處協助匯出</li>
           <li>每場活動結束後的「實際結算」會更新到對應活動頁，不另開新版（屬於資料更新、非預算修訂）</li>
         </ul>
       </section>
