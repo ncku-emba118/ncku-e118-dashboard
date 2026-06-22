@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import SignaturePad from 'signature_pad';
+import Breadcrumb from '@/components/Breadcrumb';
 
 const WINE = '#8B1F2F';
 const CREAM = '#FAF7F2';
@@ -134,6 +135,8 @@ export default function SignoffDetailPage() {
   if (!d) return <main style={{ minHeight: '100vh', background: CREAM, padding: 24 }}><p style={{ color: MUTE }}>載入中…</p></main>;
 
   return (
+    <>
+    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級經費中心', href: '/finance' }, { label: '簽核', href: '/finance/signoff' }, { label: '明細' }]} />
     <main style={{ minHeight: '100vh', background: CREAM, color: INK, padding: '24px 16px' }}>
       <div style={{ maxWidth: 620, margin: '0 auto' }}>
         <h1 style={{ fontSize: 20, color: WINE, marginBottom: 4 }}>{d.doc.title}</h1>
@@ -215,5 +218,6 @@ export default function SignoffDetailPage() {
         <p style={{ marginTop: 24 }}><a href="/finance/signoff" style={{ color: MUTE, fontSize: 13 }}>← 回簽核清單</a></p>
       </div>
     </main>
+    </>
   );
 }

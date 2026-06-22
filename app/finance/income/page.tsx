@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { INCOME_CATEGORIES } from '@/lib/finance/income';
+import Breadcrumb from '@/components/Breadcrumb';
 
 const WINE = '#8B1F2F';
 const CREAM = '#FAF7F2';
@@ -84,6 +85,8 @@ export default function IncomeManagePage() {
   }
 
   return (
+    <>
+    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級經費中心', href: '/finance' }, { label: '收入記錄' }]} />
     <main style={{ minHeight: '100vh', background: CREAM, color: INK, padding: '24px 16px', fontFamily: '"Noto Sans TC",sans-serif' }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
@@ -155,6 +158,7 @@ export default function IncomeManagePage() {
         </p>
       </div>
     </main>
+    </>
   );
 }
 

@@ -10,6 +10,7 @@ import { getServerClient } from '@/lib/supabase/server';
 import AdminPostsTable from '@/components/AdminPostsTable';
 import AdminLineRouting from '@/components/AdminLineRouting';
 import { getPostViewCounts } from '@/lib/board/view_logger';
+import Breadcrumb from '@/components/Breadcrumb';
 
 type AdminPost = {
   id: string;
@@ -379,6 +380,8 @@ export default async function AdminHome() {
     : deptInfo(session.home_dept_id).name;
 
   return (
+    <>
+    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級公告欄', href: '/board' }, { label: '後台管理' }]} />
     <main
       style={{
         minHeight: '100vh',
@@ -534,5 +537,6 @@ export default async function AdminHome() {
         <AdminPostsTable posts={posts} viewCounts={Object.fromEntries(viewCounts)} />
       </div>
     </main>
+    </>
   );
 }

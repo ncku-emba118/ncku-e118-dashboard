@@ -5,6 +5,7 @@
  * 圖在 public/assets/officers/{south,north}.jpeg（1280px；放大看細節稍軟，有高清原檔再換）。
  */
 import { useState, useEffect } from 'react';
+import Breadcrumb from '@/components/Breadcrumb';
 
 const SRC = { south: '/assets/officers/south.jpeg', north: '/assets/officers/north.jpeg' } as const;
 const NAME = { south: '南班', north: '北班' } as const;
@@ -26,6 +27,8 @@ export default function OfficersPage() {
   }, []);
 
   return (
+    <>
+    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級幹部' }]} />
     <div style={{ minHeight: '100vh', background: '#EDE6D8', color: '#1A1612' }}>
       <header style={{ background: '#8B1F2F', color: '#fff', borderBottom: '3px solid #C9A961' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -86,6 +89,7 @@ export default function OfficersPage() {
         </div>
       )}
     </div>
+    </>
   );
 }
 

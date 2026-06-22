@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Breadcrumb from '@/components/Breadcrumb';
 import { META } from '@/lib/budget/data';
 
 export const metadata: Metadata = {
@@ -121,13 +122,13 @@ export default function BudgetLayout({ children }: { children: React.ReactNode }
   return (
     <div className="bdg-shell">
       <style dangerouslySetInnerHTML={{ __html: BUDGET_CSS }} />
-      <div className="bdg-breadcrumb">
-        <div className="bdg-breadcrumb-inner">
-          <a href="/finance" aria-label="回到班級經費中心">← 班級經費中心</a>
-          <span className="sep">/</span>
-          <span className="current">預算說明書</span>
-        </div>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: '班級面板', href: '/' },
+          { label: '班級經費中心', href: '/finance' },
+          { label: '預算說明書' },
+        ]}
+      />
       <header className="bdg-header">
         <div className="bdg-header-inner">
           <Link href="/budget" className="bdg-brand">

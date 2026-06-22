@@ -58,6 +58,7 @@ async function loadComments(postId: string): Promise<Comment[]> {
 }
 
 import { formatDateTW as formatDate } from '@/lib/format';
+import Breadcrumb from '@/components/Breadcrumb';
 
 export default async function PostDetail({
   params,
@@ -83,6 +84,8 @@ export default async function PostDetail({
   const dept = deptInfo(post.department_id);
 
   return (
+    <>
+    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級公告欄', href: '/board' }, { label: '公告' }]} />
     <main
       style={{
         minHeight: '100vh',
@@ -228,5 +231,6 @@ export default async function PostDetail({
         </p>
       </div>
     </main>
+    </>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import './calendar.css';
+import Breadcrumb from '@/components/Breadcrumb';
 
 const ICAL_URL =
   'https://calendar.google.com/calendar/ical/ncku.emba.e118%40gmail.com/public/basic.ics';
@@ -25,6 +26,8 @@ export default function CalendarPage() {
   };
 
   return (
+    <>
+    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級行事曆' }]} />
     <div className="calendar-route">
       <div className="container">
         <a href="/" className="back-link">
@@ -209,5 +212,6 @@ export default function CalendarPage() {
         已複製訂閱網址 ✓
       </div>
     </div>
+    </>
   );
 }

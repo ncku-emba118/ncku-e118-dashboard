@@ -11,6 +11,7 @@ import {
   createSignedReadUrl,
 } from '@/lib/signoff/dal';
 import { sumIncome } from '@/lib/finance/income';
+import Breadcrumb from '@/components/Breadcrumb';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,7 +58,9 @@ export default async function FinancePage() {
   );
 
   return (
-    <main style={wrap}>
+    <>
+      <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級經費中心' }]} />
+      <main style={wrap}>
       <div style={phone}>
         <header style={hd}>
           <div style={eyebrow}>NCKU EMBA · E118</div>
@@ -178,7 +181,8 @@ export default async function FinancePage() {
 
         <footer style={ft}>本頁收支資料全班可查 · 簽核僅限幹部<br />成大 EMBA E118 · emba.aqualux.dev</footer>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
 

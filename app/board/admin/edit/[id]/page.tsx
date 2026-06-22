@@ -12,6 +12,7 @@ import {
 import { getServerClient } from '@/lib/supabase/server';
 import PostForm, { type PostFormInitial } from '@/components/PostForm';
 import { normalizeAttachments } from '@/lib/attachment';
+import Breadcrumb from '@/components/Breadcrumb';
 
 const UUID_RE = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
 
@@ -72,6 +73,8 @@ export default async function EditPostPage({
   const depts = [{ id: lockedDept.id, name: lockedDept.name, color: lockedDept.color }];
 
   return (
+    <>
+    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級公告欄', href: '/board' }, { label: '後台', href: '/board/admin' }, { label: '編輯公告' }]} />
     <PostForm
       mode="edit"
       depts={depts}
@@ -80,5 +83,6 @@ export default async function EditPostPage({
       postId={post.id}
       initial={initial}
     />
+    </>
   );
 }

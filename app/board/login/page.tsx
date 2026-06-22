@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Breadcrumb from '@/components/Breadcrumb';
 
 const ACCOUNTS: Array<{ value: string; label: string; role: 'super' | 'dept' }> = [
   { value: '班代',   label: '班代（super · 全部部門）',   role: 'super' },
@@ -67,6 +68,8 @@ function LoginForm() {
   }
 
   return (
+    <>
+    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級公告欄', href: '/board' }, { label: '幹部登入' }]} />
     <main
       style={{
         minHeight: '100vh',
@@ -270,6 +273,7 @@ function LoginForm() {
         </p>
       </div>
     </main>
+    </>
   );
 }
 

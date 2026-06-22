@@ -63,11 +63,14 @@ function excerpt(content: string): string {
 }
 
 import { formatDateTW as formatDate } from '@/lib/format';
+import Breadcrumb from '@/components/Breadcrumb';
 
 export default async function BoardHome() {
   const posts = await loadPosts();
 
   return (
+    <>
+    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級公告欄' }]} />
     <main
       style={{
         minHeight: '100vh',
@@ -319,5 +322,6 @@ export default async function BoardHome() {
         </p>
       </div>
     </main>
+    </>
   );
 }

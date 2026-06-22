@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Breadcrumb from '@/components/Breadcrumb';
 
 const WINE = '#8B1F2F';
 const CREAM = '#FAF7F2';
@@ -112,6 +113,8 @@ export default function SignoffNewPage() {
   }
 
   return (
+    <>
+    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級經費中心', href: '/finance' }, { label: '簽核', href: '/finance/signoff' }, { label: '新建' }]} />
     <main style={{ minHeight: '100vh', background: CREAM, color: INK, padding: '24px 16px' }}>
       <div style={{ maxWidth: 560, margin: '0 auto' }}>
         <h1 style={{ fontSize: 20, color: WINE }}>發起經費簽核</h1>
@@ -176,5 +179,6 @@ export default function SignoffNewPage() {
         </p>
       </div>
     </main>
+    </>
   );
 }

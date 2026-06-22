@@ -1,9 +1,16 @@
 'use client';
 
 import SubscribeButton from '@/components/SubscribeButton';
+import Breadcrumb from '@/components/Breadcrumb';
 
 export default function SubscribePage() {
   return (
+    <>
+    <Breadcrumb items={[
+      { label: '班級面板', href: '/' },
+      { label: '班級公告欄', href: '/board' },
+      { label: '訂閱推播' },
+    ]} />
     <main
       style={{
         minHeight: '100vh',
@@ -14,26 +21,6 @@ export default function SubscribePage() {
       }}
     >
       <div style={{ maxWidth: 640, margin: '0 auto' }}>
-        <nav
-          style={{
-            fontSize: 11,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: '#8A7F73',
-            marginBottom: 20,
-          }}
-        >
-          <a href="/" style={{ color: '#8A7F73', textDecoration: 'none' }}>
-            主 dashboard
-          </a>
-          <span style={{ margin: '0 8px' }}>›</span>
-          <a href="/board" style={{ color: '#8A7F73', textDecoration: 'none' }}>
-            公告欄
-          </a>
-          <span style={{ margin: '0 8px' }}>›</span>
-          <span style={{ color: '#8B1F2F' }}>訂閱推播</span>
-        </nav>
-
         <h1
           style={{
             fontFamily: "'Cormorant Garamond', Georgia, serif",
@@ -136,5 +123,6 @@ export default function SubscribePage() {
         </p>
       </div>
     </main>
+    </>
   );
 }
