@@ -254,15 +254,6 @@ export default function SignoffPage() {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-@media print {
-  .signoff-controls, .bdg-breadcrumb, .bdg-header, .bdg-footer, .sig-modal { display: none !important; }
-  .bdg-main { padding: 0 !important; max-width: none !important; }
-  .signoff-sheet { box-shadow: none !important; margin: 0 !important; padding: 14mm 12mm !important; }
-  .sig-cell-empty { border: 1px solid #ccc !important; color: transparent !important; }
-  .sig-cell-empty .sig-hint { display: none !important; }
-  .sig-clear-btn { display: none !important; }
-  @page { size: A4 portrait; margin: 0; }
-}
 .signoff-sheet {
   max-width: 210mm;
   margin: 0 auto;
@@ -271,6 +262,94 @@ export default function SignoffPage() {
   padding: 18mm 16mm;
   min-height: 290mm;
   box-sizing: border-box;
+}
+
+@media print {
+  /* 隱藏導覽、控制列、modal */
+  .signoff-controls, .bdg-breadcrumb, .bdg-header, .bdg-footer, .sig-modal { display: none !important; }
+  .bdg-main { padding: 0 !important; max-width: none !important; }
+
+  /* 紙張外圍：A4 直式、無印表機預設邊界 */
+  @page { size: A4 portrait; margin: 0; }
+  html, body { margin: 0 !important; padding: 0 !important; }
+
+  /* 強制單頁：整張預算書 fit 一張 A4，所有元素禁止分頁 */
+  .signoff-sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 9mm 11mm !important;
+    min-height: auto !important;
+    max-height: 297mm !important;
+    height: 297mm !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    font-size: 9.5px !important;
+    line-height: 1.4 !important;
+  }
+  .signoff-sheet * { page-break-inside: avoid !important; break-inside: avoid !important; }
+  .signoff-sheet table, .signoff-sheet tr, .signoff-sheet td, .signoff-sheet th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* 標題縮小 */
+  .signoff-sheet h1 { font-size: 16px !important; margin: 3px 0 2px !important; line-height: 1.25 !important; }
+  .signoff-sheet h2, .signoff-sheet h3 { font-size: 11px !important; margin: 4px 0 !important; }
+
+  /* Header 區 padding 縮小 */
+  .signoff-sheet > div:first-child { padding-bottom: 6px !important; margin-bottom: 6px !important; }
+
+  /* KeyBox 三大數字壓縮 */
+  .signoff-sheet [style*="grid-template-columns: repeat(3, 1fr)"] {
+    margin-bottom: 6px !important;
+    gap: 6px !important;
+  }
+  .signoff-sheet [style*="Cormorant Garamond"] { font-size: 17px !important; }
+
+  /* 表格 row 縮小 */
+  .signoff-sheet table { font-size: 9.5px !important; margin-bottom: 5px !important; }
+  .signoff-sheet table td, .signoff-sheet table th {
+    padding: 3px 6px !important;
+    line-height: 1.25 !important;
+  }
+  .signoff-sheet table td > div { font-size: 8.5px !important; margin-top: 1px !important; }
+
+  /* 說明區 padding 縮小 */
+  .signoff-sheet [style*="border-left: 3px solid #C9A961"] {
+    padding: 5px 8px !important;
+    margin-bottom: 6px !important;
+    font-size: 9px !important;
+    line-height: 1.45 !important;
+  }
+
+  /* 簽名圖縮小、不再撐高 row */
+  .signoff-sheet img[alt$="簽名"] {
+    max-height: 26px !important;
+    max-width: 140px !important;
+    display: block !important;
+  }
+
+  /* 空白簽名格在 print 時隱藏虛線提示、改成細灰底線 */
+  .sig-cell-empty {
+    border: none !important;
+    border-bottom: 1px solid #999 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    height: 24px !important;
+    color: transparent !important;
+  }
+  .sig-cell-empty .sig-hint { display: none !important; }
+
+  /* 清除按鈕 / 互動元素隱藏 */
+  .sig-clear-btn { display: none !important; }
+
+  /* Footer 縮小 */
+  .signoff-sheet > div:last-of-type {
+    padding-top: 5px !important;
+    margin-top: 6px !important;
+    font-size: 8.5px !important;
+  }
 }
 `,
         }}
