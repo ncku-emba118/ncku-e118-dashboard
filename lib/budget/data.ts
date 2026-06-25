@@ -11,14 +11,14 @@
 export const META = {
   className: 'NCKU EMBA E118 南班',
   period: '2026 – 2028',
-  southMembers: 84,
-  northMembers: 15,
+  southMembers: 83,
+  northMembers: 16,
   totalMembers: 99,
-  southRatio: 84 / 99, // ≈ 0.8485
-  northRatio: 15 / 99, // ≈ 0.1515
+  southRatio: 83 / 99, // ≈ 0.8384
+  northRatio: 16 / 99, // ≈ 0.1616
   feePerPerson: 30000,
-  version: 'v3',
-  updatedAt: '2026-06-22',
+  version: 'v4',
+  updatedAt: '2026-06-23',
   drafter: '秘書長',
 } as const;
 
@@ -623,6 +623,25 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v4',
+    date: '2026-06-23',
+    title: '南班人數調整 + 預備金用詞 + 簽核版',
+    summary:
+      '南班同學卓冠宏轉北班，南班 84 → 83 人、北班 15 → 16 人；合辦項目分攤比例由 84:15 改為 83:16。同時新增單頁式預算簽核書（供班代、執行部班代、幹部簽核），統一用詞「預備金」（取代「多收／退回」），避免同學誤解為等額退款。',
+    changes: [
+      { type: 'change', text: '南班人數 84 → 83（南班同學卓冠宏轉北班）；北班 15 → 16；合辦項目分攤比例改為 83:16' },
+      { type: 'new', text: '單頁式預算簽核書（/budget/signoff）：A4 列印友善、含班代/執行部班代/幹部簽核欄、版本印記，供正式簽核使用' },
+      { type: 'change', text: '用詞統一：原「多收／期末退回」改為「班費預備金／安全水位」，避免引發同學「等額退款」的誤解' },
+    ],
+    numbers: [
+      { label: '南班總支出', before: '2,319,445', after: '2,305,834', delta: '−13,611' },
+      { label: '南班必要支出/人', before: '27,612', after: '27,781', delta: '+169' },
+      { label: '收費（不變）', before: '30,000', after: '30,000', delta: '—' },
+      { label: '南班預備金/人', before: '2,388', after: '2,219', delta: '−169' },
+      { label: '北班合辦分攤（給北班參考）', before: '204,164', after: '217,775', delta: '+13,611' },
+    ],
+  },
   {
     version: 'v3',
     date: '2026-06-22',
