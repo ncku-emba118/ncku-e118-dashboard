@@ -10,6 +10,8 @@ import {
   NECESSARY_PER_PERSON,
   SURPLUS,
   SURPLUS_PER_PERSON,
+  ACTIVITIES,
+  RESERVES,
   fmt,
 } from '@/lib/budget/data';
 
@@ -265,7 +267,7 @@ export default function SignoffPage() {
 }
 
 @media print {
-  /* 隱藏導覽、控制列、modal — breadcrumb 是 nav[aria-label="breadcrumb"]、不是 class */
+  /* 隱藏導覽、控制列、modal */
   .signoff-controls, .bdg-header, .bdg-footer, .sig-modal,
   nav[aria-label="breadcrumb"], nav[aria-label="班費網站導覽"] { display: none !important; }
   .bdg-main { padding: 0 !important; max-width: none !important; }
@@ -285,71 +287,56 @@ export default function SignoffPage() {
     overflow: hidden !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    font-size: 9.5px !important;
-    line-height: 1.4 !important;
+    font-size: 9px !important;
+    line-height: 1.35 !important;
   }
   .signoff-sheet * { page-break-inside: avoid !important; break-inside: avoid !important; }
-  .signoff-sheet table, .signoff-sheet tr, .signoff-sheet td, .signoff-sheet th {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
+
+  /* 切換簽核版型：螢幕版 table 隱藏、列印版 grid 顯示 */
+  .signoff-table-screen { display: none !important; }
+  .signoff-grid-print { display: block !important; }
 
   /* 標題縮小 */
-  .signoff-sheet h1 { font-size: 16px !important; margin: 3px 0 2px !important; line-height: 1.25 !important; }
-  .signoff-sheet h2, .signoff-sheet h3 { font-size: 11px !important; margin: 4px 0 !important; }
+  .signoff-sheet h1 { font-size: 15px !important; margin: 2px 0 !important; line-height: 1.2 !important; }
+  .signoff-sheet h2 { font-size: 11px !important; margin: 3px 0 !important; }
 
   /* Header 區 padding 縮小 */
-  .signoff-sheet > div:first-child { padding-bottom: 6px !important; margin-bottom: 6px !important; }
+  .signoff-sheet > div:first-child { padding-bottom: 5px !important; margin-bottom: 5px !important; }
 
-  /* KeyBox 三大數字壓縮 */
-  .signoff-sheet [style*="grid-template-columns: repeat(3, 1fr)"] {
+  /* KeyBox 三大數字壓縮（只命中第一個 3 欄 grid）*/
+  .signoff-sheet > div:nth-child(2) {
     margin-bottom: 6px !important;
     gap: 6px !important;
   }
-  .signoff-sheet [style*="Cormorant Garamond"] { font-size: 17px !important; }
-
-  /* 表格 row 縮小 */
-  .signoff-sheet table { font-size: 9.5px !important; margin-bottom: 5px !important; }
-  .signoff-sheet table td, .signoff-sheet table th {
-    padding: 3px 6px !important;
-    line-height: 1.25 !important;
-  }
-  .signoff-sheet table td > div { font-size: 8.5px !important; margin-top: 1px !important; }
+  .signoff-sheet [style*="Cormorant Garamond"] { font-size: 16px !important; }
 
   /* 說明區 padding 縮小 */
   .signoff-sheet [style*="border-left: 3px solid #C9A961"] {
-    padding: 5px 8px !important;
+    padding: 4px 8px !important;
     margin-bottom: 6px !important;
-    font-size: 9px !important;
-    line-height: 1.45 !important;
+    font-size: 8.5px !important;
+    line-height: 1.4 !important;
   }
 
-  /* 簽名圖縮小、不再撐高 row */
-  .signoff-sheet img[alt$="簽名"] {
-    max-height: 26px !important;
-    max-width: 140px !important;
-    display: block !important;
-  }
+  /* 收支明細 2 欄區字級調整 */
+  .signoff-sheet [style*="grid-template-columns: 1fr 1fr"] > div > div { font-size: 9px !important; }
 
-  /* 空白簽名格在 print 時隱藏虛線提示、改成細灰底線 */
-  .sig-cell-empty {
-    border: none !important;
-    border-bottom: 1px solid #999 !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    height: 24px !important;
-    color: transparent !important;
+  /* 簽核 3×3 grid 內格樣式 */
+  .signoff-grid-print > div { gap: 6px !important; }
+  .signoff-grid-print > div > div {
+    height: 56px !important;
+    padding: 4px 6px !important;
   }
-  .sig-cell-empty .sig-hint { display: none !important; }
+  .signoff-grid-print img { max-height: 36px !important; }
 
-  /* 清除按鈕 / 互動元素隱藏 */
+  /* 清除按鈕隱藏 */
   .sig-clear-btn { display: none !important; }
 
   /* Footer 縮小 */
   .signoff-sheet > div:last-of-type {
-    padding-top: 5px !important;
+    padding-top: 4px !important;
     margin-top: 6px !important;
-    font-size: 8.5px !important;
+    font-size: 8px !important;
   }
 }
 `,
@@ -398,57 +385,72 @@ function EmbaSheet({
         <KeyBox label="預備金/人" value={fmt(SURPLUS_PER_PERSON)} unit="元" accent="#C9A961" note="班費安全水位" />
       </div>
 
-      <SectionTitle text="收支總表（保守編列）" />
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 12 }}>
-        <thead>
-          <tr style={{ background: '#F4EFE6' }}>
-            <th style={th()}>項目</th>
-            <th style={{ ...th(), textAlign: 'right', width: '32%' }}>金額（NT$）</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style={td()}>
-              <strong style={{ color: '#6B1622' }}>A　合辦項目分攤（{META.southMembers}/99）</strong>
-              <div style={{ fontSize: 9.5, color: '#8A7F73', marginTop: 2 }}>班服 · 聖誕 · 116 畢業午宴 · 119 新生報到 · 119 新生營 · 117 畢業相關 · 校友會費 · 教師節禮品</div>
-            </td>
-            <td style={{ ...td(), textAlign: 'right' }}>{fmt(SUMMARY.coHosted.total)}</td>
-          </tr>
-          <tr>
-            <td style={td()}>
-              <strong style={{ color: '#6B1622' }}>B　南班自辦</strong>
-              <div style={{ fontSize: 9.5, color: '#8A7F73', marginTop: 2 }}>119 迎新晚會 · 聖誕晚會（南班自辦）</div>
-            </td>
-            <td style={{ ...td(), textAlign: 'right' }}>{fmt(SUMMARY.southOnly.total)}</td>
-          </tr>
-          <tr>
-            <td style={td()}>
-              <strong style={{ color: '#6B1622' }}>C　南班自理預備金</strong>
-              <div style={{ fontSize: 9.5, color: '#8A7F73', marginTop: 2 }}>聯誼機動金 · 緊急預備金 · 婚喪喜慶 · 南班參與北班補助</div>
-            </td>
-            <td style={{ ...td(), textAlign: 'right' }}>{fmt(SUMMARY.reserves.total)}</td>
-          </tr>
-          <tr style={{ background: '#FAF7F2' }}>
-            <td style={{ ...td(), fontWeight: 700 }}>支出合計（A＋B＋C）</td>
-            <td style={{ ...td(), textAlign: 'right', fontWeight: 700 }}>{fmt(TOTAL_EXPENSE)}</td>
-          </tr>
-          <tr>
-            <td style={td()}>班費收入（{META.southMembers} 人 × {fmt(META.feePerPerson)}）</td>
-            <td style={{ ...td(), textAlign: 'right' }}>{fmt(INCOME.total)}</td>
-          </tr>
-          <tr style={{ background: '#FFF8E7' }}>
-            <td style={{ ...td(), fontWeight: 700, color: '#6B1622' }}>D　班費預備金（安全水位）</td>
-            <td style={{ ...td(), textAlign: 'right', fontWeight: 700, color: '#6B1622' }}>{fmt(SURPLUS)}</td>
-          </tr>
-        </tbody>
-      </table>
+      <SectionTitle text="收支明細（保守編列、單位：NT$）" />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+        {/* 左欄：A 合辦項目分攤 */}
+        <div>
+          <div style={blockHeader()}>
+            <span>A　合辦項目分攤（{META.southMembers}/99）</span>
+            <span>{fmt(SUMMARY.coHosted.total)}</span>
+          </div>
+          {ACTIVITIES.filter((a) => a.type === 'co-hosted' || a.type === 'fixed-cost').map((a) => (
+            <div key={a.slug} style={detailRow()}>
+              <span>{a.shortName}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(a.southBurden)}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 右欄：B + C + 收支總計 */}
+        <div>
+          <div style={blockHeader()}>
+            <span>B　南班自辦</span>
+            <span>{fmt(SUMMARY.southOnly.total)}</span>
+          </div>
+          {ACTIVITIES.filter((a) => a.type === 'south-only').map((a) => (
+            <div key={a.slug} style={detailRow()}>
+              <span>{a.shortName}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(a.southBurden)}</span>
+            </div>
+          ))}
+
+          <div style={{ ...blockHeader(), marginTop: 6 }}>
+            <span>C　南班自理預備金</span>
+            <span>{fmt(SUMMARY.reserves.total)}</span>
+          </div>
+          {RESERVES.map((r) => (
+            <div key={r.slug} style={detailRow()}>
+              <span>{r.name}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(r.amount)}</span>
+            </div>
+          ))}
+
+          {/* 總計區塊 */}
+          <div style={{ marginTop: 8, borderTop: '1.5px solid #6B1622', paddingTop: 4 }}>
+            <div style={{ ...detailRow(), fontWeight: 700, color: '#1A1612' }}>
+              <span>支出合計（A＋B＋C）</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(TOTAL_EXPENSE)}</span>
+            </div>
+            <div style={detailRow()}>
+              <span>班費收入（{META.southMembers} 人 × {fmt(META.feePerPerson)}）</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(INCOME.total)}</span>
+            </div>
+            <div style={{ ...detailRow(), background: '#FFF8E7', fontWeight: 700, color: '#6B1622', padding: '3px 6px', borderRadius: 3, marginTop: 2 }}>
+              <span>D　班費預備金（安全水位）</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(SURPLUS)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div style={{ fontSize: 10.5, color: '#4A413A', lineHeight: 1.8, background: '#F4EFE6', borderLeft: '3px solid #C9A961', padding: '8px 12px', marginBottom: 14 }}>
         <strong style={{ color: '#6B1622' }}>說明：</strong>所有費用為預估，實際以活動接近時或實際支出調整。班費預備金作為班費安全水位，應對活動超支、匯率變動、突發狀況等不確定因素。
       </div>
 
       <SectionTitle text="幹部簽核" />
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10.5 }}>
+
+      {/* 螢幕版簽核表（含日期欄、可互動）— 列印時隱藏 */}
+      <table className="signoff-table-screen" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10.5 }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #6B1622' }}>
             <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: '#6B1622', fontSize: 10, width: '20%' }}>職稱</th>
@@ -518,6 +520,44 @@ function EmbaSheet({
           })}
         </tbody>
       </table>
+
+      {/* PDF 版簽核 grid（3×3、無日期、大格） — 螢幕隱藏、列印才顯示 */}
+      <div className="signoff-grid-print" style={{ display: 'none' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {SIGNERS.map((role) => {
+            const sig = signatures[role];
+            return (
+              <div
+                key={role}
+                style={{
+                  border: '1px solid #C9A961',
+                  borderRadius: 4,
+                  padding: '6px 8px',
+                  height: 60,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  background: '#fff',
+                }}
+              >
+                <div style={{ fontSize: 10, color: '#6B1622', fontWeight: 600, letterSpacing: 0.5 }}>{role}</div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', flex: 1, paddingTop: 2 }}>
+                  {sig ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={sig.dataUrl}
+                      alt={`${role} 簽名`}
+                      style={{ maxHeight: 36, maxWidth: '100%', objectFit: 'contain' }}
+                    />
+                  ) : (
+                    <div style={{ width: '90%', borderBottom: '1px solid #999', height: 1, marginBottom: 4 }} />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid #E8DFD0', fontSize: 10, color: '#8A7F73', display: 'flex', justifyContent: 'space-between' }}>
         <span>E118 南班秘書處 · {META.updatedAt} 製表</span>
@@ -756,3 +796,26 @@ function formatDate(iso: string) {
 
 const th = () => ({ padding: '8px 10px', textAlign: 'left' as const, color: '#6B1622', fontWeight: 600, fontSize: 11, borderBottom: '1px solid #E8DFD0' });
 const td = () => ({ padding: '8px 10px', borderBottom: '1px solid #F4EFE6', color: '#1A1612' });
+
+const blockHeader = (): React.CSSProperties => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'baseline',
+  background: '#F4EFE6',
+  color: '#6B1622',
+  fontWeight: 700,
+  fontSize: 11,
+  padding: '4px 8px',
+  borderRadius: 3,
+  marginBottom: 2,
+});
+
+const detailRow = (): React.CSSProperties => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'baseline',
+  fontSize: 10,
+  color: '#4A413A',
+  padding: '2px 8px 2px 16px',
+  borderBottom: '1px dotted #F4EFE6',
+});
