@@ -27,14 +27,30 @@ export default function ReservesPage() {
         <Link href="/budget" style={{ fontSize: 13, color: MUTE, textDecoration: 'none' }}>← 回總覽</Link>
         <h1 style={{ fontFamily: TC, fontSize: 28, color: WINE_DEEP, fontWeight: 600, margin: '12px 0 6px' }}>預備金與補助池</h1>
         <p style={{ fontSize: 14, color: '#4A413A', lineHeight: 1.8, maxWidth: 800 }}>
-          南班自理 4 項，合計 <strong>NT$ {fmt(totalAmount)}</strong>。每一項都有明確用途、動用機制與退回原則；
-          全屬「備而不用」，三年期末未動用餘額按南班 84 人比例退回班費公帳。
+          南班自理 4 項，合計 <strong>NT$ {fmt(totalAmount)}</strong>。每一項都有明確用途與動用機制；屬「備而不用」性質，作為班費安全水位。
         </p>
       </div>
 
+      {/* 結餘處理統一說明 — 取代每項個別寫退回原則 */}
+      <div
+        style={{
+          background: '#FFF8E7',
+          border: `1px solid ${GOLD}`,
+          borderLeft: `4px solid ${GOLD}`,
+          padding: '14px 18px',
+          borderRadius: 6,
+          fontSize: 13.5,
+          color: '#7a5c00',
+          lineHeight: 1.9,
+          marginBottom: 24,
+        }}
+      >
+        <strong style={{ color: WINE_DEEP }}>📋 結餘處理原則：</strong>各項預備金若有結餘，將全數歸入班費總額，作為後續活動超支、匯率變動、突發狀況的安全水位、由秘書處統一管理。
+      </div>
+
       <section className="bdg-grid bdg-grid-2 bdg-grid-gap-sm" style={{ marginBottom: 28 }}>
-        <Stat label="4 項合計" value={`NT$ ${fmt(totalAmount)}`} accent={WINE} sub={`每人約 NT$ ${fmt(Math.round(totalAmount / META.southMembers))}（分攤到 84 人）`} />
-        <Stat label="退回原則" value="期末按比例退" sub="未動用餘額三年期末全數退回班費公帳，按 84 人人頭計算" accent={GOLD} />
+        <Stat label="4 項合計" value={`NT$ ${fmt(totalAmount)}`} accent={WINE} sub={`每人約 NT$ ${fmt(Math.round(totalAmount / META.southMembers))}（分攤到 ${META.southMembers} 人）`} />
+        <Stat label="性質" value="備而不用" sub="作為班費安全水位、用於應對突發狀況；結餘統一歸入班費總額" accent={GOLD} />
       </section>
 
       {RESERVES.map((r) => (
@@ -61,8 +77,6 @@ export default function ReservesPage() {
             <InfoBlock title="動用情境" items={r.trigger} />
             <InfoBlock title="動用機制" items={[r.approvers]} />
           </div>
-
-          <InfoBlock title="退回機制" items={[r.refundPolicy]} accent="ok" />
 
           {r.examples && r.examples.length > 0 && (
             <div style={{ marginTop: 14, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 6, padding: '12px 16px' }}>

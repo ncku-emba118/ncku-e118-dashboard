@@ -50,7 +50,7 @@ export default function BudgetHome() {
         </h1>
         <p style={{ fontSize: 15, color: '#4A413A', lineHeight: 1.8, maxWidth: 800 }}>
           適用期間 <strong>2026 – 2028</strong>（全期三年）　·　繳費基準 <strong>南班 {META.southMembers} 人</strong>　·
-          支出採保守編列，多收沉澱、用不完按比例退回。
+          支出採保守編列，包含活動費用 + 班費預備金作為安全水位。
           本文件公開予全班同學與幹部，所有活動、預備金、結算機制透明可查；實際支出將定期更新於各活動頁。
         </p>
       </section>
@@ -91,13 +91,13 @@ export default function BudgetHome() {
 
       {/* ─── 三大數字 ────────────────────────────────────────────────────── */}
       <section className="bdg-grid bdg-grid-3" style={{ marginBottom: 32 }}>
-        <KeyStat label="統一收取（每人）" value={`30,000`} unit="元" tone="wine" footnote="一次性收齊，含活動 + 預備金 + 安全水位" />
+        <KeyStat label="統一收取（每人）" value={`30,000`} unit="元" tone="wine" footnote="一次性收齊，含活動費用 + 班費預備金" />
         <KeyStat label="必要支出（每人）" value={fmt(NECESSARY_PER_PERSON)} unit="元" tone="ink" footnote="活動公關 + 預備金，實際發生的部分" />
-        <KeyStat label="預計退回（每人）" value={fmt(SURPLUS_PER_PERSON)} unit="元" tone="gold" footnote="多收沉澱、期末未動用按人頭退回" />
+        <KeyStat label="預備金（每人）" value={fmt(SURPLUS_PER_PERSON)} unit="元" tone="gold" footnote="班費安全水位，因應活動超支與突發狀況" />
       </section>
 
       {/* ─── 收 30,000 怎麼分配 ────────────────────────────────────────── */}
-      <Section title="你繳的 30,000 元怎麼用" subtitle="支出採保守編列，未動用餘額按比例退回">
+      <Section title="你繳的 30,000 元怎麼用" subtitle="支出採保守編列，含班費預備金作為安全水位">
         <div className="bdg-grid bdg-grid-2">
           <BreakdownRow
             band={`A 合辦項目分攤（84/99，共 ${SUMMARY.coHosted.items.length} 項）`}
@@ -118,8 +118,8 @@ export default function BudgetHome() {
             perPerson={Math.round(SUMMARY.reserves.total / META.southMembers)}
           />
           <BreakdownRow
-            band="D 安全水位（多收）"
-            desc="收入 - 必要支出，期末按人頭退回"
+            band="D 班費預備金"
+            desc="收入 − 必要支出，作為班費安全水位"
             amount={SURPLUS}
             perPerson={SURPLUS_PER_PERSON}
             tone="gold"
@@ -139,7 +139,7 @@ export default function BudgetHome() {
           }}
         >
           <strong style={{ color: WINE_DEEP }}>三個安心保證：</strong>
-          ① 預備金未動用餘額於期末按人頭退回；
+          ① 各項預備金結餘統一歸入班費總額、應對後續突發狀況；
           ② 聯誼採補助制，不是用全班的錢請少數人；
           ③ 每場活動結算後將公告於對應活動頁。
         </div>
@@ -236,7 +236,7 @@ export default function BudgetHome() {
             <strong>保守編列</strong>：活動參考學長姐實際決算 + 6% 漲幅；聖誕晚宴收入打 6 折（出席率保守估）；新生營「續用酒水」55,000 在 118 版本歸零。
           </li>
           <li>
-            <strong>多收沉澱、用不完退</strong>：收 30,000 元 = 必要 {fmt(NECESSARY_PER_PERSON)} + 安全水位 {fmt(SURPLUS_PER_PERSON)}；安全水位三年期末按人頭退回。
+            <strong>班費預備金</strong>：收 30,000 元 = 必要支出 {fmt(NECESSARY_PER_PERSON)} + 預備金 {fmt(SURPLUS_PER_PERSON)}；預備金作為班費安全水位，因應活動超支、匯率變動、突發狀況。
           </li>
           <li>
             <strong>結算優於預算</strong>：所有跟北班的金錢往來以「該場活動實際結算 × 比例」為準，不是用預算估算數字；期末總對帳調整差額。

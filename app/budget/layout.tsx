@@ -144,7 +144,7 @@ export default function BudgetLayout({ children }: { children: React.ReactNode }
       <main className="bdg-main">{children}</main>
       <footer className="bdg-footer">
         <div style={{ marginBottom: 6 }}>
-          E118 南班秘書處 · 預算為估算值、實際以結算為準、未動用餘額按比例退回
+          E118 南班秘書處 · 預算為估算值、實際以結算為準、結餘統一歸入班費總額
         </div>
         <div style={{ fontSize: 11.5 }}>
           當前版本 <strong style={{ color: '#6B1622' }}>{META.version}</strong> · 最後更新 {META.updatedAt} ·{' '}

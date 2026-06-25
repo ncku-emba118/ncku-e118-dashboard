@@ -365,7 +365,7 @@ function EmbaSheet({
     <div style={{ fontFamily: TC, color: '#1A1612', fontSize: 11.5, lineHeight: 1.55 }}>
       <div style={{ borderBottom: '2px solid #6B1622', paddingBottom: 12, marginBottom: 14 }}>
         <div style={{ fontFamily: DISPLAY, fontSize: 11, color: '#C9A961', letterSpacing: 2, textTransform: 'uppercase' }}>
-          NCKU EMBA · Class of 2028 · South Cohort · Budget Approval
+          NCKU EMBA · Class of E118 · South · Budget Approval
         </div>
         <h1 style={{ fontFamily: TC, fontSize: 22, color: '#6B1622', margin: '6px 0 4px', fontWeight: 600 }}>
           國立成功大學 EMBA E118 南班　班費預算簽核書
@@ -386,6 +386,37 @@ function EmbaSheet({
       </div>
 
       <SectionTitle text="收支明細（保守編列、單位：NT$）" />
+
+      {/* Horizontal stacked bar：A / B / C 三區塊佔總支出比例 */}
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 9.5, color: '#8A7F73', marginBottom: 3 }}>
+          支出組成（總支出 NT$ {fmt(TOTAL_EXPENSE)}）
+        </div>
+        <div style={{ display: 'flex', height: 28, borderRadius: 4, overflow: 'hidden', border: '1px solid #E8DFD0' }}>
+          <div style={{
+            flex: SUMMARY.coHosted.total, background: '#6B1622', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10.5, fontWeight: 600, padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden',
+          }}>
+            A · {((SUMMARY.coHosted.total / TOTAL_EXPENSE) * 100).toFixed(1)}%
+          </div>
+          <div style={{
+            flex: SUMMARY.southOnly.total, background: '#C9A961', color: '#1A1612',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10.5, fontWeight: 600, padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden',
+          }}>
+            B · {((SUMMARY.southOnly.total / TOTAL_EXPENSE) * 100).toFixed(1)}%
+          </div>
+          <div style={{
+            flex: SUMMARY.reserves.total, background: '#8B7A4B', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10.5, fontWeight: 600, padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden',
+          }}>
+            C · {((SUMMARY.reserves.total / TOTAL_EXPENSE) * 100).toFixed(1)}%
+          </div>
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
         {/* 左欄：A 合辦項目分攤 */}
         <div>
