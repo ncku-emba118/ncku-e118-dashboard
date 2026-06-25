@@ -265,8 +265,9 @@ export default function SignoffPage() {
 }
 
 @media print {
-  /* 隱藏導覽、控制列、modal */
-  .signoff-controls, .bdg-breadcrumb, .bdg-header, .bdg-footer, .sig-modal { display: none !important; }
+  /* 隱藏導覽、控制列、modal — breadcrumb 是 nav[aria-label="breadcrumb"]、不是 class */
+  .signoff-controls, .bdg-header, .bdg-footer, .sig-modal,
+  nav[aria-label="breadcrumb"], nav[aria-label="班費網站導覽"] { display: none !important; }
   .bdg-main { padding: 0 !important; max-width: none !important; }
 
   /* 紙張外圍：A4 直式、無印表機預設邊界 */
