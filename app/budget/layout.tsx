@@ -137,6 +137,7 @@ export default function BudgetLayout({ children }: { children: React.ReactNode }
             <Link href="/budget/settlement">結算機制</Link>
             <Link href="/budget/north">北班分攤</Link>
             <Link href="/budget/changelog">版本歷史</Link>
+            <Link href="/budget/signoff" style={{ color: '#E0C896', fontWeight: 600 }}>✍️ 簽核</Link>
           </nav>
         </div>
       </header>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import SignaturePad from 'signature_pad';
 import {
   META,
@@ -26,60 +26,142 @@ const SIGNERS = [
   '文宣長',
 ];
 
-const STORAGE_KEY = `budget-signoff-${META.version}`;
+// Supabase（report upload project，跟 reports 站共用、reuse CLASS_PASSWORD secret）
+const SUPABASE_URL = 'https://lboncdddkkvkvdbozltj.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_RNX1aMIoO8GYVwqfRk9CSA_vTN5FZ8j';
+const POLL_INTERVAL_MS = 5000;
 
-type Signatures = Record<string, { dataUrl: string; signedAt: string } | undefined>;
+type Signature = { dataUrl: string; signedAt: string };
+type Signatures = Record<string, Signature | undefined>;
 
 export default function SignoffPage() {
   const [signatures, setSignatures] = useState<Signatures>({});
   const [modalRole, setModalRole] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
 
-  // 從 localStorage 載入
-  useEffect(() => {
+  // 從 Supabase 載入所有簽名
+  const fetchSignatures = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setSignatures(JSON.parse(raw));
-    } catch {}
-    setHydrated(true);
+      const r = await fetch(
+        `${SUPABASE_URL}/rest/v1/budget_signoffs?version=eq.${META.version}&select=role,signature_b64,signed_at`,
+        {
+          headers: {
+            apikey: SUPABASE_KEY,
+            authorization: `Bearer ${SUPABASE_KEY}`,
+          },
+        },
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const rows: Array<{ role: string; signature_b64: string; signed_at: string }> = await r.json();
+      const map: Signatures = {};
+      for (const row of rows) {
+        map[row.role] = { dataUrl: row.signature_b64, signedAt: row.signed_at };
+      }
+      setSignatures(map);
+      setLastSyncAt(new Date());
+    } catch (e) {
+      console.error('fetch signatures failed:', e);
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, []);
 
-  // 任何變動寫回 localStorage
+  // 初次載入
   useEffect(() => {
-    if (!hydrated) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(signatures));
-    } catch {}
-  }, [signatures, hydrated]);
+    fetchSignatures(false);
+  }, [fetchSignatures]);
+
+  // 每 5 秒 poll（modal 開著時暫停、避免覆蓋使用者操作）
+  useEffect(() => {
+    if (modalRole) return;
+    const t = setInterval(() => fetchSignatures(true), POLL_INTERVAL_MS);
+    return () => clearInterval(t);
+  }, [fetchSignatures, modalRole]);
 
   const signedCount = Object.values(signatures).filter(Boolean).length;
   const allSigned = signedCount === SIGNERS.length;
 
-  function handleSave(role: string, dataUrl: string) {
-    setSignatures((prev) => ({
-      ...prev,
-      [role]: { dataUrl, signedAt: new Date().toISOString() },
-    }));
-    setModalRole(null);
+  async function handleSave(role: string, dataUrl: string, password: string): Promise<string | null> {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/budget-signoff`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+        },
+        body: JSON.stringify({
+          action: 'sign',
+          password,
+          payload: { version: META.version, role, signature_b64: dataUrl },
+        }),
+      });
+      const result = await r.json().catch(() => ({}));
+      if (!r.ok) return result.error || `HTTP ${r.status}`;
+      await fetchSignatures(true);
+      return null;
+    } catch (e: unknown) {
+      return String((e as Error)?.message || e);
+    }
   }
 
-  function handleClear(role: string) {
-    if (!confirm(`確定要清除「${role}」的簽名？`)) return;
-    setSignatures((prev) => {
-      const next = { ...prev };
-      delete next[role];
-      return next;
-    });
+  async function handleClear(role: string) {
+    const pw = window.prompt(`要清除「${role}」的簽名，請輸入班級密碼：`);
+    if (!pw) return;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/budget-signoff`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+        },
+        body: JSON.stringify({
+          action: 'clear',
+          password: pw,
+          payload: { version: META.version, role },
+        }),
+      });
+      const result = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        alert(`清除失敗：${result.error || `HTTP ${r.status}`}`);
+        return;
+      }
+      await fetchSignatures(true);
+    } catch (e: unknown) {
+      alert(`清除失敗：${String((e as Error)?.message || e)}`);
+    }
   }
 
-  function handleClearAll() {
-    if (!confirm('確定要清除所有簽名重新開始？')) return;
-    setSignatures({});
+  async function handleClearAll() {
+    const pw = window.prompt('要清除全部簽名重新開始，請輸入班級密碼：');
+    if (!pw) return;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/budget-signoff`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+        },
+        body: JSON.stringify({ action: 'clear_all', password: pw, payload: { version: META.version } }),
+      });
+      const result = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        alert(`清除失敗：${result.error || `HTTP ${r.status}`}`);
+        return;
+      }
+      await fetchSignatures(true);
+    } catch (e: unknown) {
+      alert(`清除失敗：${String((e as Error)?.message || e)}`);
+    }
   }
 
   return (
     <>
-      {/* 控制列（列印時隱藏） */}
+      {/* 控制列 */}
       <div
         className="signoff-controls"
         style={{
@@ -96,7 +178,12 @@ export default function SignoffPage() {
       >
         <div style={{ flex: 1, minWidth: 220 }}>
           <div style={{ fontSize: 13, color: '#6B1622', fontWeight: 600, marginBottom: 4 }}>
-            簽核進度　{signedCount} / {SIGNERS.length}
+            簽核進度　{loading ? '…' : `${signedCount} / ${SIGNERS.length}`}
+            {lastSyncAt && (
+              <span style={{ fontSize: 11, color: '#8A7F73', fontWeight: 400, marginLeft: 8 }}>
+                · 最後同步 {lastSyncAt.toLocaleTimeString()}（每 5 秒自動更新）
+              </span>
+            )}
           </div>
           <div style={{ height: 6, background: '#F4EFE6', borderRadius: 3, overflow: 'hidden' }}>
             <div
@@ -146,7 +233,7 @@ export default function SignoffPage() {
         </button>
       </div>
 
-      {/* 列印區（C 風格固定） */}
+      {/* 列印區 */}
       <div className="signoff-sheet">
         <EmbaSheet
           signatures={signatures}
@@ -155,17 +242,15 @@ export default function SignoffPage() {
         />
       </div>
 
-      {/* 簽名 modal */}
       {modalRole && (
         <SignatureModal
           role={modalRole}
           existing={signatures[modalRole]?.dataUrl}
           onClose={() => setModalRole(null)}
-          onSave={(dataUrl) => handleSave(modalRole, dataUrl)}
+          onSave={(dataUrl, password) => handleSave(modalRole, dataUrl, password)}
         />
       )}
 
-      {/* 列印 CSS */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -363,7 +448,7 @@ function EmbaSheet({
 }
 
 // ════════════════════════════════════════════════════════════════════
-// 簽名 Modal
+// 簽名 Modal（含密碼輸入）
 // ════════════════════════════════════════════════════════════════════
 function SignatureModal({
   role,
@@ -374,16 +459,17 @@ function SignatureModal({
   role: string;
   existing?: string;
   onClose: () => void;
-  onSave: (dataUrl: string) => void;
+  onSave: (dataUrl: string, password: string) => Promise<string | null>;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const padRef = useRef<SignaturePad | null>(null);
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    // HiDPI 處理
     const ratio = window.devicePixelRatio || 1;
     canvas.width = canvas.offsetWidth * ratio;
     canvas.height = canvas.offsetHeight * ratio;
@@ -403,13 +489,26 @@ function SignatureModal({
     };
   }, []);
 
-  function save() {
+  async function save() {
     const pad = padRef.current;
     if (!pad || pad.isEmpty()) {
-      alert('請先簽名');
+      setErr('請先簽名');
       return;
     }
-    onSave(pad.toDataURL('image/png'));
+    if (!password.trim()) {
+      setErr('請輸入班級密碼');
+      return;
+    }
+    setErr(null);
+    setSubmitting(true);
+    const dataUrl = pad.toDataURL('image/png');
+    const errorMsg = await onSave(dataUrl, password.trim());
+    setSubmitting(false);
+    if (errorMsg) {
+      setErr(errorMsg.includes('wrong password') ? '密碼錯誤' : `儲存失敗：${errorMsg}`);
+      return;
+    }
+    onClose();
   }
 
   return (
@@ -461,9 +560,37 @@ function SignatureModal({
           }}
         />
 
+        <div style={{ marginTop: 14 }}>
+          <label style={{ fontSize: 12, color: '#6B1622', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+            班級密碼
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="輸入班級密碼以確認簽核"
+            disabled={submitting}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              border: '1px solid #E8DFD0',
+              borderRadius: 6,
+              fontSize: 13,
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        {err && (
+          <div style={{ marginTop: 10, fontSize: 12, color: '#B00', background: '#FDF2F2', border: '1px solid #F6C7C7', padding: '6px 10px', borderRadius: 4 }}>
+            {err}
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
           <button
             onClick={() => padRef.current?.clear()}
+            disabled={submitting}
             style={{
               padding: '8px 14px',
               background: '#fff',
@@ -471,13 +598,14 @@ function SignatureModal({
               border: '1px solid #E8DFD0',
               borderRadius: 6,
               fontSize: 13,
-              cursor: 'pointer',
+              cursor: submitting ? 'not-allowed' : 'pointer',
             }}
           >
             清除重畫
           </button>
           <button
             onClick={onClose}
+            disabled={submitting}
             style={{
               padding: '8px 14px',
               background: '#fff',
@@ -485,13 +613,14 @@ function SignatureModal({
               border: '1px solid #E8DFD0',
               borderRadius: 6,
               fontSize: 13,
-              cursor: 'pointer',
+              cursor: submitting ? 'not-allowed' : 'pointer',
             }}
           >
             取消
           </button>
           <button
             onClick={save}
+            disabled={submitting}
             style={{
               padding: '8px 18px',
               background: '#6B1622',
@@ -500,10 +629,11 @@ function SignatureModal({
               borderRadius: 6,
               fontSize: 13,
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              opacity: submitting ? 0.6 : 1,
             }}
           >
-            確認簽名
+            {submitting ? '上傳中…' : '確認簽名'}
           </button>
         </div>
       </div>
@@ -512,7 +642,7 @@ function SignatureModal({
 }
 
 // ════════════════════════════════════════════════════════════════════
-// 小元件 / 工具
+// 小元件
 // ════════════════════════════════════════════════════════════════════
 function SectionTitle({ text }: { text: string }) {
   return (
