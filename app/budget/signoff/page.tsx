@@ -370,6 +370,64 @@ export default function SignoffPage() {
     margin-top: 6px !important;
     font-size: 8px !important;
   }
+
+  /* === 對比強化 v2：手機看 PDF 不糊 === */
+  /* 全域淡灰字一律加深成黑 */
+  .signoff-sheet [style*="color: #8A7F73"],
+  .signoff-sheet [style*="color: #4A413A"] {
+    color: #1A1612 !important;
+  }
+  /* 全域淡 border 加深成深灰 */
+  .signoff-sheet [style*="border: 1px solid #E8DFD0"],
+  .signoff-sheet [style*="border-color: #E8DFD0"],
+  .signoff-sheet [style*="solid #E8DFD0"],
+  .signoff-sheet [style*="dashed #E8DFD0"] {
+    border-color: #4A413A !important;
+  }
+  /* 收支明細「項目列」加 row 分隔線 + 加粗 */
+  .signoff-sheet [style*="grid-template-columns: 1fr 1fr"] > div > div {
+    border-bottom: 0.5px solid #8A7F73 !important;
+    padding: 2px 0 !important;
+    font-weight: 600 !important;
+  }
+  /* 區塊標題列（A 合辦/B 南班自辦/C 預備金）加深底色 + 加粗下框 */
+  .signoff-sheet [style*="grid-template-columns: 1fr 1fr"] > div > div[style*="background"] {
+    background: #F4EFE6 !important;
+    border-bottom: 1.5px solid #1A1612 !important;
+    color: #1A1612 !important;
+    font-weight: 800 !important;
+  }
+  /* 簽核 3×3 grid 內格：實線粗框 */
+  .signoff-grid-print > div > div {
+    border: 1.5px solid #1A1612 !important;
+    border-radius: 3px !important;
+  }
+  /* 簽核格職務 label 加粗 */
+  .signoff-grid-print > div > div > div:first-child {
+    color: #6B1622 !important;
+    font-weight: 700 !important;
+  }
+  /* KeyBox 三大數字框 border 加粗 */
+  .signoff-sheet > div > div:nth-child(2) > div {
+    border-width: 1.5px !important;
+  }
+  /* B 框（白底）邊框加深 */
+  .signoff-sheet > div > div:nth-child(2) > div:nth-child(2) {
+    border: 1.5px solid #1A1612 !important;
+  }
+  /* 支出組成橫條 border 加深 */
+  .signoff-sheet [style*="height: 28px"] {
+    border: 1.5px solid #1A1612 !important;
+  }
+  /* 總計區頂部分隔線加粗 */
+  .signoff-sheet [style*="border-top: 1.5px solid #6B1622"] {
+    border-top: 2px solid #1A1612 !important;
+  }
+  /* 說明區字色加深 */
+  .signoff-sheet [style*="border-left: 3px solid #C9A961"] {
+    color: #1A1612 !important;
+    border-left-width: 4px !important;
+  }
 }
 `,
         }}
