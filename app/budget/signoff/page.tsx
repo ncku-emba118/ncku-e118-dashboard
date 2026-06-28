@@ -421,14 +421,11 @@ export default function SignoffPage() {
   .signoff-sheet > div > div:nth-child(2) > div:nth-child(1) * { color: #fff !important; }
 
   /* 支出組成橫條 border 加深 */
-  .signoff-sheet [style*="height: 28px"] {
-    border: 1.5px solid #1A1612 !important;
-  }
-  /* 橫條內 A/C 區段保留白字 */
-  .signoff-sheet [style*="height: 28px"] > div:nth-child(1),
-  .signoff-sheet [style*="height: 28px"] > div:nth-child(1) *,
-  .signoff-sheet [style*="height: 28px"] > div:nth-child(3),
-  .signoff-sheet [style*="height: 28px"] > div:nth-child(3) * { color: #fff !important; }
+  .signoff-sheet .exp-bar { border: 1.5px solid #1A1612 !important; }
+  /* 橫條 A/C 區段保留白字、B 區段保留黑字 */
+  .signoff-sheet .exp-bar-a, .signoff-sheet .exp-bar-a * { color: #fff !important; }
+  .signoff-sheet .exp-bar-c, .signoff-sheet .exp-bar-c * { color: #fff !important; }
+  .signoff-sheet .exp-bar-b, .signoff-sheet .exp-bar-b * { color: #1A1612 !important; }
 
   /* 總計區頂部分隔線加粗 */
   .signoff-sheet [style*="border-top"] {
@@ -492,22 +489,22 @@ function EmbaSheet({
         <div style={{ fontSize: 9.5, color: '#8A7F73', marginBottom: 3 }}>
           支出組成（總支出 NT$ {fmt(TOTAL_EXPENSE)}）
         </div>
-        <div style={{ display: 'flex', height: 28, borderRadius: 4, overflow: 'hidden', border: '1px solid #E8DFD0' }}>
-          <div style={{
+        <div className="exp-bar" style={{ display: 'flex', height: 28, borderRadius: 4, overflow: 'hidden', border: '1px solid #E8DFD0' }}>
+          <div className="exp-bar-a" style={{
             flex: SUMMARY.coHosted.total, background: '#6B1622', color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 10.5, fontWeight: 600, padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden',
           }}>
             A · {((SUMMARY.coHosted.total / TOTAL_EXPENSE) * 100).toFixed(1)}%
           </div>
-          <div style={{
+          <div className="exp-bar-b" style={{
             flex: SUMMARY.southOnly.total, background: '#C9A961', color: '#1A1612',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 10.5, fontWeight: 600, padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden',
           }}>
             B · {((SUMMARY.southOnly.total / TOTAL_EXPENSE) * 100).toFixed(1)}%
           </div>
-          <div style={{
+          <div className="exp-bar-c" style={{
             flex: SUMMARY.reserves.total, background: '#8B7A4B', color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 10.5, fontWeight: 600, padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden',
