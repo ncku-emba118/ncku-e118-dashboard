@@ -303,12 +303,47 @@ export default function SignoffPage() {
   /* Header 區 padding 縮小 */
   .signoff-sheet > div:first-child { padding-bottom: 5px !important; margin-bottom: 5px !important; }
 
-  /* KeyBox 三大數字壓縮（只命中第一個 3 欄 grid）*/
+  /* KeyBox 三大數字壓縮 */
   .signoff-sheet > div:nth-child(2) {
     margin-bottom: 6px !important;
     gap: 6px !important;
   }
-  .signoff-sheet [style*="Cormorant Garamond"] { font-size: 16px !important; }
+
+  /* === 版本 B：高對比強化（手機看 PDF 也清楚）=== */
+  /* 數字換無襯線粗黑體 */
+  .signoff-sheet [style*="Cormorant Garamond"] {
+    font-family: -apple-system, "Helvetica Neue", "PingFang TC", sans-serif !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.5px !important;
+    color: #1A1612 !important;
+    font-size: 17px !important;
+  }
+  /* 三大數字框：A 酒紅底白字 / B 米色 / C 金底黑字 */
+  .signoff-sheet > div:nth-child(2) > div:nth-child(1) {
+    background: #6B1622 !important;
+    border-color: #6B1622 !important;
+  }
+  .signoff-sheet > div:nth-child(2) > div:nth-child(1) * { color: #fff !important; }
+  .signoff-sheet > div:nth-child(2) > div:nth-child(3) {
+    background: #C9A961 !important;
+    border-color: #C9A961 !important;
+  }
+  .signoff-sheet > div:nth-child(2) > div:nth-child(3) * { color: #1A1612 !important; }
+
+  /* 細項金額：黑色 bold 等寬數字 */
+  .signoff-sheet [style*="grid-template-columns: 1fr 1fr"] > div > div span:last-child {
+    font-weight: 700 !important;
+    color: #1A1612 !important;
+    font-family: ui-monospace, "SF Mono", "Menlo", monospace !important;
+  }
+  /* 收支明細 2 欄區字級調整 */
+  .signoff-sheet [style*="grid-template-columns: 1fr 1fr"] > div > div { font-size: 9px !important; }
+  /* D 班費預備金 row：黑底白字、最醒目 */
+  .signoff-sheet [style*="#FFF8E7"] {
+    background: #1A1612 !important;
+    color: #fff !important;
+  }
+  .signoff-sheet [style*="#FFF8E7"] * { color: #fff !important; }
 
   /* 說明區 padding 縮小 */
   .signoff-sheet [style*="border-left: 3px solid #C9A961"] {
@@ -317,9 +352,6 @@ export default function SignoffPage() {
     font-size: 8.5px !important;
     line-height: 1.4 !important;
   }
-
-  /* 收支明細 2 欄區字級調整 */
-  .signoff-sheet [style*="grid-template-columns: 1fr 1fr"] > div > div { font-size: 9px !important; }
 
   /* 簽核 3×3 grid 內格樣式 */
   .signoff-grid-print > div { gap: 6px !important; }
