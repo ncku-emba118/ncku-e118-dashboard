@@ -301,10 +301,10 @@ export default function SignoffPage() {
   .signoff-sheet h2 { font-size: 11px !important; margin: 3px 0 !important; }
 
   /* Header 區 padding 縮小 */
-  .signoff-sheet > div:first-child { padding-bottom: 5px !important; margin-bottom: 5px !important; }
+  .signoff-sheet > div > div:first-child { padding-bottom: 5px !important; margin-bottom: 5px !important; }
 
   /* KeyBox 三大數字壓縮 */
-  .signoff-sheet > div:nth-child(2) {
+  .signoff-sheet > div > div:nth-child(2) {
     margin-bottom: 6px !important;
     gap: 6px !important;
   }
@@ -319,16 +319,16 @@ export default function SignoffPage() {
     font-size: 17px !important;
   }
   /* 三大數字框：A 酒紅底白字 / B 米色 / C 金底黑字 */
-  .signoff-sheet > div:nth-child(2) > div:nth-child(1) {
+  .signoff-sheet > div > div:nth-child(2) > div:nth-child(1) {
     background: #6B1622 !important;
     border-color: #6B1622 !important;
   }
-  .signoff-sheet > div:nth-child(2) > div:nth-child(1) * { color: #fff !important; }
-  .signoff-sheet > div:nth-child(2) > div:nth-child(3) {
+  .signoff-sheet > div > div:nth-child(2) > div:nth-child(1) * { color: #fff !important; }
+  .signoff-sheet > div > div:nth-child(2) > div:nth-child(3) {
     background: #C9A961 !important;
     border-color: #C9A961 !important;
   }
-  .signoff-sheet > div:nth-child(2) > div:nth-child(3) * { color: #1A1612 !important; }
+  .signoff-sheet > div > div:nth-child(2) > div:nth-child(3) * { color: #1A1612 !important; }
 
   /* 細項金額：黑色 bold 等寬數字 */
   .signoff-sheet [style*="grid-template-columns: 1fr 1fr"] > div > div span:last-child {
@@ -365,7 +365,7 @@ export default function SignoffPage() {
   .sig-clear-btn { display: none !important; }
 
   /* Footer 縮小 */
-  .signoff-sheet > div:last-of-type {
+  .signoff-sheet > div > div:last-of-type {
     padding-top: 4px !important;
     margin-top: 6px !important;
     font-size: 8px !important;
