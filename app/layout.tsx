@@ -3,11 +3,10 @@ import './globals.css';
 import PWARegister from '../components/PWARegister';
 
 export const metadata: Metadata = {
-  title: 'E118 Dashboard',
-  description: '成大 EMBA 第 118 班 — 班級系統入口',
+  metadataBase: new URL('https://emba.aqualux.dev'),
+  title: 'E118 第 118 班｜成大 EMBA',
+  description: '國立成功大學 EMBA 第 118 班 — 班級資訊系統入口',
   manifest: '/manifest.json',
-  // browser tab favicon + apple touch icon
-  // 之前 manifest 有設 icon 但 layout 沒設 → Chrome / Safari 分頁標退回預設地球
   icons: {
     icon: [
       { url: '/assets/pwa-icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -19,6 +18,28 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'E118',
+  },
+  openGraph: {
+    title: 'E118 第 118 班｜成大 EMBA',
+    description: '國立成功大學 EMBA 第 118 班 — 班級資訊系統入口',
+    url: 'https://emba.aqualux.dev',
+    siteName: '成大 EMBA E118',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: '成大 EMBA 第 118 班 班級資訊系統',
+      },
+    ],
+    locale: 'zh_TW',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'E118 第 118 班｜成大 EMBA',
+    description: '國立成功大學 EMBA 第 118 班 — 班級資訊系統入口',
+    images: ['/og-image.png'],
   },
 };
 
