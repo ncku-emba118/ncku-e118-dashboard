@@ -215,7 +215,7 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
       </Section>
 
       {/* 班費分攤 */}
-      <Section title="班費分攤" subtitle={`淨支出 NT$ ${fmt(a.net)}　${a.type === 'south-only' ? '由南班獨自負擔' : '按南北 84:15 比例攤分'}`}>
+      <Section title="班費分攤" subtitle={`淨支出 NT$ ${fmt(a.net)}　${a.type === 'south-only' ? '由南班獨自負擔' : '按南北 83:16 比例攤分'}`}>
         <div className="bdg-grid bdg-grid-2 bdg-grid-gap-sm">
           <SplitCard label={`南班負擔（${META.southMembers} 人）`} amount={a.southBurden} perPerson={Math.round(a.southBurden / META.southMembers)} accent={WINE} />
           {a.type === 'south-only' ? (
@@ -223,7 +223,7 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
               本場為南班自辦活動，北班不分攤。
             </div>
           ) : (
-            <SplitCard label={`北班分攤（${META.northMembers} 人）`} amount={a.northBurden} perPerson={Math.round(a.northBurden / META.northMembers)} accent={INK} note="活動結束後按 84:15 比例向北班請款" />
+            <SplitCard label={`北班分攤（${META.northMembers} 人）`} amount={a.northBurden} perPerson={Math.round(a.northBurden / META.northMembers)} accent={INK} note="活動結束後按 83:16 比例向北班請款" />
           )}
         </div>
       </Section>

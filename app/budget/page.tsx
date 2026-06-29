@@ -100,7 +100,7 @@ export default function BudgetHome() {
       <Section title="你繳的 30,000 元怎麼用" subtitle="支出採保守編列，含班費預備金作為安全水位">
         <div className="bdg-grid bdg-grid-2">
           <BreakdownRow
-            band={`A 合辦項目分攤（84/99，共 ${SUMMARY.coHosted.items.length} 項）`}
+            band={`A 合辦項目分攤（83/99，共 ${SUMMARY.coHosted.items.length} 項）`}
             desc={SUMMARY.coHosted.items.join('、')}
             amount={SUMMARY.coHosted.total}
             perPerson={Math.round(SUMMARY.coHosted.total / META.southMembers)}
@@ -210,13 +210,13 @@ export default function BudgetHome() {
       <section className="bdg-grid bdg-grid-2" style={{ marginTop: 32 }}>
         <CalloutCard
           title="給北班的分攤通知"
-          desc={`合辦活動的北班分攤估算合計 NT$ ${fmt(NORTH_TOTAL_ESTIMATE)}（15/99 比例）。實際以每場結算為準，期末總對帳。`}
+          desc={`合辦活動的北班分攤估算合計 NT$ ${fmt(NORTH_TOTAL_ESTIMATE)}（16/99 比例）。實際以每場結算為準，期末總對帳。`}
           href="/budget/north"
           cta="查看北班分攤帳"
         />
         <CalloutCard
           title="預算 vs 實際的結算機制"
-          desc="預算用 84:15 估，實際依各場活動結算後按比例請款；三年期末總對帳、差額退補。"
+          desc="預算用 83:16 估，實際依各場活動結算後按比例請款；三年期末總對帳、差額退補。"
           href="/budget/settlement"
           cta="查看結算流程"
           tone="gold"
@@ -227,7 +227,7 @@ export default function BudgetHome() {
       <Section title="設計邏輯（給想知道為什麼這樣訂的同學）">
         <ul style={{ paddingLeft: 22, color: '#4A413A', lineHeight: 2, fontSize: 14 }}>
           <li>
-            <strong>南北分帳</strong>：南班 84 人、北班 15 人；合辦項目按 84:15 比例攤分，南班自辦（119 迎新晚會、聖誕晚會）由南班獨自負擔，北班不分攤。
+            <strong>南北分帳</strong>：南班 83 人、北班 16 人；合辦項目按 83:16 比例攤分，南班自辦（119 迎新晚會、聖誕晚會）由南班獨自負擔，北班不分攤。
           </li>
           <li>
             <strong>預備金獨立</strong>：南班的聯誼機動金、緊急預備金、婚喪喜慶、活動補助均由南班自理；北班是否要編列由北班自決。

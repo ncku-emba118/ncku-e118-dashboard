@@ -4,7 +4,7 @@ import { META, NORTH_ALLOCATION, NORTH_TOTAL_ESTIMATE, ACTIVITIES, fmt } from '@
 
 export const metadata: Metadata = {
   title: '北班分攤通知｜E118 班費預算說明書',
-  description: '給北班幹部的合辦活動分攤估算 — 7 項合辦項目按 15/99 比例的應付金額、結算機制、匯款資訊。',
+  description: '給北班幹部的合辦活動分攤估算 — 7 項合辦項目按 16/99 比例的應付金額、結算機制、匯款資訊。',
 };
 
 const WINE = '#8B1F2F';
@@ -31,7 +31,7 @@ export default function NorthPage() {
         <Link href="/budget" style={{ fontSize: 13, color: MUTE, textDecoration: 'none' }}>← 回總覽</Link>
         <h1 style={{ fontFamily: TC, fontSize: 28, color: WINE_DEEP, fontWeight: 600, margin: '12px 0 6px' }}>給北班的分攤通知</h1>
         <p style={{ fontSize: 14, color: '#4A413A', lineHeight: 1.8, maxWidth: 800 }}>
-          E118 採南北分帳；合辦項目（南北班一起用到的）按南北人頭比例攤分，由 E118 統一執行、活動結束後按 84:15 向北班請款。
+          E118 採南北分帳；合辦項目（南北班一起用到的）按南北人頭比例攤分，由 E118 統一執行、活動結束後按 83:16 向北班請款。
           本頁為「估算金額」，實際金額以每場活動結束後的結算單為準；三年期末總對帳調整差額。
         </p>
       </div>
@@ -64,7 +64,7 @@ export default function NorthPage() {
 
       {/* 7 項合辦項目分攤表 */}
       <h2 style={{ fontFamily: TC, fontSize: 20, color: WINE_DEEP, borderLeft: `4px solid ${GOLD}`, paddingLeft: 12, margin: '24px 0 12px' }}>
-        北班分攤估算（按 15/99 ≈ 15.15%）
+        北班分攤估算（按 16/99 ≈ 16.16%）
       </h2>
       <div className="bdg-table-wrap" style={{ marginBottom: 24 }}>
         <table className="bdg-table">
@@ -75,8 +75,8 @@ export default function NorthPage() {
               <th scope="col">日期</th>
               <th scope="col">主辦</th>
               <th scope="col" className="num">全班淨支出</th>
-              <th scope="col" className="num">南班 84/99</th>
-              <th scope="col" className="num">北班 15/99</th>
+              <th scope="col" className="num">南班 83/99</th>
+              <th scope="col" className="num">北班 16/99</th>
             </tr>
           </thead>
           <tbody>
@@ -90,8 +90,8 @@ export default function NorthPage() {
                 <td className="mute" data-label="日期">{a.date}</td>
                 <td className="mute" data-label="主辦">{a.organizer}</td>
                 <td className="num" data-label="全班淨支出">{fmt(a.totalNet)}</td>
-                <td className="num" data-label="南班 84/99">{fmt(a.southNet)}</td>
-                <td className="num strong" style={{ color: WINE }} data-label="北班 15/99">{fmt(a.northEstimate)}</td>
+                <td className="num" data-label="南班 83/99">{fmt(a.southNet)}</td>
+                <td className="num strong" style={{ color: WINE }} data-label="北班 16/99">{fmt(a.northEstimate)}</td>
               </tr>
             ))}
             <tr className="sub">

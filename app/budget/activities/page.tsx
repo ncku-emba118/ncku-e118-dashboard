@@ -82,7 +82,7 @@ export default function ActivitiesPage() {
       >
         <strong style={{ color: WINE_DEEP }}>關於數字：</strong>
         所有預算為保守估算（參考學長姐實際決算 + 6% 漲幅）。實際支出將以每場活動結算為準，差額在期末總對帳時退補。
-        合辦活動由 E118 統一執行，事後按 84:15 比例向北班請款。
+        合辦活動由 E118 統一執行，事後按 83:16 比例向北班請款。
       </div>
     </>
   );

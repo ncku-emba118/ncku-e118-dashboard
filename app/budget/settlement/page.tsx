@@ -140,8 +140,8 @@ export default function SettlementPage() {
 
           {/* 南北分攤 */}
           <Box title={`南北分攤（按 ${META.southMembers}:${META.northMembers}）`}>
-            <RowAmount label={`南班應付（${META.southMembers}/${META.totalMembers} ≈ 84.85%）`} />
-            <RowAmount label={`北班應付（${META.northMembers}/${META.totalMembers} ≈ 15.15%）`} />
+            <RowAmount label={`南班應付（${META.southMembers}/${META.totalMembers} ≈ 83.84%）`} />
+            <RowAmount label={`北班應付（${META.northMembers}/${META.totalMembers} ≈ 16.16%）`} />
           </Box>
 
           {/* 撥款指示 */}
@@ -207,7 +207,7 @@ export default function SettlementPage() {
               <tr>
                 <td className="strong" data-label="費用類型">A 統一辦的活動</td>
                 <td data-label="範例">聖誕晚會 / 新生報到 / 新生營 / 116 午宴 / 118 畢業晚會</td>
-                <td data-label="結算邏輯">由南班主辦人統一付廠商；活動結束後按 84:15 比例向北班請款</td>
+                <td data-label="結算邏輯">由南班主辦人統一付廠商；活動結束後按 83:16 比例向北班請款</td>
               </tr>
               <tr>
                 <td className="strong" data-label="費用類型">B 按人頭的固定費</td>
@@ -236,7 +236,7 @@ export default function SettlementPage() {
             <ul style={{ marginTop: 6, paddingLeft: 20 }}>
               <li>北班總多付 → 南班退錢給北班</li>
               <li>北班總少付 → 北班補匯</li>
-              <li>南班預備金未動用 → 按 84 人比例退回南班同學</li>
+              <li>南班預備金未動用 → 按 83 人比例退回南班同學</li>
             </ul>
           </li>
           <li>對外公告：完整三年收支對照表 + 退費明細，發送全班</li>
