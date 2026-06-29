@@ -26,20 +26,20 @@ export const metadata: Metadata = {
     siteName: '成大 EMBA E118',
     images: [
       {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: '成大 EMBA 第 118 班 班級資訊系統',
+        url: '/og-thumb.png',
+        width: 400,
+        height: 400,
+        alt: '成大 EMBA 第 118 班',
       },
     ],
     locale: 'zh_TW',
     type: 'website',
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: 'E118 第 118 班｜成大 EMBA',
     description: '國立成功大學 EMBA 第 118 班 — 班級資訊系統入口',
-    images: ['/og-image.png'],
+    images: ['/og-thumb.png'],
   },
 };
 
