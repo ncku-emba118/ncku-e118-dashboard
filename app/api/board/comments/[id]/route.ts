@@ -9,6 +9,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getServerClient } from '@/lib/supabase/server';
 import { readSession, canManageDept } from '@/lib/auth/session';
+import { isSameOrigin } from '@/lib/signoff/http';
 
 const UUID_RE = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
 
@@ -17,11 +18,19 @@ function traceHeaders(traceId: string): HeadersInit {
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const traceId = crypto.randomUUID();
   const { id } = await params;
+
+  // CSRF 同源檢查（對齊 signoff 模組）
+  if (!isSameOrigin(req)) {
+    return NextResponse.json(
+      { error: '來源驗證失敗' },
+      { status: 403, headers: traceHeaders(traceId) },
+    );
+  }
 
   if (!UUID_RE.test(id)) {
     return NextResponse.json(

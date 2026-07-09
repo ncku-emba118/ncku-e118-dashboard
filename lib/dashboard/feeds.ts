@@ -69,8 +69,18 @@ export async function getUpcomingEvents(n = 3): Promise<FeedEvent[]> {
       if (!y) continue;
       out.push({ d: new Date(Date.UTC(y, mo - 1, da)), t: su[1].trim().replace(/\\,/g, ',').replace(/\\/g, '') });
     }
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    // 「今天」以台灣時區計算（同 finance/income/sync 的 todayTW 邏輯）：
+    // server 跑 UTC 時，台灣 00:00–08:00 之間 UTC 還在前一天，
+    // 原本 setUTCHours(0,0,0,0) 會讓已過期活動多顯示 8 小時。
+    // 活動日期是用 Date.UTC(y, mo-1, da) 存（UTC 午夜），所以「今天」也取
+    // 台灣日曆日的 UTC 午夜來比，兩邊同基準。
+    const twDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Taipei',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date()); // en-CA → YYYY-MM-DD
+    const today = new Date(`${twDate}T00:00:00Z`);
     return out
       .filter((e) => e.d >= today)
       .sort((a, b) => +a.d - +b.d)

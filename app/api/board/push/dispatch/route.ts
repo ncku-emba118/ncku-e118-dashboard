@@ -18,6 +18,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { readSession } from '@/lib/auth/session';
 import { processQueuedJobs } from '@/lib/push/dispatcher';
 import { getEnv } from '@/lib/env';
+import { isSameOrigin } from '@/lib/signoff/http';
 
 /**
  * ⚠ Codex Round-3 fix: 用 node:crypto timingSafeEqual 真 constant-time。
@@ -62,6 +63,15 @@ export async function POST(req: NextRequest) {
   }
 
   // Path 2: super session（admin 手動補送）
+  // CSRF 同源檢查（對齊 signoff 模組）— 只擋 session 分支；
+  // cron Bearer 分支（Path 1）是機器對機器、無 Origin header，不可加同源檢查
+  if (!isSameOrigin(req)) {
+    return NextResponse.json(
+      { error: '來源驗證失敗' },
+      { status: 403, headers: { 'x-trace-id': traceId } },
+    );
+  }
+
   const session = await readSession();
   if (!session) {
     return NextResponse.json(

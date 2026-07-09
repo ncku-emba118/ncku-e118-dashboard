@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { getServerClient } from '@/lib/supabase/server';
 import { readSession, canManageDept } from '@/lib/auth/session';
 import { attachmentsArraySchema } from '@/lib/attachment';
+import { isSameOrigin } from '@/lib/signoff/http';
 
 const UUID_RE = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
 const MAX_BODY_BYTES = 32 * 1024;
@@ -82,6 +83,14 @@ export async function PATCH(
 ) {
   const traceId = crypto.randomUUID();
   const { id } = await params;
+
+  // CSRF 同源檢查（對齊 signoff 模組）
+  if (!isSameOrigin(req)) {
+    return NextResponse.json(
+      { error: '來源驗證失敗' },
+      { status: 403, headers: traceHeaders(traceId) },
+    );
+  }
 
   if (!UUID_RE.test(id)) {
     return NextResponse.json(
@@ -216,11 +225,19 @@ export async function PATCH(
 // DELETE — hard delete（cascade comments/push_jobs via FK）
 // ============================================================
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const traceId = crypto.randomUUID();
   const { id } = await params;
+
+  // CSRF 同源檢查（對齊 signoff 模組）
+  if (!isSameOrigin(req)) {
+    return NextResponse.json(
+      { error: '來源驗證失敗' },
+      { status: 403, headers: traceHeaders(traceId) },
+    );
+  }
 
   if (!UUID_RE.test(id)) {
     return NextResponse.json(

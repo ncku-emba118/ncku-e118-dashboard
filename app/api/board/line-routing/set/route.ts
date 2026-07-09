@@ -9,12 +9,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { readSession } from '@/lib/auth/session';
 import { setBroadcastGroup } from '@/lib/board/line_groups';
+import { isSameOrigin } from '@/lib/signoff/http';
 
 const bodySchema = z.object({
   groupId: z.string().max(80), // LINE group ID 通常 C + 32 hex，給 80 上限即可
 });
 
 export async function POST(req: NextRequest) {
+  // CSRF 同源檢查（對齊 signoff 模組）
+  if (!isSameOrigin(req)) {
+    return NextResponse.json({ error: '來源驗證失敗' }, { status: 403 });
+  }
+
   const session = await readSession();
   if (!session) {
     return NextResponse.json({ error: '請先登入' }, { status: 401 });

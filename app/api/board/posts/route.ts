@@ -13,6 +13,7 @@ import { getServerClient } from '@/lib/supabase/server';
 import { readSession, canManageDept, ALL_DEPTS } from '@/lib/auth/session';
 import { processQueuedJobs } from '@/lib/push/dispatcher';
 import { attachmentsArraySchema } from '@/lib/attachment';
+import { isSameOrigin } from '@/lib/signoff/http';
 
 const DEPT_IDS = ALL_DEPTS.map((d) => d.id) as readonly string[];
 
@@ -80,6 +81,14 @@ export async function GET(req: NextRequest) {
 // ============================================================
 export async function POST(req: NextRequest) {
   const traceId = crypto.randomUUID();
+
+  // 0. CSRF 同源檢查（對齊 signoff 模組）
+  if (!isSameOrigin(req)) {
+    return NextResponse.json(
+      { error: '來源驗證失敗' },
+      { status: 403, headers: traceHeaders(traceId) },
+    );
+  }
 
   // 1. Body size limit
   const contentLength = Number(req.headers.get('content-length') || 0);

@@ -21,6 +21,7 @@ import { z } from 'zod';
 import { getServerClient } from '@/lib/supabase/server';
 import { readSession } from '@/lib/auth/session';
 import { resolveClientIp } from '@/lib/ip-resolve';
+import { isSameOrigin } from '@/lib/signoff/http';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MiB
 const ALLOWED_MIMES = new Set<string>([
@@ -98,6 +99,11 @@ function jsonResp(body: object, status: number, traceId: string) {
 
 export async function POST(req: NextRequest) {
   const traceId = crypto.randomUUID();
+
+  // 0. CSRF 同源檢查（對齊 signoff 模組）
+  if (!isSameOrigin(req)) {
+    return jsonResp({ error: '來源驗證失敗' }, 403, traceId);
+  }
 
   // 1. Auth
   const session = await readSession();

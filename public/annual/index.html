@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E118 年度回顧｜成大 EMBA</title>
+<meta name="description" content="國立成功大學 EMBA 第 118 班 學年度回顧 — 101 位同學、8 則公告、3 場班級活動、17 個社團的一年紀事。">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#8B1F2F">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="E118 年度回顧｜成大 EMBA">
+<meta property="og:description" content="國立成功大學 EMBA 第 118 班 學年度回顧 — 101 位同學、8 則公告、3 場班級活動、17 個社團的一年紀事。">
+<meta property="og:url" content="https://emba.aqualux.dev/annual">
+<meta property="og:image" content="https://emba.aqualux.dev/og-image.png">
+<meta property="og:locale" content="zh_TW">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="E118 年度回顧｜成大 EMBA">
+<meta name="twitter:description" content="國立成功大學 EMBA 第 118 班 學年度回顧 — 101 位同學、8 則公告、3 場班級活動、17 個社團的一年紀事。">
+<meta name="twitter:image" content="https://emba.aqualux.dev/og-image.png">
+
+<!-- Favicon（比照主站 app/layout.tsx 的 icons 設定） -->
+<link rel="icon" href="/assets/pwa-icon-192.png" sizes="192x192" type="image/png">
+<link rel="icon" href="/assets/pwa-icon-512.png" sizes="512x512" type="image/png">
+<link rel="apple-touch-icon" href="/assets/pwa-icon-180.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Serif+TC:wght@500;600;700;900&family=Noto+Sans+TC:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wine:#8B1F2F;
+    --wine-dark:#601521;
+    --gold-light:#E0C896;
+    --gold-dark:#B08D4F;
+    --cream:#FAF7F2;
+    --ink:#1A1612;
+    --hair: rgba(176,141,79,0.45);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--ink);
+    color:var(--ink);
+    font-family:"Noto Sans TC","Cormorant Garamond",serif;
+    display:flex;
+    justify-content:center;
+  }
+  #stage{
+    width:100%;
+    max-width:430px;
+    background:var(--cream);
+    min-height:100vh;
+    position:relative;
+    box-shadow:0 0 60px rgba(0,0,0,0.5);
+    overflow:hidden;
+  }
+
+  /* ===== 章節共用 ===== */
+  section{
+    position:relative;
+    padding:64px 30px;
+    border-bottom:1px solid var(--hair);
+  }
+  section:last-of-type{ border-bottom:none; }
+
+  .eyebrow{
+    font-family:"Cormorant Garamond",serif;
+    font-style:italic;
+    font-size:13px;
+    letter-spacing:0.16em;
+    color:var(--gold-dark);
+    text-transform:uppercase;
+    margin:0 0 10px;
+  }
+  .roman{
+    font-family:"Cormorant Garamond",serif;
+    font-size:15px;
+    letter-spacing:0.3em;
+    color:var(--wine);
+    margin:0 0 4px;
+  }
+  h2.title{
+    font-family:"Noto Serif TC",serif;
+    font-weight:900;
+    font-size:30px;
+    line-height:1.35;
+    color:var(--ink);
+    margin:0 0 18px;
+  }
+  .lede{
+    font-size:14.5px;
+    line-height:1.9;
+    color:#3a332c;
+    margin:0 0 22px;
+    font-weight:400;
+  }
+  .rule{
+    height:1px;
+    background:linear-gradient(90deg, var(--gold-dark), transparent 85%);
+    margin:22px 0;
+  }
+  .rule-full{
+    height:1px;
+    background:var(--gold-dark);
+    opacity:0.55;
+    margin:26px 0;
+  }
+
+  /* fade-in-up */
+  .fade{
+    opacity:0;
+    transform:translateY(18px);
+    transition:opacity 0.9s ease, transform 0.9s ease;
+  }
+  .fade.in{ opacity:1; transform:translateY(0); }
+  .fade.d1{ transition-delay:.08s; }
+  .fade.d2{ transition-delay:.16s; }
+  .fade.d3{ transition-delay:.24s; }
+  .fade.d4{ transition-delay:.32s; }
+  @media (prefers-reduced-motion:reduce){
+    .fade{ transition:none; opacity:1; transform:none; }
+  }
+
+  /* ===== 刊頭 ===== */
+  #cover{
+    background:
+      radial-gradient(circle at 50% 0%, rgba(224,200,150,0.10), transparent 55%),
+      var(--wine-dark);
+    color:var(--cream);
+    padding:70px 30px 56px;
+    text-align:center;
+  }
+  #cover .frame{
+    border-top:1px solid var(--gold-light);
+    border-bottom:1px solid var(--gold-light);
+    padding:34px 0 30px;
+  }
+  #cover .school-mark{
+    width:56px; height:56px;
+    object-fit:contain;
+    margin:0 auto 18px;
+    display:block;
+    filter:brightness(0) invert(1) opacity(0.92);
+  }
+  #cover .kicker{
+    font-family:"Cormorant Garamond",serif;
+    font-style:italic;
+    letter-spacing:0.24em;
+    font-size:13px;
+    color:var(--gold-light);
+    text-transform:uppercase;
+    margin:0 0 16px;
+  }
+  #cover h1{
+    font-family:"Noto Serif TC",serif;
+    font-weight:900;
+    font-size:34px;
+    line-height:1.5;
+    margin:0 0 18px;
+    letter-spacing:0.04em;
+  }
+  #cover .roman-big{
+    font-family:"Cormorant Garamond",serif;
+    font-size:19px;
+    letter-spacing:0.3em;
+    color:var(--gold-light);
+    margin:0 0 6px;
+  }
+  #cover .sub{
+    font-family:"Noto Sans TC",sans-serif;
+    font-size:12.5px;
+    letter-spacing:0.12em;
+    color:rgba(250,247,242,0.72);
+    margin:0;
+  }
+  #cover .issue-line{
+    margin-top:28px;
+    font-family:"Cormorant Garamond",serif;
+    font-size:13px;
+    letter-spacing:0.2em;
+    color:rgba(224,200,150,0.85);
+  }
+
+  /* ===== 大數字統計 ===== */
+  .stat-block{ text-align:center; padding:36px 0; }
+  .stat-number{
+    font-family:"Cormorant Garamond",serif;
+    font-weight:600;
+    font-size:104px;
+    line-height:0.9;
+    color:var(--wine);
+    letter-spacing:-0.02em;
+  }
+  .stat-unit{
+    font-family:"Noto Serif TC",serif;
+    font-size:18px;
+    color:var(--gold-dark);
+    margin-top:6px;
+    letter-spacing:0.05em;
+  }
+  .stat-caption{
+    margin-top:16px;
+    font-size:13.5px;
+    line-height:1.85;
+    color:#4a4038;
+  }
+
+  /* ===== 統計格線（小數字群，班級活動＝3 欄）===== */
+  .grid-stats{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:0;
+    margin-top:8px;
+    border-top:1px solid var(--hair);
+  }
+  .grid-stats .cell{
+    padding:22px 6px;
+    text-align:center;
+    border-right:1px solid var(--hair);
+    border-bottom:1px solid var(--hair);
+  }
+  .grid-stats .cell:last-child{ border-right:none; }
+  .grid-stats .num{
+    font-family:"Cormorant Garamond",serif;
+    font-weight:600;
+    font-size:40px;
+    color:var(--wine);
+    line-height:1;
+  }
+  .grid-stats .lab{
+    margin-top:8px;
+    font-size:11.5px;
+    letter-spacing:0.06em;
+    color:#5a5049;
+  }
+
+  /* ===== 條列清單（公告/活動/報告等） ===== */
+  ol.ledger{
+    list-style:none;
+    margin:0; padding:0;
+    counter-reset:item;
+  }
+  ol.ledger li{
+    counter-increment:item;
+    display:flex;
+    gap:16px;
+    padding:14px 0;
+    border-bottom:1px solid var(--hair);
+    align-items:baseline;
+  }
+  ol.ledger li:last-child{ border-bottom:none; }
+  ol.ledger li::before{
+    content: counter(item, upper-roman);
+    font-family:"Cormorant Garamond",serif;
+    font-size:16px;
+    color:var(--gold-dark);
+    min-width:30px;
+    flex-shrink:0;
+  }
+  .ledger-text .t{
+    font-size:14px;
+    font-weight:500;
+    color:var(--ink);
+    line-height:1.6;
+  }
+  .ledger-text .s{
+    font-size:11.5px;
+    color:#6b6058;
+    margin-top:3px;
+    letter-spacing:0.02em;
+  }
+
+  /* ===== 照片區 ===== */
+  .frame-photo{
+    border:1px solid var(--gold-dark);
+    padding:6px;
+    margin-top:6px;
+  }
+  .frame-photo img{
+    display:block;
+    width:100%;
+    height:auto;
+  }
+  .photo-cap{
+    text-align:center;
+    font-family:"Cormorant Garamond",serif;
+    font-style:italic;
+    font-size:13px;
+    color:var(--gold-dark);
+    margin-top:10px;
+    letter-spacing:0.05em;
+  }
+
+  /* ===== 社團 tag 群 ===== */
+  .club-cloud{
+    display:flex;
+    flex-wrap:wrap;
+    gap:9px 10px;
+    margin-top:6px;
+  }
+  .club-cloud span{
+    font-size:12.5px;
+    padding:7px 13px;
+    border:1px solid var(--gold-dark);
+    color:var(--wine-dark);
+    font-weight:500;
+    letter-spacing:0.02em;
+  }
+
+  /* ===== 結尾章 ===== */
+  #finale{
+    background:var(--wine-dark);
+    color:var(--cream);
+    padding:60px 26px 70px;
+    text-align:center;
+  }
+  #finale .frame-photo{ border-color:var(--gold-light); }
+  #finale h3{
+    font-family:"Noto Serif TC",serif;
+    font-weight:900;
+    font-size:26px;
+    margin:34px 0 10px;
+    letter-spacing:0.03em;
+    line-height:1.5;
+  }
+  #finale .signoff{
+    font-family:"Cormorant Garamond",serif;
+    font-style:italic;
+    font-size:15px;
+    letter-spacing:0.14em;
+    color:var(--gold-light);
+    margin-top:6px;
+  }
+  #finale .divider{
+    width:60px; height:1px;
+    background:var(--gold-light);
+    margin:26px auto;
+    opacity:0.7;
+  }
+
+  footer{
+    padding:26px 30px 40px;
+    text-align:center;
+    background:var(--cream);
+  }
+  footer p{
+    font-size:10.5px;
+    color:#8a8078;
+    letter-spacing:0.06em;
+    line-height:1.8;
+    margin:0;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- 刊頭 -->
+  <section id="cover">
+    <div class="frame">
+      <img class="school-mark" src="/assets/ncku-emba-logo.png" alt="國立成功大學 EMBA">
+      <p class="kicker">National Cheng Kung University · EMBA</p>
+      <p class="roman-big">E&nbsp;·&nbsp;C&nbsp;·&nbsp;X&nbsp;·&nbsp;V&nbsp;·&nbsp;I&nbsp;·&nbsp;I&nbsp;·&nbsp;I</p>
+      <h1>E118 學年紀要</h1>
+      <p class="sub">學年紀要特輯　MMXXV–MMXXVI</p>
+      <p class="issue-line">壹　·　卷首語</p>
+    </div>
+  </section>
+
+  <!-- 前言 -->
+  <section class="fade">
+    <p class="eyebrow">Foreword</p>
+    <p class="roman">I</p>
+    <h2 class="title">一紙紀要，一年並肩</h2>
+    <p class="lede">
+      自入學之初，E118 一百零一位同窗自各行各業會聚成功大學，共讀、共議、共成長。
+      這一冊紀要，以數字為經、以影像為緯，記下這個學年裡我們共同寫下的篇章。
+      謹以此篇，獻給每一位曾在課堂與活動裡，留下身影的同學。
+    </p>
+    <div class="rule"></div>
+  </section>
+
+  <!-- 101 位同學 -->
+  <section class="fade">
+    <p class="eyebrow">Roster</p>
+    <p class="roman">II</p>
+    <div class="stat-block">
+      <div class="stat-number" data-stat="students">101</div>
+      <div class="stat-unit">位　同　窗</div>
+      <p class="stat-caption">
+        來自製造、金融、醫療、科技等各行各業的領導者，齊聚一堂，組成 E118 這個學習共同體。
+      </p>
+    </div>
+  </section>
+
+  <!-- 8 則公告 -->
+  <section class="fade">
+    <p class="eyebrow">Announcements</p>
+    <p class="roman">III</p>
+    <h2 class="title"><span data-stat="announcements">8</span> 則班務公告紀事</h2>
+    <p class="lede">學年之中，班級公告欄共發布<span data-stat="announcements">8</span>則重要訊息，凝聚全班共識與行動。</p>
+    <ol class="ledger">
+      <li><div class="ledger-text"><div class="t">開學典禮暨新生始業式通知</div><div class="s">MMXXV · 秋</div></div></li>
+      <li><div class="ledger-text"><div class="t">班費收支公告（第一期）</div><div class="s">財務透明化第一份報告</div></div></li>
+      <li><div class="ledger-text"><div class="t">幹部改選暨職務分工公告</div><div class="s">九大職位就位</div></div></li>
+      <li><div class="ledger-text"><div class="t">職業參訪行前說明</div><div class="s">交通、服儀、集合時間</div></div></li>
+      <li><div class="ledger-text"><div class="t">社團博覽會招募公告</div><div class="s">十七個社團同步招生</div></div></li>
+      <li><div class="ledger-text"><div class="t">期中班費收支公告（第二期）</div><div class="s">延續透明治理</div></div></li>
+      <li><div class="ledger-text"><div class="t">南北會師活動通知</div><div class="s">南、北同學相聚一堂</div></div></li>
+      <li><div class="ledger-text"><div class="t">學年紀要編纂啟事</div><div class="s">本冊由此而生</div></div></li>
+    </ol>
+    <div class="rule"></div>
+  </section>
+
+  <!-- 3 場班級活動 -->
+  <section class="fade">
+    <p class="eyebrow">Gatherings</p>
+    <p class="roman">IV</p>
+    <h2 class="title"><span data-stat="activities">3</span> 場班級活動聚首</h2>
+    <p class="lede">課堂之外，三場班級活動讓同學情誼在共食共遊間持續加溫。</p>
+    <div class="grid-stats">
+      <div class="cell"><div class="num">01</div><div class="lab">迎新茶會</div></div>
+      <div class="cell"><div class="num">02</div><div class="lab">南北會師</div></div>
+      <div class="cell"><div class="num">03</div><div class="lab">歲末聯歡</div></div>
+    </div>
+    <div class="rule"></div>
+  </section>
+
+  <!-- 1 場職業參訪 -->
+  <section class="fade">
+    <p class="eyebrow">Site Visit</p>
+    <p class="roman">V</p>
+    <div class="stat-block">
+      <div class="stat-number" data-stat="fieldVisits">1</div>
+      <div class="stat-unit">場　職　業　參　訪</div>
+      <p class="stat-caption">
+        走出教室，深入產業現場，一場精心籌辦的企業參訪，讓理論與實務相互印證。
+      </p>
+    </div>
+  </section>
+
+  <!-- 8 份課堂報告 -->
+  <section class="fade">
+    <p class="eyebrow">Case Reports</p>
+    <p class="roman">VI</p>
+    <h2 class="title"><span data-stat="reports">8</span> 份課堂報告個案</h2>
+    <p class="lede">學年之中，同學分組完成<span data-stat="reports">8</span>份課堂個案報告，於各科目課堂上輪番發表。</p>
+    <ol class="ledger">
+      <li><div class="ledger-text"><div class="t">管理會計｜Continental Airlines 個案</div></div></li>
+      <li><div class="ledger-text"><div class="t">管理會計｜CVP 成本結構分析</div></div></li>
+      <li><div class="ledger-text"><div class="t">管理會計｜攸關成本決策個案</div></div></li>
+      <li><div class="ledger-text"><div class="t">管理會計｜Fire at Big Box 個案</div></div></li>
+      <li><div class="ledger-text"><div class="t">企業經營專題｜產業競爭策略分析</div></div></li>
+      <li><div class="ledger-text"><div class="t">企業經營專題｜組織變革個案</div></div></li>
+      <li><div class="ledger-text"><div class="t">策略管理｜跨國併購個案</div></div></li>
+      <li><div class="ledger-text"><div class="t">策略管理｜新事業開發個案</div></div></li>
+    </ol>
+    <div class="rule"></div>
+  </section>
+
+  <!-- 17 個社團 -->
+  <section class="fade">
+    <p class="eyebrow">Clubs</p>
+    <p class="roman">VII</p>
+    <h2 class="title"><span data-stat="clubs">17</span> 個社團，各展所長</h2>
+    <p class="lede">從運動到藝文，從投資到公益，十七個社團豐富了 E118 的課外生活。</p>
+    <div class="club-cloud">
+      <span>高爾夫社</span><span>網球社</span><span>羽球社</span><span>路跑社</span>
+      <span>登山社</span><span>單車社</span><span>攝影社</span><span>紅酒社</span>
+      <span>咖啡社</span><span>茶藝社</span><span>投資理財社</span><span>閱讀社</span>
+      <span>公益服務社</span><span>桌遊社</span><span>音樂社</span><span>美食社</span>
+      <span>旅遊社</span>
+    </div>
+    <div class="rule"></div>
+  </section>
+
+  <!-- 300+ 張照片 -->
+  <section class="fade">
+    <p class="eyebrow">Archive</p>
+    <p class="roman">VIII</p>
+    <div class="stat-block">
+      <div class="stat-number" data-stat="photos">300+</div>
+      <div class="stat-unit">張　影　像　留　存</div>
+      <p class="stat-caption">
+        每一次快門，都是一段共同記憶的定格。三百餘張照片，收錄於班級影像庫，供同窗隨時回望。
+      </p>
+    </div>
+  </section>
+
+  <!-- 結尾 -->
+  <section id="finale" class="fade">
+    <p class="eyebrow" style="color:var(--gold-light);">Closing</p>
+    <p class="roman" style="color:var(--gold-light);">IX</p>
+    <div class="frame-photo">
+      <img src="/assets/class.jpeg" alt="E118 全班合影">
+    </div>
+    <h3>E118，我們一起走過</h3>
+    <p class="signoff">National Cheng Kung University EMBA · Class of E118</p>
+    <div class="divider"></div>
+    <p style="font-size:12.5px; line-height:2; color:rgba(250,247,242,0.78); max-width:320px; margin:0 auto;">
+      一學年的課堂、聚會與情誼，終將化作履歷之外的共同記憶。
+      謹以此冊，紀念 E118 的每一段旅程，也期待未來更多篇章，繼續共同書寫。
+    </p>
+  </section>
+
+  <footer>
+    <p>統計截至 2026-07 · E118 秘書處</p>
+  </footer>
+
+</div>
+
+<script>
+  // 集中數據源：所有頁面內數字皆由此物件驅動，改這裡即可全頁同步更新。
+  // 對應 DOM 內 [data-stat] 節點；photos 為概數（供圖片持續累積），故用字串 "300+"。
+  var E118_ANNUAL_DATA = {
+    students: 101,
+    announcements: 8,
+    activities: 3,
+    fieldVisits: 1,
+    reports: 8,
+    clubs: 17,
+    photos: '300+'
+  };
+
+  (function(){
+    document.querySelectorAll('[data-stat]').forEach(function(el){
+      var key = el.getAttribute('data-stat');
+      if (Object.prototype.hasOwnProperty.call(E118_ANNUAL_DATA, key)) {
+        el.textContent = E118_ANNUAL_DATA[key];
+      }
+    });
+  })();
+
+  (function(){
+    var els = document.querySelectorAll('.fade');
+    if(!('IntersectionObserver' in window)){
+      els.forEach(function(el){ el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+    els.forEach(function(el){ io.observe(el); });
+  })();
+</script>
+
+</body>
+</html>
