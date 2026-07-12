@@ -195,7 +195,7 @@ $('#chips').innerHTML=chipDefs.map(([k,l,c])=>`<button class="chip ${k==='all'?'
 function render(){
   const d=filtered(); $('#cnt').textContent=d.length;
   $('#gal').innerHTML=d.map(c=>{const i=CLUBS.indexOf(c);return `
-   <div class="card" data-open="${i}">
+   <div class="card" data-open="${i}" role="button" tabindex="0" aria-label="${c.n} 詳情">
      <div class="top"><div class="iconw">${svg(c.ic,24)}</div>
        <div class="ybadge"><div class="a">EST.</div><div class="r">${c.ad}</div></div></div>
      <h3>${c.n} ${ownBadge(c)}</h3>
@@ -227,6 +227,12 @@ document.addEventListener('click',e=>{
   const ch=e.target.closest('.chip'); if(ch){cat=ch.dataset.c;document.querySelectorAll('.chip').forEach(b=>b.classList.toggle('on',b.dataset.c===cat));render();return;}
   const cd=e.target.closest('[data-open]'); if(cd){openModal(+cd.dataset.open);return;}
   if(e.target.closest('.x')||e.target.id==='ov'){$('#ov').classList.remove('show');}
+});
+// a11y — 鍵盤 Enter / Space 觸發 role="button" 的卡片（Esc 關閉由下一行既有處理器負責）
+document.addEventListener('keydown',e=>{
+  if((e.key==='Enter'||e.key===' ')&&e.target.getAttribute&&e.target.getAttribute('role')==='button'){
+    e.preventDefault(); e.target.click();
+  }
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#ov').classList.remove('show');});
 render();
