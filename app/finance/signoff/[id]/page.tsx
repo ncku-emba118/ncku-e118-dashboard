@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import SignaturePad from 'signature_pad';
 import Breadcrumb from '@/components/Breadcrumb';
+import { deptInfo } from '@/lib/depts';
 
 const WINE = '#8B1F2F';
 const CREAM = '#FAF7F2';
@@ -11,25 +12,28 @@ const INK = '#1A1612';
 const MUTE = '#8A7F73';
 
 type Assignment = {
-  id: string;
-  signer_account_id: string;
+  id?: string;
+  signer_account_id?: string;
   signer_username: string | null;
   role_label: string;
   status: string;
-  reject_reason: string | null;
-  acted_at: string | null;
+  reject_reason?: string | null;
+  acted_at?: string | null;
 };
 type Detail = {
+  // 訪客（免登入）模式：API 回 public:true 的公開摘要（無 urls / attachments / 簽名框）
+  public?: boolean;
   doc: {
     id: string; title: string; amount: string | null; currency: string;
-    purpose: string | null; applicant: string | null; status: string;
-    created_at: string; final_pdf_sha256: string | null;
+    purpose: string | null; applicant?: string | null; status: string;
+    created_at: string; completed_at?: string | null; owner_dept_id?: string;
+    final_pdf_sha256?: string | null;
   };
   assignments: Assignment[];
-  urls: { sheet: string | null; final: string | null };
-  attachments: { name: string; url: string | null }[];
-  my_pending_assignment_id: string | null;
-  can_delete: boolean;
+  urls?: { sheet: string | null; final: string | null };
+  attachments?: { name: string; url: string | null }[];
+  my_pending_assignment_id?: string | null;
+  can_delete?: boolean;
 };
 
 const DOC_STATUS: Record<string, string> = {
@@ -143,6 +147,8 @@ export default function SignoffDetailPage() {
   if (err) return <>{breadcrumb}<main style={{ minHeight: '100vh', background: CREAM, padding: 24 }}><p style={{ color: '#b00' }}>{err}</p></main></>;
   if (!d) return <>{breadcrumb}<main style={{ minHeight: '100vh', background: CREAM, padding: 24 }}><p style={{ color: MUTE }}>載入中…</p></main></>;
 
+  const isPublic = d.public === true;
+
   return (
     <>
     {breadcrumb}
@@ -156,30 +162,55 @@ export default function SignoffDetailPage() {
         </p>
         {d.doc.purpose && <p style={{ fontSize: 14 }}>用途：{d.doc.purpose}</p>}
 
-        {/* 簽核表 */}
-        {d.urls.sheet && (
-          <iframe
-            src={d.urls.sheet}
-            style={{ width: '100%', height: 420, border: '1px solid #E5DCCB', borderRadius: 4, background: '#fff', marginTop: 8 }}
-            title="簽核表"
-          />
+        {/* 訪客公開摘要：部門 + 建立/核准完成時間 */}
+        {isPublic && (
+          <p style={{ color: MUTE, fontSize: 13, marginTop: 0 }}>
+            {d.doc.owner_dept_id ? `部門：${deptInfo(d.doc.owner_dept_id).name}　` : ''}
+            建立：{d.doc.created_at.slice(0, 10)}
+            {d.doc.completed_at ? `　核准完成：${d.doc.completed_at.slice(0, 10)}` : ''}
+          </p>
         )}
-        <div style={{ fontSize: 13, marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-          {d.attachments.map((a, i) =>
-            a.url ? (
-              <a key={i} href={a.url} target="_blank" rel="noreferrer" style={{ color: WINE }}>📎 {a.name}</a>
-            ) : null,
-          )}
-          {d.urls.final && <a href={d.urls.final} target="_blank" rel="noreferrer" style={{ color: WINE, fontWeight: 600 }}>⬇ 下載最終 PDF</a>}
-        </div>
+
+        {/* 原件（簽核表 / 附件 / 最終 PDF）僅登入幹部可見 */}
+        {isPublic ? (
+          <p style={{ fontSize: 13, color: MUTE, background: '#F6F0E4', border: '1px solid #E8DFD0', borderRadius: 6, padding: '10px 12px', marginTop: 12 }}>
+            原始簽核表與附件僅限幹部登入檢視。
+            <a href={`/board/login?next=/finance/signoff/${id}`} style={{ color: WINE, fontWeight: 600, marginLeft: 6 }}>幹部登入 →</a>
+          </p>
+        ) : (
+          <>
+            {/* 內嵌框優先顯示「最終 PDF（含簽名）」；尚未產生（簽核中／極少數合成失敗）才退回空白簽核表 */}
+            {(d.urls?.final || d.urls?.sheet) && (
+              <>
+                <p style={{ fontSize: 12, color: MUTE, margin: '10px 0 4px' }}>
+                  {d.urls?.final ? '簽核表（含各幹部簽名）' : '簽核表（尚未完成簽核，未含簽名）'}
+                </p>
+                <iframe
+                  src={d.urls?.final || d.urls?.sheet || ''}
+                  style={{ width: '100%', height: 420, border: '1px solid #E5DCCB', borderRadius: 4, background: '#fff' }}
+                  title={d.urls?.final ? '簽核表（含簽名）' : '簽核表'}
+                />
+              </>
+            )}
+            <div style={{ fontSize: 13, marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 14 }}>
+              {d.attachments?.map((a, i) =>
+                a.url ? (
+                  <a key={i} href={a.url} target="_blank" rel="noreferrer" style={{ color: WINE }}>📎 {a.name}</a>
+                ) : null,
+              )}
+              {d.urls?.final && <a href={d.urls.final} target="_blank" rel="noreferrer" style={{ color: WINE, fontWeight: 600 }}>⬇ 下載最終 PDF（含簽名）</a>}
+            </div>
+          </>
+        )}
 
         {/* 簽核狀態 */}
         <h2 style={{ fontSize: 15, color: MUTE, borderBottom: '1px solid #E5DCCB', paddingBottom: 6, marginTop: 22 }}>簽核進度</h2>
-        {d.assignments.map((a) => (
-          <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F0E9DC', fontSize: 14 }}>
+        {d.assignments.map((a, i) => (
+          <div key={a.id ?? `${a.role_label}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F0E9DC', fontSize: 14 }}>
             <span>{a.role_label}：{a.signer_username ?? '—'}</span>
             <span style={{ color: a.status === 'signed' ? '#2D5F4E' : a.status === 'rejected' ? '#b00' : MUTE }}>
               {A_STATUS[a.status] ?? a.status}{a.reject_reason ? `（${a.reject_reason}）` : ''}
+              {a.acted_at ? ` · ${a.acted_at.slice(0, 10)}` : ''}
             </span>
           </div>
         ))}
@@ -213,18 +244,20 @@ export default function SignoffDetailPage() {
           </div>
         )}
 
-        {/* 管理動作 */}
-        <div style={{ marginTop: 18, display: 'flex', gap: 14 }}>
-          <button onClick={doNudge} style={{ fontSize: 13, color: WINE, background: 'none', border: '1px solid #D9CDB8', borderRadius: 4, padding: '7px 12px', cursor: 'pointer' }}>催簽 / 看誰沒簽</button>
-          <button onClick={doVoid} style={{ fontSize: 13, color: MUTE, background: 'none', border: '1px solid #E5DCCB', borderRadius: 4, padding: '7px 12px', cursor: 'pointer' }}>作廢（限班代）</button>
-          {d.can_delete && (
-            <button onClick={doDelete} disabled={busy} style={{ fontSize: 13, color: '#fff', background: '#b00', border: 'none', borderRadius: 4, padding: '7px 12px', cursor: busy ? 'default' : 'pointer' }}>刪除</button>
-          )}
-        </div>
+        {/* 管理動作（僅登入幹部；訪客公開摘要不顯示） */}
+        {!isPublic && (
+          <div style={{ marginTop: 18, display: 'flex', gap: 14 }}>
+            <button onClick={doNudge} style={{ fontSize: 13, color: WINE, background: 'none', border: '1px solid #D9CDB8', borderRadius: 4, padding: '7px 12px', cursor: 'pointer' }}>催簽 / 看誰沒簽</button>
+            <button onClick={doVoid} style={{ fontSize: 13, color: MUTE, background: 'none', border: '1px solid #E5DCCB', borderRadius: 4, padding: '7px 12px', cursor: 'pointer' }}>作廢（限班代）</button>
+            {d.can_delete && (
+              <button onClick={doDelete} disabled={busy} style={{ fontSize: 13, color: '#fff', background: '#b00', border: 'none', borderRadius: 4, padding: '7px 12px', cursor: busy ? 'default' : 'pointer' }}>刪除</button>
+            )}
+          </div>
+        )}
 
         {msg && <p style={{ marginTop: 14, color: INK, background: '#FBF3D9', border: '1px solid #E8D89A', borderRadius: 4, padding: '8px 10px', fontSize: 14 }}>{msg}</p>}
 
-        <p style={{ marginTop: 24 }}><a href="/finance/signoff" style={{ color: MUTE, fontSize: 13 }}>← 回簽核清單</a></p>
+        <p style={{ marginTop: 24 }}><a href={isPublic ? '/finance' : '/finance/signoff'} style={{ color: MUTE, fontSize: 13 }}>{isPublic ? '← 回經費中心' : '← 回簽核清單'}</a></p>
       </div>
     </main>
     </>

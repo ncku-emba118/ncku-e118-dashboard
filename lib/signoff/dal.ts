@@ -132,6 +132,76 @@ export async function getDocumentBundle(
   };
 }
 
+/** 公開摘要專用：單次查詢 + 條件鎖 status='approved'，join 簽核格與簽核者姓名。
+ *  只回已核准文件，故無論「不存在」或「存在但未核准」都回 data=null（呼叫端一律統一 404，
+ *  且兩者查詢成本相同 → 不留 timing oracle）；狀態過濾在 DB 端 atomic 完成，
+ *  避免 getDocumentBundle 兩段式查詢在作廢競態下洩漏摘要。回傳欄位即為對外白名單。 */
+export async function getPublicApprovedSummary(documentId: string): Promise<{
+  data: {
+    doc: {
+      id: string; title: string; purpose: string | null; amount: string | null;
+      currency: string; owner_dept_id: string; status: string;
+      created_at: string; updated_at: string;
+    };
+    assignments: {
+      signer_username: string | null; role_label: string;
+      status: string; acted_at: string | null;
+    }[];
+  } | null;
+  error: string | null;
+}> {
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from('signoff_documents')
+    .select(
+      'id, title, purpose, amount, currency, owner_dept_id, status, created_at, updated_at, ' +
+        'signoff_assignments(role_label, status, acted_at, sequence_order, accounts(username))',
+    )
+    .eq('id', documentId)
+    .eq('status', 'approved')
+    .maybeSingle();
+  if (error) return { data: null, error: error.message };
+  if (!data) return { data: null, error: null };
+
+  // 動態 select 字串讓 PostgREST 型別推斷失效，明確 cast 成已知形狀。
+  const raw = data as unknown as {
+    id: string; title: string; purpose: string | null; amount: string | null;
+    currency: string; owner_dept_id: string; status: string;
+    created_at: string; updated_at: string;
+    signoff_assignments: {
+      role_label: string; status: string; acted_at: string | null;
+      sequence_order: number | null; accounts: { username: string } | null;
+    }[];
+  };
+  const assignments = (raw.signoff_assignments ?? [])
+    .slice()
+    .sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0))
+    .map((a) => ({
+      signer_username: a.accounts?.username ?? null,
+      role_label: a.role_label,
+      status: a.status,
+      acted_at: a.acted_at,
+    }));
+
+  return {
+    data: {
+      doc: {
+        id: raw.id,
+        title: raw.title,
+        purpose: raw.purpose ?? null,
+        amount: raw.amount ?? null,
+        currency: raw.currency,
+        owner_dept_id: raw.owner_dept_id,
+        status: raw.status,
+        created_at: raw.created_at,
+        updated_at: raw.updated_at,
+      },
+      assignments,
+    },
+    error: null,
+  };
+}
+
 /** 收件匣：指派給我、pending、且文件仍在簽核中（!inner + 過濾 doc 狀態，
  *  避免退回/作廢/已核准的文件殘留在待簽清單 — Codex P1）。 */
 export async function listInbox(accountId: string) {
@@ -145,6 +215,21 @@ export async function listInbox(accountId: string) {
     .eq('status', 'pending')
     .eq('signoff_documents.status', 'routing')
     .order('created_at', { ascending: false });
+}
+
+/** 我簽核過的紀錄：指派給我、且我已處理（signed / rejected）。依簽核時間倒序，
+ *  join 文件拿標題/金額/狀態/建立時間。用於幹部總覽「已簽核紀錄」區塊。 */
+export async function listSignedByMe(accountId: string) {
+  const supabase = getServerClient();
+  return supabase
+    .from('signoff_assignments')
+    .select(
+      'role_label, status, acted_at, signoff_documents!inner(id, title, amount, currency, status, created_at)',
+    )
+    .eq('signer_account_id', accountId)
+    .in('status', ['signed', 'rejected'])
+    .order('acted_at', { ascending: false })
+    .limit(100);
 }
 
 /** 我發起的文件 */

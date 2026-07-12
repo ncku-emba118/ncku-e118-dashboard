@@ -48,6 +48,10 @@ const POST_PUBLIC_PATHS = new Set<string>([
 const GET_PUBLIC_PATTERNS: RegExp[] = [
   /^\/api\/board\/posts$/,                                              // GET 列表
   /^\/api\/board\/posts\/[a-fA-F0-9-]{36}$/,                            // GET 單篇（UUID）
+  // 已核准單據公開摘要：只放行「單一文件詳情」GET（route 端只在 status==='approved' 回摘要）。
+  // $ 錨定 + 只 36 字元 UUID，故 /sign /challenge /reject /void /delete /nudge /finalize
+  // 等子路徑一律不匹配；且僅 GET 走此白名單，POST 到同 path 仍需登入。
+  /^\/api\/board\/signoff\/[a-fA-F0-9-]{36}$/,                          // GET 單一簽核詳情（UUID）
 ];
 
 export async function middleware(request: NextRequest) {

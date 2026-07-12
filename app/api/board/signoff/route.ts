@@ -33,6 +33,7 @@ import {
   getAccountsByIds,
   listInbox,
   listCreatedBy,
+  listSignedByMe,
   uploadObject,
   type CreateAssignment,
   type AttachmentMeta,
@@ -86,15 +87,28 @@ export async function GET() {
     return jsonResp({ error: '請求過於頻繁' }, 429, traceId);
   }
 
-  const [inbox, created] = await Promise.all([
+  const [inbox, created, history] = await Promise.all([
     listInbox(session.sub),
     listCreatedBy(session.sub),
+    listSignedByMe(session.sub),
   ]);
+  // 核心清單（待簽 + 我發起）失敗才是 fatal 503。
   if (inbox.error || created.error) {
-    console.error('[signoff.list.failed]', { traceId, e: inbox.error || created.error });
+    console.error('[signoff.list.failed]', {
+      traceId,
+      e: inbox.error || created.error,
+    });
     return jsonResp({ error: '系統暫時無法取得簽核清單' }, 503, traceId);
   }
-  return jsonResp({ inbox: inbox.data ?? [], created: created.data ?? [] }, 200, traceId);
+  // 「已簽核紀錄」是輔助區塊：查詢失敗只記 log、回空陣列，不連坐核心清單。
+  if (history.error) {
+    console.error('[signoff.history.failed]', { traceId, e: history.error });
+  }
+  return jsonResp(
+    { inbox: inbox.data ?? [], created: created.data ?? [], history: history.data ?? [] },
+    200,
+    traceId,
+  );
 }
 
 export async function POST(req: NextRequest) {

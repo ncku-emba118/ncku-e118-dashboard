@@ -151,8 +151,8 @@ export default async function FinancePage() {
           {expenses.length === 0 && <p style={{ color: MUTE, fontSize: 13 }}>目前沒有支出紀錄。</p>}
           {expenses.map((e) => {
             const s = STATUS[e.status];
-            return (
-              <div key={e.id} style={expCard}>
+            const inner = (
+              <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <span style={{ fontSize: 14, fontWeight: 600 }}>{e.title}</span>
                   <span style={{ fontFamily: 'serif', fontWeight: 700, fontSize: 15 }}>{fmt(Math.round(n(e.amount)))}</span>
@@ -161,7 +161,16 @@ export default async function FinancePage() {
                   <span>{e.created_at.slice(0, 10)}{e.category ? ` · ${e.category}` : ''}</span>
                   <span style={{ fontWeight: 600, color: s.c }}>{s.t}</span>
                 </div>
-              </div>
+              </>
+            );
+            // 已核准 → 連到公開摘要頁；簽核中/退回/作廢維持純卡片（無明細可看）
+            return e.status === 'approved' ? (
+              <a key={e.id} href={`/finance/signoff/${e.id}`} style={expCard}>
+                {inner}
+                <div style={{ marginTop: 6, fontSize: 11.5, color: WINE, fontWeight: 600, textAlign: 'right' }}>查看明細 →</div>
+              </a>
+            ) : (
+              <div key={e.id} style={expCard}>{inner}</div>
             );
           })}
         </section>

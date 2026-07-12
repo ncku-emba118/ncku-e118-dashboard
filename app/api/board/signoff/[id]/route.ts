@@ -9,7 +9,7 @@ import { resolveClientIp } from '@/lib/ip-resolve';
 import { hashIp } from '@/lib/ip-hash';
 import { jsonResp } from '@/lib/signoff/http';
 import { requireSignoffAccess } from '@/lib/signoff/access';
-import { createSignedReadUrl, recordAudit } from '@/lib/signoff/dal';
+import { createSignedReadUrl, getPublicApprovedSummary, recordAudit } from '@/lib/signoff/dal';
 
 const UUID_RE =
   /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
@@ -23,78 +23,129 @@ export async function GET(
   if (!UUID_RE.test(id)) return jsonResp({ error: '無效的 ID' }, 400, traceId);
 
   const session = await readSession();
-  if (!session) return jsonResp({ error: '未登入或 session 過期' }, 401, traceId);
 
-  const access = await requireSignoffAccess(session, 'view', id);
-  if (!access.ok) return jsonResp({ error: access.error }, access.status, traceId);
-  const { doc, assignments } = access.bundle;
+  // ① 登入且有內部 view 權限 → 回完整原件（doc meta + 指派 + 短效 signed URL）。
+  if (session) {
+    const access = await requireSignoffAccess(session, 'view', id);
+    if (access.ok) {
+      const { doc, assignments } = access.bundle;
 
-  const [sheetUrl, finalUrl] = await Promise.all([
-    createSignedReadUrl(doc.signoff_sheet_object_path),
-    doc.final_pdf_object_path
-      ? createSignedReadUrl(doc.final_pdf_object_path)
-      : Promise.resolve({ url: null, error: null }),
-  ]);
-  const attachmentUrls = await Promise.all(
-    doc.attachments.map(async (a) => ({
-      name: a.name,
-      url: (await createSignedReadUrl(a.object_path)).url,
-    })),
-  );
+      const [sheetUrl, finalUrl] = await Promise.all([
+        createSignedReadUrl(doc.signoff_sheet_object_path),
+        doc.final_pdf_object_path
+          ? createSignedReadUrl(doc.final_pdf_object_path)
+          : Promise.resolve({ url: null, error: null }),
+      ]);
+      const attachmentUrls = await Promise.all(
+        doc.attachments.map(async (a) => ({
+          name: a.name,
+          url: (await createSignedReadUrl(a.object_path)).url,
+        })),
+      );
 
-  const myPending = assignments.find(
-    (a) => a.signer_account_id === session.sub && a.status === 'pending',
-  );
+      const myPending = assignments.find(
+        (a) => a.signer_account_id === session.sub && a.status === 'pending',
+      );
 
-  // best-effort audit（不阻擋回應）
-  const ip = resolveClientIp(req);
-  const ipHash = ip ? hashIp(ip) : null;
-  void recordAudit({
-    documentId: id,
-    accountId: session.sub,
-    eventType: 'viewed',
-    ipHash: ipHash?.hash ?? null,
-    ipHashVersion: ipHash?.version ?? null,
-    userAgent: req.headers.get('user-agent'),
-    traceId,
-  });
+      // best-effort audit（不阻擋回應）
+      const ip = resolveClientIp(req);
+      const ipHash = ip ? hashIp(ip) : null;
+      void recordAudit({
+        documentId: id,
+        accountId: session.sub,
+        eventType: 'viewed',
+        ipHash: ipHash?.hash ?? null,
+        ipHashVersion: ipHash?.version ?? null,
+        userAgent: req.headers.get('user-agent'),
+        traceId,
+      });
 
+      return jsonResp(
+        {
+          doc: {
+            id: doc.id,
+            title: doc.title,
+            amount: doc.amount,
+            currency: doc.currency,
+            purpose: doc.purpose,
+            applicant: doc.applicant,
+            owner_dept_id: doc.owner_dept_id,
+            status: doc.status,
+            created_at: doc.created_at,
+            due_at: doc.due_at,
+            final_pdf_sha256: doc.final_pdf_sha256,
+          },
+          assignments: assignments.map((a) => ({
+            id: a.id,
+            signer_account_id: a.signer_account_id,
+            signer_username: a.signer_username,
+            role_label: a.role_label,
+            status: a.status,
+            reject_reason: a.reject_reason,
+            acted_at: a.acted_at,
+            slot_page: a.slot_page,
+            slot_x: a.slot_x,
+            slot_y: a.slot_y,
+            slot_w: a.slot_w,
+            slot_h: a.slot_h,
+          })),
+          urls: {
+            sheet: sheetUrl.url,
+            final: finalUrl.url,
+          },
+          attachments: attachmentUrls,
+          my_pending_assignment_id: myPending?.id ?? null,
+          can_delete: session.role === 'super', // 班代/副班代/秘書可刪除
+        },
+        200,
+        traceId,
+      );
+    }
+    // DB 讀取失敗 → 503（不可 fall through 成 404，否則暫時性錯誤會謊報「不存在」）
+    if (access.status === 503) {
+      return jsonResp({ error: access.error }, 503, traceId);
+    }
+    // access 被拒（404）→ 不 return，落到 ② 公開摘要檢查：
+    //   登入幹部就算不是此單發起人/部門/簽核人，已核准單仍應看得到（與訪客同級公開）。
+  }
+
+  // ② 未登入，或登入但無內部權限：只有 status==='approved' 回「公開摘要」，其餘一律 404。
+  //    單次查詢在 DB 端鎖 status='approved'（atomic，無兩段式競態、無 timing oracle）。
+  //    欄位白名單制：絕不帶 signed URL / object_path / sha / account id / slot 座標。
+  const pub = await getPublicApprovedSummary(id);
+  if (pub.error) return jsonResp({ error: '系統暫時無法讀取簽核文件' }, 503, traceId);
+  if (!pub.data) {
+    // 不存在 or 未核准 → 統一 404，不洩漏文件存在性
+    return jsonResp({ error: '找不到此單據或尚未完成簽核' }, 404, traceId);
+  }
+  const { doc, assignments } = pub.data;
+  // 核准完成時間 = 最後一筆簽核動作時間；無 acted_at 時退回 doc.updated_at（ISO 字串可字典序排序）
+  const actedTimes = assignments
+    .map((a) => a.acted_at)
+    .filter((t): t is string => !!t)
+    .sort();
+  const completedAt = actedTimes.length ? actedTimes[actedTimes.length - 1] : doc.updated_at;
   return jsonResp(
     {
+      public: true,
       doc: {
         id: doc.id,
         title: doc.title,
+        purpose: doc.purpose,
         amount: doc.amount,
         currency: doc.currency,
-        purpose: doc.purpose,
-        applicant: doc.applicant,
         owner_dept_id: doc.owner_dept_id,
-        status: doc.status,
+        status: doc.status, // 恆為 'approved'
         created_at: doc.created_at,
-        due_at: doc.due_at,
-        final_pdf_sha256: doc.final_pdf_sha256,
+        completed_at: completedAt,
       },
+      // 簽核進度：每格只回姓名/職稱/狀態/簽核時間，不含 account id / slot 座標
       assignments: assignments.map((a) => ({
-        id: a.id,
-        signer_account_id: a.signer_account_id,
         signer_username: a.signer_username,
         role_label: a.role_label,
         status: a.status,
-        reject_reason: a.reject_reason,
         acted_at: a.acted_at,
-        slot_page: a.slot_page,
-        slot_x: a.slot_x,
-        slot_y: a.slot_y,
-        slot_w: a.slot_w,
-        slot_h: a.slot_h,
       })),
-      urls: {
-        sheet: sheetUrl.url,
-        final: finalUrl.url,
-      },
-      attachments: attachmentUrls,
-      my_pending_assignment_id: myPending?.id ?? null,
-      can_delete: session.role === 'super', // 班代/副班代/秘書可刪除
     },
     200,
     traceId,

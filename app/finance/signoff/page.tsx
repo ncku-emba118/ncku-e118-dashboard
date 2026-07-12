@@ -29,6 +29,19 @@ type CreatedRow = {
   status: string;
   created_at: string;
 };
+type HistoryRow = {
+  role_label: string;
+  status: string;
+  acted_at: string | null;
+  signoff_documents: {
+    id: string;
+    title: string;
+    amount: string | null;
+    currency: string;
+    status: string;
+    created_at: string;
+  } | null;
+};
 
 const DOC_STATUS: Record<string, string> = {
   routing: '簽核中',
@@ -47,6 +60,7 @@ export default function SignoffInboxPage() {
   const [err, setErr] = useState<string | null>(null);
   const [inbox, setInbox] = useState<InboxRow[]>([]);
   const [created, setCreated] = useState<CreatedRow[]>([]);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -64,6 +78,7 @@ export default function SignoffInboxPage() {
       }
       setInbox(data.inbox || []);
       setCreated(data.created || []);
+      setHistory(data.history || []);
       setLoading(false);
     })();
   }, []);
@@ -127,6 +142,28 @@ export default function SignoffInboxPage() {
                   </div>
                 </a>
               ))}
+            </section>
+
+            <section style={{ marginTop: 28 }}>
+              <h2 style={{ fontSize: 15, color: MUTE, borderBottom: '1px solid #E5DCCB', paddingBottom: 6 }}>
+                已簽核紀錄（{history.length}）
+              </h2>
+              {history.length === 0 && <p style={{ color: MUTE, fontSize: 14 }}>你還沒簽核過任何文件。</p>}
+              {history.map((row, i) =>
+                row.signoff_documents ? (
+                  <a
+                    key={`${row.signoff_documents.id}-${i}`}
+                    href={`/finance/signoff/${row.signoff_documents.id}`}
+                    style={cardStyle}
+                  >
+                    <div style={{ fontWeight: 600 }}>{row.signoff_documents.title}</div>
+                    <div style={{ fontSize: 13, color: MUTE, marginTop: 4 }}>
+                      {row.status === 'rejected' ? '你已退回' : '你已簽核'}
+                      {row.acted_at ? ` · ${row.acted_at.slice(0, 10)}` : ''} · {DOC_STATUS[row.signoff_documents.status] ?? row.signoff_documents.status} · {money(row.signoff_documents.amount, row.signoff_documents.currency)}
+                    </div>
+                  </a>
+                ) : null,
+              )}
             </section>
           </>
         )}
