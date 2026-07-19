@@ -31,9 +31,9 @@ export default function NorthPage() {
         <Link href="/budget" style={{ fontSize: 13, color: MUTE, textDecoration: 'none' }}>← 回總覽</Link>
         <h1 style={{ fontFamily: TC, fontSize: 28, color: WINE_DEEP, fontWeight: 600, margin: '12px 0 6px' }}>給北班的分攤通知</h1>
         <p style={{ fontSize: 14, color: '#4A413A', lineHeight: 1.8, maxWidth: 800 }}>
-          E118 採南北分帳；合辦項目（南北班一起用到的）由 E118 統一執行、活動結束後向北班請款，一般按南北人頭比例 83:16 攤分。
-          未結算項目為「估算金額」，實際金額以每場活動結束後的結算單為準；已標示「已結算」者為實際請款數。
-          部分項目（如班服）依實際領取人數均攤、南北同價，故不套用 83:16。三年期末總對帳調整差額。
+          E118 採南北分帳；合辦項目（南北班一起用到的）按南北人頭比例 83:16 攤分，由 E118 統一執行、活動結束後向北班請款。
+          未結算項目為「估算金額」，實際金額以每場活動結束後的結算單為準；已標示「已結算」者為實際請款數，可直接依該金額轉帳。
+          三年期末總對帳調整差額。
         </p>
       </div>
 

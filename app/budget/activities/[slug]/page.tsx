@@ -154,7 +154,7 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
             label="班費實付"
             value={fmt(a.actualSplit.paidByFund)}
             tone="wine"
-            footnote={`由 ${a.actualSplit.recipients} 位領取者均攤（預算原編列 NT$ ${fmt(a.net)}）`}
+            footnote={`由全班 ${a.actualSplit.members} 人分攤（預算原編列 NT$ ${fmt(a.net)}）`}
           />
         ) : (
           <BigStat label="班費淨負擔" value={fmt(a.net)} tone="wine" footnote={a.netNote} />
@@ -252,17 +252,17 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
       {a.actualSplit ? (
         <Section
           title="班費分攤（實際結算）"
-          subtitle={`班費實付 NT$ ${fmt(a.actualSplit.paidByFund)}　由實際領取的 ${a.actualSplit.recipients} 位同學均攤，每人 NT$ ${fmt(a.actualSplit.perPerson)}`}
+          subtitle={`班費實付 NT$ ${fmt(a.actualSplit.paidByFund)}　由全班 ${a.actualSplit.members} 人按南北 83:16 分攤，每人 NT$ ${fmt(a.actualSplit.perPerson)}`}
         >
           <div className="bdg-grid bdg-grid-2 bdg-grid-gap-sm">
             <SplitCard
-              label={`南班（${a.actualSplit.south.count} 位領取）`}
+              label={`南班負擔（${a.actualSplit.south.count} 人）`}
               amount={a.actualSplit.south.amount}
               perPerson={a.actualSplit.perPerson}
               accent={WINE}
             />
             <SplitCard
-              label={`北班（${a.actualSplit.north.count} 位領取）`}
+              label={`北班分攤（${a.actualSplit.north.count} 人）`}
               amount={a.actualSplit.north.amount}
               perPerson={a.actualSplit.perPerson}
               accent={INK}

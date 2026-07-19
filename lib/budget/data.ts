@@ -98,12 +98,15 @@ export type Activity = {
   notes?: string[];
 };
 
-/** 依實際領取人數均攤的結算結果；south/north 金額以未取整的每人金額計算後四捨五入 */
+/**
+ * 結算後的實際分攤金額。分攤基準與預算階段相同（全班人數、南北 83:16），
+ * 只是把基數從預算數換成實際數；south/north 以未取整的每人金額計算後四捨五入。
+ */
 export type ActualSplit = {
   /** 班費實際支付金額（已扣除個人自費部分） */
   paidByFund: number;
-  /** 實際領取人數 */
-  recipients: number;
+  /** 分攤人數基準：全班人數，不因個人是否領取而異 */
+  members: number;
   /** 每人分攤（顯示用四捨五入值） */
   perPerson: number;
   south: { count: number; amount: number };
@@ -423,7 +426,7 @@ export const ACTIVITIES: Activity[] = [
     audience: 'E118 全班 99 人',
     estimatedAttendance: '—',
     overview:
-      '班服為三年共用的班級識別物資，三項品項一次發放，後續視需求補製。費用由實際領取的同學均攤，南北同價。',
+      '班服為三年共用的班級識別物資，三項品項一次發放，後續視需求補製。班服費用為班級共同支出，由全班 99 人按南北 83:16 分攤。',
     highlights: ['POLO 衫', 'T-shirt', '帽子'],
     budgetBasis: '依現有統計數據（細項款式 / 廠商 / 設計理念待補）',
     expense: {
@@ -442,12 +445,12 @@ export const ACTIVITIES: Activity[] = [
       '廠商帳單合計 NT$ 123,480，較預算 NT$ 118,380 增加 NT$ 5,100，全數來自件數調整、單價與預算書完全相同（POLO 480／T-shirt 280／帽 350）：①送師長的 POLO 由原估 20 件增為實際 24 件（+1,920）；②加留備用庫存 POLO 3、T-shirt 2、帽 2，供尺寸落差臨時更換（+2,700）；③另有同學自費加購 1 件（+480），由本人另行支付、不列入班費。班費實際支出為 NT$ 123,000。',
     actualSplit: {
       paidByFund: 123_000,
-      recipients: 98,
-      perPerson: 1_255,
-      south: { count: 82, amount: 102_918 },
-      north: { count: 16, amount: 20_082 },
+      members: 99,
+      perPerson: 1_242,
+      south: { count: 83, amount: 103_121 },
+      north: { count: 16, amount: 19_879 },
       basisNote:
-        '每人 NT$ 1,255 ＝ 自己整套 1,110（POLO 480 ＋ T-shirt 280 ＋ 帽 350）＋ 師長與備用庫存均攤 145。班服實際按領取件數均攤、南北同價，故不套用預算階段的 83:16 比例。南北合計依未取整的每人金額計算，與「每人 × 人數」會有數元進位差。',
+        '班服為班級共同支出（含同學衣服、師長致贈與備用庫存），與其他班費項目一樣由全班 99 人共同分攤，不因個人是否領取而異，仍按南北人數 83:16 攤分。每人 NT$ 123,000 ÷ 99 ≈ 1,242。南北合計依未取整金額計算，與「每人 × 人數」會有數元進位差。',
       northNote: '請北班窗口彙整後轉南班財務',
     },
   },
@@ -638,7 +641,7 @@ export const NORTH_ALLOCATION = CO_HOSTED.map((a) => ({
   settled: a.actualSplit !== undefined,
   // 注意：fmt 定義在本檔後段，模組初始化時尚在 TDZ，此處改用 toLocaleString
   settledNote: a.actualSplit
-    ? `實際結算：${a.actualSplit.recipients} 位領取者均攤，每人 NT$ ${a.actualSplit.perPerson.toLocaleString('en-US')}`
+    ? `實際結算：全班 ${a.actualSplit.members} 人分攤，每人 NT$ ${a.actualSplit.perPerson.toLocaleString('en-US')}`
     : undefined,
 }));
 
