@@ -129,7 +129,7 @@ export default function SignoffNewPage() {
     {breadcrumb}
     <main style={{ minHeight: '100vh', background: CREAM, color: INK, padding: '24px 16px' }}>
       <div style={{ maxWidth: 560, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 20, color: WINE }}>發起經費簽核</h1>
+        <h1 style={{ fontSize: 20, color: WINE }}>發起經費單簽核</h1>
 
         <label style={label}>標題 *</label>
         <input style={input} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例：1 月迎新茶會點心" />

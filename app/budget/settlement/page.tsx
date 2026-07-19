@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { META, fmt } from '@/lib/budget/data';
+import { ACTIVITIES, META, fmt } from '@/lib/budget/data';
+import SettlementDoc from '@/components/budget/SettlementDoc';
 
 export const metadata: Metadata = {
   title: '結算機制｜E118 南班班費預算說明書',
@@ -17,23 +18,7 @@ const LINE = '#E8DFD0';
 const OK = '#2D5F4E';
 const TC = "'Noto Serif TC', 'PingFang TC', 'Songti TC', serif";
 
-const blankFill: React.CSSProperties = {
-  display: 'inline-block',
-  borderBottom: `1px solid ${INK}`,
-  minWidth: 80,
-  paddingBottom: 1,
-};
-
-const blankLine: React.CSSProperties = {
-  display: 'block',
-  borderBottom: `1px solid ${INK}`,
-  height: 22,
-};
-
-const hr: React.CSSProperties = {
-  margin: '10px 0',
-  borderTop: `1px solid ${LINE}`,
-};
+const SETTLED = ACTIVITIES.filter((a) => a.settlement);
 
 export default function SettlementPage() {
   return (
@@ -74,125 +59,35 @@ export default function SettlementPage() {
       <Section title="三、結算單範本" accent="gold">
         <p style={{ fontSize: 13.5, color: '#4A413A', lineHeight: 1.8, marginBottom: 16 }}>
           每場合辦活動結束後 30 日內，財務長使用以下格式製作結算單給北班財務長。
-          欄位以底線「______」表示待填入；實際使用時可下載為 PDF 或截圖傳給北班財務長。
+          欄位以底線表示待填入；活動資料建檔後，系統可直接產出填妥的結算單（見下方已結算清單）。
         </p>
-
-        {/* ── 結算單視覺渲染 ────────────────────────────────────────── */}
-        <div
-          style={{
-            background: '#fff',
-            border: `2px solid ${WINE_DEEP}`,
-            borderRadius: 8,
-            padding: 0,
-            maxWidth: 720,
-            margin: '0 auto',
-            fontFamily: "'Noto Serif TC', 'PingFang TC', serif",
-            boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-          }}
-        >
-          {/* Receipt Header */}
-          <div
-            style={{
-              background: WINE_DEEP,
-              color: '#fff',
-              padding: '18px 24px',
-              borderBottom: `3px solid ${GOLD}`,
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: 11, color: '#E0C896', letterSpacing: 2, marginBottom: 4 }}>
-              NCKU EMBA · E118 SOUTH
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>活 動 結 算 單</div>
-            <div style={{ fontSize: 11, color: '#E0C896', marginTop: 4 }}>STATEMENT OF ACTIVITY SETTLEMENT</div>
-          </div>
-
-          {/* 編號與日期 */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              padding: '14px 24px',
-              borderBottom: `1px dashed ${LINE}`,
-              fontSize: 12.5,
-              color: '#4A413A',
-            }}
-          >
-            <div>結算單編號 No. <span style={blankFill}>________</span></div>
-            <div style={{ textAlign: 'right' }}>製表日期 <span style={blankFill}>____ / __ / __</span></div>
-          </div>
-
-          {/* 活動資訊 */}
-          <Box title="活動資訊">
-            <Row label="活動名稱" />
-            <Row label="活動日期" />
-            <Row label="活動地點" />
-            <Row label="主辦人" />
-          </Box>
-
-          {/* 收支結算 */}
-          <Box title="收支結算（實際發生）">
-            <RowAmount label="① 總支出（實際）" tail="附憑證 ___ 筆（明細見附件 A）" />
-            <RowAmount label="② 總收入（實際）" tail="附收據 ___ 筆（明細見附件 B）" />
-            <div style={hr} />
-            <RowAmount label="③ 班費淨負擔 = ① − ②" emphasis />
-          </Box>
-
-          {/* 南北分攤 */}
-          <Box title={`南北分攤（按 ${META.southMembers}:${META.northMembers}）`}>
-            <RowAmount label={`南班應付（${META.southMembers}/${META.totalMembers} ≈ 83.84%）`} />
-            <RowAmount label={`北班應付（${META.northMembers}/${META.totalMembers} ≈ 16.16%）`} />
-          </Box>
-
-          {/* 撥款指示 */}
-          <Box title="撥款指示">
-            <RowAmount label="南班預收（從班費撥）" />
-            <RowAmount label="北班需匯款金額" emphasis />
-            <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${LINE}`, fontSize: 12.5, color: '#4A413A' }}>
-              <Row label="匯款戶名 / 帳號" />
-              <Row label="匯款期限" />
-            </div>
-          </Box>
-
-          {/* 簽署 */}
-          <div
-            style={{
-              padding: '16px 24px',
-              borderTop: `1px solid ${LINE}`,
-              background: PAPER,
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 20,
-              fontSize: 12,
-              color: '#4A413A',
-            }}
-          >
-            <div>
-              <div style={{ borderBottom: `1px solid ${INK}`, height: 28 }} />
-              <div style={{ marginTop: 6, textAlign: 'center' }}>製表人（財務長）</div>
-            </div>
-            <div>
-              <div style={{ borderBottom: `1px solid ${INK}`, height: 28 }} />
-              <div style={{ marginTop: 6, textAlign: 'center' }}>覆核人（秘書長）</div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div
-            style={{
-              padding: '10px 24px',
-              borderTop: `1px solid ${LINE}`,
-              background: '#fff',
-              fontSize: 11,
-              color: MUTE,
-              textAlign: 'center',
-              borderBottomLeftRadius: 6,
-              borderBottomRightRadius: 6,
-            }}
-          >
-            E118 南班秘書處製表　·　本結算單副本同步公告至南班幹部群組
-          </div>
+        <div style={noteStyle}>
+          <strong>三個最容易出錯的欄位</strong>：①「個人自費 / 代收代付」務必先扣除，否則會把個人款項算進南北分攤基數；
+          ②「差異原因」要按類型分述（單價變動 vs 數量變動），這是收件人最常追問的一點；
+          ③「分攤基準」要寫明人數與比例，同一項目前後兩次算法不同會造成請款爭議。
         </div>
+
+        <SettlementDoc />
+
+        {/* 已結算項目：直接連到系統產出的正式結算單 */}
+        {SETTLED.length > 0 && (
+          <div style={{ marginTop: 22 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: WINE_DEEP, marginBottom: 8 }}>已產出的結算單</div>
+            <ul style={{ paddingLeft: 22, color: '#4A413A', lineHeight: 2, fontSize: 13.5, margin: 0 }}>
+              {SETTLED.map((a) => (
+                <li key={a.slug}>
+                  <Link href={`/budget/settlement/${a.slug}`} style={{ color: WINE, fontWeight: 600 }}>
+                    {a.name}
+                  </Link>
+                  <span style={{ color: MUTE, fontSize: 12.5 }}>
+                    　{a.settlement!.no}（第 {a.settlement!.revision} 版）· 製表 {a.settlement!.issuedAt}
+                    {a.actualSplit && ` · 北班應付 NT$ ${fmt(a.actualSplit.north.amount)}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Section>
 
       {/* ── 跟北班的請款規則 ──────────────────────────────────────── */}
@@ -210,12 +105,23 @@ export default function SettlementPage() {
                 <td data-label="結算邏輯">由南班主辦人統一付廠商；活動結束後按 83:16 比例向北班請款</td>
               </tr>
               <tr>
-                <td className="strong" data-label="費用類型">B 按人頭的固定費</td>
-                <td data-label="範例">班服 / 校友會費</td>
-                <td data-label="結算邏輯">按實際數量算（如班服按各人實際訂購、校友會費按人頭）</td>
+                <td className="strong" data-label="費用類型">B 班級共同購置</td>
+                <td data-label="範例">班服（含師長致贈、備用庫存）</td>
+                <td data-label="結算邏輯">
+                  屬班級共同財產，<strong>按全班人數 83:16 分攤</strong>，不因個人是否領取而異；
+                  個人自費加購另計、不列入班費
+                </td>
               </tr>
               <tr>
-                <td className="strong" data-label="費用類型">C 南班自辦活動</td>
+                <td className="strong" data-label="費用類型">C 對人計費的固定費</td>
+                <td data-label="範例">校友會費</td>
+                <td data-label="結算邏輯">
+                  費用本身對應到個人身分（每人一份會籍），<strong>按實際人頭計算</strong>；
+                  人數有異動時以實際繳交名單為準
+                </td>
+              </tr>
+              <tr>
+                <td className="strong" data-label="費用類型">D 南班自辦活動</td>
                 <td data-label="範例">119 迎新晚會（南班）</td>
                 <td data-label="結算邏輯">南班獨自負擔、不向北班請款</td>
               </tr>
@@ -297,48 +203,3 @@ const noteStyle: React.CSSProperties = {
   color: '#4A413A',
   lineHeight: 1.8,
 };
-
-// 結算單元件 ──────────────────────────────────────────────────────
-function Box({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ padding: '14px 24px', borderBottom: `1px dashed ${LINE}` }}>
-      <div style={{ fontSize: 11, color: GOLD, letterSpacing: 1.5, marginBottom: 10, fontWeight: 600 }}>{title}</div>
-      {children}
-    </div>
-  );
-}
-
-function Row({ label }: { label: string }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', alignItems: 'center', padding: '4px 0', fontSize: 13, color: '#4A413A' }}>
-      <span style={{ color: WINE_DEEP, fontWeight: 500 }}>{label}</span>
-      <span style={blankLine} />
-    </div>
-  );
-}
-
-function RowAmount({ label, tail, emphasis }: { label: string; tail?: string; emphasis?: boolean }) {
-  return (
-    <div style={{ padding: '4px 0' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'baseline', gap: 12 }}>
-        <span style={{ fontSize: 13, color: emphasis ? WINE : WINE_DEEP, fontWeight: emphasis ? 700 : 500 }}>{label}</span>
-        <span
-          style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            fontSize: emphasis ? 18 : 15,
-            fontWeight: 600,
-            color: emphasis ? WINE : INK,
-            minWidth: 180,
-            textAlign: 'right',
-            borderBottom: `1px solid ${INK}`,
-            paddingBottom: 2,
-            paddingRight: 8,
-          }}
-        >
-          NT$ ____________
-        </span>
-      </div>
-      {tail && <div style={{ fontSize: 11, color: MUTE, marginTop: 2, marginLeft: 0 }}>{tail}</div>}
-    </div>
-  );
-}

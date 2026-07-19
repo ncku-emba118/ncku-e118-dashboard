@@ -148,6 +148,9 @@ export default async function FinancePage() {
 
         <section style={sec}>
           <div style={secH}><h2 style={h2}>支出明細</h2><span style={tag}>= 跑過簽核的經費</span></div>
+          <a href="/budget/tracking" style={{ display: 'block', fontSize: 12.5, color: '#8B1F2F', textDecoration: 'none', marginBottom: 10 }}>
+            對照預算 → 執行追蹤（預算 vs 實際總表）
+          </a>
           {expenses.length === 0 && <p style={{ color: MUTE, fontSize: 13 }}>目前沒有支出紀錄。</p>}
           {expenses.map((e) => {
             const s = STATUS[e.status];
@@ -179,7 +182,7 @@ export default async function FinancePage() {
         <section style={sec}>
           <div style={{ fontSize: 11, color: MUTE, letterSpacing: '.1em', marginBottom: 10 }}>🔒 幹部專區</div>
           <a href="/finance/signoff" style={{ ...officer, marginBottom: 10 }}>
-            <div style={{ fontFamily: 'serif', fontSize: 16, fontWeight: 700 }}>經費簽核</div>
+            <div style={{ fontFamily: 'serif', fontSize: 16, fontWeight: 700 }}>經費單簽核</div>
             <span style={badge}>發起 / 簽核 →</span>
           </a>
           <a href="/finance/income" style={officer}>

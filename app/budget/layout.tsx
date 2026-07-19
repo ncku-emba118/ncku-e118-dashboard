@@ -33,9 +33,10 @@ const BUDGET_CSS = `
 .bdg-brand { color: #fff; text-decoration: none; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .bdg-brand-name { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 600; letter-spacing: 0.5px; }
 .bdg-brand-sub { font-size: 13px; color: #E0C896; font-weight: 500; }
-.bdg-nav { display: flex; gap: 18px; font-size: 14px; flex-wrap: wrap; }
+.bdg-nav { display: flex; gap: 18px; font-size: 14px; flex-wrap: wrap; align-items: center; }
 .bdg-nav a { color: #fff; text-decoration: none; padding: 4px 0; border-bottom: 1px solid transparent; transition: border-color 0.15s; }
 .bdg-nav a:hover { border-bottom-color: ${GOLD}; }
+.bdg-nav-sep { width: 1px; height: 14px; background: rgba(224, 200, 150, 0.4); }
 .bdg-main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 80px; }
 .bdg-footer { background: #fff; border-top: 1px solid ${LINE}; padding: 24px 20px; text-align: center; color: ${MUTE}; font-size: 12px; }
 
@@ -71,6 +72,7 @@ const BUDGET_CSS = `
   .bdg-grid-4 { grid-template-columns: 1fr; }
   .bdg-row-act { grid-template-columns: 1fr; }
   .bdg-nav { gap: 12px; font-size: 13px; width: 100%; justify-content: flex-start; }
+  .bdg-nav-sep { display: none; }
   .bdg-main { padding: 24px 16px 60px; }
   .bdg-hero { padding: 26px 22px !important; }
   .bdg-hero h1 { font-size: 24px !important; }
@@ -120,6 +122,33 @@ const BUDGET_CSS = `
   .bdg-table tbody td.num { text-align: right; }
   .bdg-table tbody tr.sub td:before { color: rgba(255,255,255,0.7); }
 }
+
+/* 列印：只留文件本體，供結算單存成 PDF */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  .no-print,
+  .bdg-header,
+  .bdg-footer,
+  .bdg-nav,
+  nav[aria-label] { display: none !important; }
+  html, body { background: #fff !important; }
+  .bdg-shell, .bdg-main {
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  .settlement-doc {
+    max-width: none !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-width: 1px !important;
+    border-radius: 0 !important;
+  }
+  /* 每個區塊盡量不跨頁；表格列絕不從中斷開 */
+  .settlement-doc > div { break-inside: avoid; }
+  .settlement-doc tr { break-inside: avoid; }
+}
 `.trim();
 
 export default function BudgetLayout({ children }: { children: React.ReactNode }) {
@@ -144,10 +173,13 @@ export default function BudgetLayout({ children }: { children: React.ReactNode }
             <Link href="/budget/activities">活動明細</Link>
             <Link href="/budget/reserves">預備金</Link>
             <Link href="/budget/rules">申請規則</Link>
+            <span className="bdg-nav-sep" aria-hidden="true" />
+            <Link href="/budget/tracking">執行追蹤</Link>
             <Link href="/budget/settlement">結算機制</Link>
             <Link href="/budget/north">北班分攤</Link>
+            <span className="bdg-nav-sep" aria-hidden="true" />
             <Link href="/budget/changelog">版本歷史</Link>
-            <Link href="/budget/signoff" style={{ color: '#E0C896', fontWeight: 600 }}>✍️ 簽核</Link>
+            <Link href="/budget/signoff" style={{ color: '#E0C896', fontWeight: 600 }}>✍️ 預算書簽核</Link>
           </nav>
         </div>
       </header>

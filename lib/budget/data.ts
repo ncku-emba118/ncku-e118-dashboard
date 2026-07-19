@@ -91,11 +91,46 @@ export type Activity = {
   settledAt?: string;
   settlementNote?: string;
   /**
-   * 實際結算分攤。填入後，分攤區與北班分攤表改以實際領取人數均攤呈現，
-   * 取代預算階段的南北 83:16 估算（僅在實際攤法與比例攤分不同時才需要填）。
+   * 實際結算分攤。填入後，分攤區與北班分攤表改以實際結算金額呈現，
+   * 取代預算階段的估算數。
    */
   actualSplit?: ActualSplit;
+  /** 結算單內容；填入後可於 /budget/settlement/[slug] 產出正式結算單 */
+  settlement?: SettlementStatement;
   notes?: string[];
+};
+
+/** 差異原因分類 — 強制歸因，避免結算單只寫「超支」卻說不出所以然 */
+export type VarianceKind = '數量變動' | '單價變動' | '項目增減' | '出席人數' | '其他';
+
+/**
+ * 活動結算單。對北班請款與存查用；一張單對應一場活動的一個版次。
+ * 有更正時 revision 遞增並填 revisionNote，避免收件人不確定哪張才算數。
+ */
+export type SettlementStatement = {
+  /** 結算單編號，格式 E118-S-<年>-<流水號> */
+  no: string;
+  /** 版次；初版為 1，每次更正遞增 */
+  revision: number;
+  /** 製表日期 YYYY-MM-DD（固定值，不用執行期時間，確保重印內容一致） */
+  issuedAt: string;
+  /** 本次更正說明（revision > 1 時必填） */
+  revisionNote?: string;
+  /** 廠商 / 供應商 */
+  vendor?: string;
+  /** 廠商帳單總額（尚未扣除個人自費） */
+  invoiceTotal: number;
+  /** 個人自費 / 代收代付，不計入班費負擔 */
+  selfPaid?: number;
+  selfPaidNote?: string;
+  /** 實際收入（無則省略） */
+  actualIncome?: number;
+  /** 差異原因；金額加總應等於「帳單總額 − 預算編列數」 */
+  variances?: { kind: VarianceKind; text: string; amount: number }[];
+  /** 附件 A：品項明細；金額加總應等於帳單總額 */
+  lineItems?: { name: string; unitPrice: number; qty: number; amount: number; note?: string }[];
+  /** 匯款期限 */
+  paymentDue?: string;
 };
 
 /**
@@ -437,8 +472,9 @@ export const ACTIVITIES: Activity[] = [
     net: 118_380,
     southBurden: Math.round((118_380 * META.southMembers) / META.totalMembers),
     northBurden: Math.round((118_380 * META.northMembers) / META.totalMembers),
-    status: 'in-progress',
+    status: 'settled',
     statusNote: '已完成訂製與發放，合計 326 件（POLO + T-shirt + 帽子，含師長與備用庫存）',
+    settledAt: '2026-07-19',
     actualExpense: 123_480,
     actualExpenseNote: '廠商帳單總額；其中個人自費加購 480，班費實付 NT$ 123,000',
     settlementNote:
@@ -452,6 +488,25 @@ export const ACTIVITIES: Activity[] = [
       basisNote:
         '班服為班級共同支出（含同學衣服、師長致贈與備用庫存），與其他班費項目一樣由全班 99 人共同分攤，不因個人是否領取而異，仍按南北人數 83:16 攤分。每人 NT$ 123,000 ÷ 99 ≈ 1,242。南北合計依未取整金額計算，與「每人 × 人數」會有數元進位差。',
       northNote: '請北班窗口彙整後轉南班財務',
+    },
+    settlement: {
+      no: 'E118-S-2026-001',
+      revision: 1,
+      issuedAt: '2026-07-19',
+      vendor: '盛銘時尚',
+      invoiceTotal: 123_480,
+      selfPaid: 480,
+      selfPaidNote: '同學自費加購 1 件，由本人另行支付，不計入班費負擔',
+      variances: [
+        { kind: '數量變動', text: '師長致贈 POLO 由原估 20 件增為實際 24 件', amount: 1_920 },
+        { kind: '數量變動', text: '加留備用庫存 POLO 3、T-shirt 2、帽 2，供尺寸落差臨時更換', amount: 2_700 },
+        { kind: '其他', text: '同學自費加購 1 件（已於下方扣除，不計入班費）', amount: 480 },
+      ],
+      lineItems: [
+        { name: 'POLO 衫', unitPrice: 480, qty: 126, amount: 60_480, note: '同學 98 ＋ 師長 24 ＋ 備用 3 ＋ 自費 1' },
+        { name: 'T-shirt（排汗衫）', unitPrice: 280, qty: 100, amount: 28_000, note: '同學 98 ＋ 備用 2' },
+        { name: '帽子', unitPrice: 350, qty: 100, amount: 35_000, note: '同學 98 ＋ 備用 2' },
+      ],
     },
   },
   // 8. 校友會費 ────────────────────────────────────────────────────────────────

@@ -206,17 +206,23 @@ export default function BudgetHome() {
         </div>
       </Section>
 
-      {/* ─── 北班分攤 / 結算 ────────────────────────────────────────────── */}
-      <section className="bdg-grid bdg-grid-2" style={{ marginTop: 32 }}>
+      {/* ─── 執行追蹤 / 北班分攤 / 結算 ─────────────────────────────────── */}
+      <section className="bdg-grid bdg-grid-3 bdg-grid-gap-sm" style={{ marginTop: 32 }}>
+        <CalloutCard
+          title="執行追蹤"
+          desc="全部活動與預備金的「預算 vs 實際」對照總表，每場結算後更新；累積到期末即為總對帳基礎。"
+          href="/budget/tracking"
+          cta="看預算 vs 實際"
+        />
         <CalloutCard
           title="給北班的分攤通知"
-          desc={`合辦活動的北班分攤估算合計 NT$ ${fmt(NORTH_TOTAL_ESTIMATE)}（16/99 比例）。實際以每場結算為準，期末總對帳。`}
+          desc={`合辦活動的北班應付合計 NT$ ${fmt(NORTH_TOTAL_ESTIMATE)}（已結算採實際數）。實際以每場結算單為準。`}
           href="/budget/north"
           cta="查看北班分攤帳"
         />
         <CalloutCard
           title="預算 vs 實際的結算機制"
-          desc="預算用 83:16 估，實際依各場活動結算後按比例請款；三年期末總對帳、差額退補。"
+          desc="逐場結算、開立結算單向北班請款；三年期末總對帳、差額退補。"
           href="/budget/settlement"
           cta="查看結算流程"
           tone="gold"

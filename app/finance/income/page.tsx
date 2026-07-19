@@ -91,7 +91,7 @@ export default function IncomeManagePage() {
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           <h1 style={{ fontSize: 22, color: WINE, margin: 0 }}>💰 收入管理</h1>
-          <a href="/finance/signoff" style={{ color: MUTE, fontSize: 13, textDecoration: 'none' }}>經費簽核 →</a>
+          <a href="/finance/signoff" style={{ color: MUTE, fontSize: 13, textDecoration: 'none' }}>經費單簽核 →</a>
         </div>
 
         {loading && <p style={{ color: MUTE }}>載入中…</p>}

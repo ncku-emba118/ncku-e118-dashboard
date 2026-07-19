@@ -67,7 +67,7 @@ function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[
 
   // header（僅第 1 頁）
   const p0 = pages[0];
-  p0.drawText('經費簽核表', { x: 50, y: 792, size: 22, font, color: WINE });
+  p0.drawText('經費單簽核表', { x: 50, y: 792, size: 22, font, color: WINE });
   p0.drawText(input.title, { x: 50, y: 762, size: 14, font, color: INK });
 
   const meta: string[] = [];

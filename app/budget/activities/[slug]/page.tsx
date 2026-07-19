@@ -289,6 +289,25 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
           <div style={{ marginTop: 10, fontSize: 12, color: MUTE, lineHeight: 1.7 }}>
             （預算階段原按南北 83:16 估算為南班 NT$ {fmt(a.southBurden)} ／ 北班 NT$ {fmt(a.northBurden)}；本項已結算，以上方實際金額為準。）
           </div>
+          {a.settlement && (
+            <div style={{ marginTop: 12 }}>
+              <Link
+                href={`/budget/settlement/${a.slug}`}
+                style={{
+                  display: 'inline-block',
+                  padding: '8px 16px',
+                  border: `1px solid ${WINE}`,
+                  borderRadius: 6,
+                  color: WINE,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                }}
+              >
+                檢視正式結算單（{a.settlement.no}　第 {a.settlement.revision} 版）→
+              </Link>
+            </div>
+          )}
         </Section>
       ) : (
         <Section title="班費分攤" subtitle={`淨支出 NT$ ${fmt(a.net)}　${a.type === 'south-only' ? '由南班獨自負擔' : '按南北 83:16 比例攤分'}`}>

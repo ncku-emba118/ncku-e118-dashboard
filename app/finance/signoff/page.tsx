@@ -85,11 +85,11 @@ export default function SignoffInboxPage() {
 
   return (
     <>
-    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級經費中心', href: '/finance' }, { label: '簽核流程' }]} />
+    <Breadcrumb items={[{ label: '班級面板', href: '/' }, { label: '班級經費中心', href: '/finance' }, { label: '經費單簽核' }]} />
     <main style={{ minHeight: '100vh', background: CREAM, color: INK, padding: '24px 16px' }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h1 style={{ fontSize: 22, color: WINE, margin: 0 }}>📋 經費簽核</h1>
+          <h1 style={{ fontSize: 22, color: WINE, margin: 0 }}>📋 經費單簽核</h1>
           <a
             href="/finance/signoff/new"
             style={{ background: WINE, color: '#fff', textDecoration: 'none', padding: '9px 16px', borderRadius: 4, fontSize: 14, fontWeight: 600 }}
