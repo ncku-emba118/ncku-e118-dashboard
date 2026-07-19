@@ -20,6 +20,7 @@ const TYPE_LABEL: Record<string, { label: string; bg: string; color: string }> =
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   planning: { label: '規劃中', color: MUTE },
   preparing: { label: '籌備中', color: '#B26B1F' },
+  'in-progress': { label: '執行中', color: WINE },
   settled: { label: '已結算', color: OK },
 };
 

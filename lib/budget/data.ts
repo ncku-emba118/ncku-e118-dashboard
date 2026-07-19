@@ -50,7 +50,7 @@ export const INCOME = {
 export type LineItem = { name: string; qty?: number; unit?: string; unitPrice?: number; amount: number; note?: string };
 
 export type ActivityType = 'co-hosted' | 'south-only' | 'fixed-cost';
-export type ActivityStatus = 'planning' | 'preparing' | 'settled';
+export type ActivityStatus = 'planning' | 'preparing' | 'in-progress' | 'settled';
 
 export type Activity = {
   slug: string;
@@ -85,10 +85,31 @@ export type Activity = {
   historicalReference?: string;
   /** 結算欄位（活動結束後填入） */
   actualExpense?: number;
+  /** actualExpense 卡片下方的說明；未填時自動顯示與預算的差額 */
+  actualExpenseNote?: string;
   actualIncome?: number;
   settledAt?: string;
   settlementNote?: string;
+  /**
+   * 實際結算分攤。填入後，分攤區與北班分攤表改以實際領取人數均攤呈現，
+   * 取代預算階段的南北 83:16 估算（僅在實際攤法與比例攤分不同時才需要填）。
+   */
+  actualSplit?: ActualSplit;
   notes?: string[];
+};
+
+/** 依實際領取人數均攤的結算結果；south/north 金額以未取整的每人金額計算後四捨五入 */
+export type ActualSplit = {
+  /** 班費實際支付金額（已扣除個人自費部分） */
+  paidByFund: number;
+  /** 實際領取人數 */
+  recipients: number;
+  /** 每人分攤（顯示用四捨五入值） */
+  perPerson: number;
+  south: { count: number; amount: number };
+  north: { count: number; amount: number };
+  basisNote?: string;
+  northNote?: string;
 };
 
 export const ACTIVITIES: Activity[] = [
@@ -402,19 +423,33 @@ export const ACTIVITIES: Activity[] = [
     audience: 'E118 全班 99 人',
     estimatedAttendance: '—',
     overview:
-      '班服為三年共用的班級識別物資，三項品項一次發放，後續視需求補製。班服費用為固定支出，由南北班按 83:16 比例分攤。',
+      '班服為三年共用的班級識別物資，三項品項一次發放，後續視需求補製。費用由實際領取的同學均攤，南北同價。',
     highlights: ['POLO 衫', 'T-shirt', '帽子'],
     budgetBasis: '依現有統計數據（細項款式 / 廠商 / 設計理念待補）',
     expense: {
-      items: [{ name: '班服三項合計', qty: 1, unit: '式', amount: 118380, note: 'POLO + T-shirt + 帽子' }],
+      items: [{ name: '班服三項合計', qty: 1, unit: '式', amount: 118380, note: 'POLO + T-shirt + 帽子（預算，依原估 99 人份規劃）' }],
       total: 118_380,
     },
     income: { items: [], total: 0 },
     net: 118_380,
     southBurden: Math.round((118_380 * META.southMembers) / META.totalMembers),
     northBurden: Math.round((118_380 * META.northMembers) / META.totalMembers),
-    status: 'planning',
-    statusNote: '細部款式 / 廠商 / 領取流程待班服統籌小組公告',
+    status: 'in-progress',
+    statusNote: '已完成訂製與發放，合計 326 件（POLO + T-shirt + 帽子，含師長與備用庫存）',
+    actualExpense: 123_480,
+    actualExpenseNote: '廠商帳單總額；其中個人自費加購 480，班費實付 NT$ 123,000',
+    settlementNote:
+      '廠商帳單合計 NT$ 123,480，較預算 NT$ 118,380 增加 NT$ 5,100，全數來自件數調整、單價與預算書完全相同（POLO 480／T-shirt 280／帽 350）：①送師長的 POLO 由原估 20 件增為實際 24 件（+1,920）；②加留備用庫存 POLO 3、T-shirt 2、帽 2，供尺寸落差臨時更換（+2,700）；③另有同學自費加購 1 件（+480），由本人另行支付、不列入班費。班費實際支出為 NT$ 123,000。',
+    actualSplit: {
+      paidByFund: 123_000,
+      recipients: 98,
+      perPerson: 1_255,
+      south: { count: 82, amount: 102_918 },
+      north: { count: 16, amount: 20_082 },
+      basisNote:
+        '每人 NT$ 1,255 ＝ 自己整套 1,110（POLO 480 ＋ T-shirt 280 ＋ 帽 350）＋ 師長與備用庫存均攤 145。班服實際按領取件數均攤、南北同價，故不套用預算階段的 83:16 比例。南北合計依未取整的每人金額計算，與「每人 × 人數」會有數元進位差。',
+      northNote: '請北班窗口彙整後轉南班財務',
+    },
   },
   // 8. 校友會費 ────────────────────────────────────────────────────────────────
   {
@@ -596,13 +631,22 @@ export const NORTH_ALLOCATION = CO_HOSTED.map((a) => ({
   slug: a.slug,
   name: a.shortName,
   date: a.date,
-  southNet: a.southBurden,
-  northEstimate: a.northBurden,
-  totalNet: a.net,
+  southNet: a.actualSplit?.south.amount ?? a.southBurden,
+  northEstimate: a.actualSplit?.north.amount ?? a.northBurden,
+  totalNet: a.actualSplit?.paidByFund ?? a.net,
+  /** 已結算項目：金額為實際請款數，非 16/99 估算 */
+  settled: a.actualSplit !== undefined,
+  // 注意：fmt 定義在本檔後段，模組初始化時尚在 TDZ，此處改用 toLocaleString
+  settledNote: a.actualSplit
+    ? `實際結算：${a.actualSplit.recipients} 位領取者均攤，每人 NT$ ${a.actualSplit.perPerson.toLocaleString('en-US')}`
+    : undefined,
 }));
 
-// 北班總估算：先彙總全班 net 再乘 16/99，避免逐場捨入誤差
-export const NORTH_TOTAL_ESTIMATE = Math.round((CO_HOSTED_TOTAL_NET * META.northMembers) / META.totalMembers);
+// 北班總額：已結算項目用實際請款數，未結算項目先彙總 net 再乘 16/99（避免逐場捨入誤差）
+const CO_HOSTED_PENDING_NET = CO_HOSTED.filter((a) => !a.actualSplit).reduce((s, a) => s + a.net, 0);
+const NORTH_SETTLED_TOTAL = CO_HOSTED.reduce((s, a) => s + (a.actualSplit?.north.amount ?? 0), 0);
+export const NORTH_TOTAL_ESTIMATE =
+  Math.round((CO_HOSTED_PENDING_NET * META.northMembers) / META.totalMembers) + NORTH_SETTLED_TOTAL;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 工具函式

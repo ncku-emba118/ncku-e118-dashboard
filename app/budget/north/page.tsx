@@ -31,15 +31,25 @@ export default function NorthPage() {
         <Link href="/budget" style={{ fontSize: 13, color: MUTE, textDecoration: 'none' }}>← 回總覽</Link>
         <h1 style={{ fontFamily: TC, fontSize: 28, color: WINE_DEEP, fontWeight: 600, margin: '12px 0 6px' }}>給北班的分攤通知</h1>
         <p style={{ fontSize: 14, color: '#4A413A', lineHeight: 1.8, maxWidth: 800 }}>
-          E118 採南北分帳；合辦項目（南北班一起用到的）按南北人頭比例攤分，由 E118 統一執行、活動結束後按 83:16 向北班請款。
-          本頁為「估算金額」，實際金額以每場活動結束後的結算單為準；三年期末總對帳調整差額。
+          E118 採南北分帳；合辦項目（南北班一起用到的）由 E118 統一執行、活動結束後向北班請款，一般按南北人頭比例 83:16 攤分。
+          未結算項目為「估算金額」，實際金額以每場活動結束後的結算單為準；已標示「已結算」者為實際請款數。
+          部分項目（如班服）依實際領取人數均攤、南北同價，故不套用 83:16。三年期末總對帳調整差額。
         </p>
       </div>
 
       {/* 三大數字 */}
       <section className="bdg-grid bdg-grid-3 bdg-grid-gap-sm" style={{ marginBottom: 28 }}>
         <Stat label="北班人數" value={`${META.northMembers} 人`} sub={`佔全班 ${ratio}%`} accent={INK} />
-        <Stat label="合辦項目分攤估算" value={`NT$ ${fmt(NORTH_TOTAL_ESTIMATE)}`} sub={`${northActivities.length} 項合辦項目合計（依保守預算估）`} accent={WINE} />
+        <Stat
+          label="合辦項目北班應付"
+          value={`NT$ ${fmt(NORTH_TOTAL_ESTIMATE)}`}
+          sub={
+            northActivities.some((a) => a.settled)
+              ? `${northActivities.length} 項合計（已結算項目採實際數，其餘依保守預算估）`
+              : `${northActivities.length} 項合辦項目合計（依保守預算估）`
+          }
+          accent={WINE}
+        />
         <Stat label="期末總對帳" value="差額退補" sub="實際以結算為準；多付退、少付補" accent={GOLD} />
       </section>
 
@@ -58,13 +68,13 @@ export default function NorthPage() {
         }}
       >
         <strong style={{ color: WINE_DEEP }}>※ 重要說明：</strong>
-        以下金額皆為「預估」，作為北班預備該年度資金池的參考；實際請款以每場活動結束後南班財務長提供的結算單為準。
-        預算估算採保守口徑（學長姐實際決算 + 6% 漲幅、收入 6 折）。
+        標示「已結算」的項目為實際請款金額，可直接依該金額轉帳；其餘皆為「預估」，作為北班預備該年度資金池的參考，
+        實際請款以每場活動結束後南班財務長提供的結算單為準。預算估算採保守口徑（學長姐實際決算 + 6% 漲幅、收入 6 折）。
       </div>
 
       {/* 7 項合辦項目分攤表 */}
       <h2 style={{ fontFamily: TC, fontSize: 20, color: WINE_DEEP, borderLeft: `4px solid ${GOLD}`, paddingLeft: 12, margin: '24px 0 12px' }}>
-        北班分攤估算（按 16/99 ≈ 16.16%）
+        北班應付金額（未結算項目按 16/99 ≈ 16.16% 估算）
       </h2>
       <div className="bdg-table-wrap" style={{ marginBottom: 24 }}>
         <table className="bdg-table">
@@ -76,22 +86,52 @@ export default function NorthPage() {
               <th scope="col">主辦</th>
               <th scope="col" className="num">全班淨支出</th>
               <th scope="col" className="num">南班 83/99</th>
-              <th scope="col" className="num">北班 16/99</th>
+              <th scope="col" className="num">北班應付</th>
             </tr>
           </thead>
           <tbody>
             {northActivities.map((a) => (
               <tr key={a.slug}>
                 <td className="strong" data-label="項目">
-                  <Link href={`/budget/activities/${a.slug}`} style={{ color: WINE, textDecoration: 'none' }}>
-                    {a.name}
-                  </Link>
+                  <div>
+                    <Link
+                      href={`/budget/activities/${a.slug}`}
+                      style={{ color: WINE, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                    >
+                      {a.name}
+                    </Link>
+                    {a.settled && (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          marginLeft: 8,
+                          padding: '1px 7px',
+                          borderRadius: 10,
+                          background: '#E0E8DD',
+                          color: OK,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                          verticalAlign: 'middle',
+                        }}
+                      >
+                        已結算
+                      </span>
+                    )}
+                    {a.settledNote && (
+                      <div style={{ fontSize: 11.5, color: MUTE, marginTop: 3, lineHeight: 1.6, fontWeight: 400 }}>
+                        {a.settledNote}
+                      </div>
+                    )}
+                  </div>
                 </td>
                 <td className="mute" data-label="日期">{a.date}</td>
                 <td className="mute" data-label="主辦">{a.organizer}</td>
                 <td className="num" data-label="全班淨支出">{fmt(a.totalNet)}</td>
                 <td className="num" data-label="南班 83/99">{fmt(a.southNet)}</td>
-                <td className="num strong" style={{ color: WINE }} data-label="北班 16/99">{fmt(a.northEstimate)}</td>
+                <td className="num strong" style={{ color: a.settled ? OK : WINE }} data-label="北班應付">
+                  {fmt(a.northEstimate)}
+                </td>
               </tr>
             ))}
             <tr className="sub">

@@ -23,6 +23,7 @@ const TYPE_LABEL: Record<string, { label: string; bg: string; color: string }> =
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   planning: { label: '規劃中', color: MUTE },
   preparing: { label: '籌備中', color: '#B26B1F' },
+  'in-progress': { label: '執行中', color: WINE },
   settled: { label: '已結算', color: OK },
 };
 
@@ -98,7 +99,17 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
           marginBottom: 22,
         }}
       >
-        <strong>※ 預算性質說明：</strong>{BUDGET_DISCLAIMER}
+        {a.actualSplit ? (
+          <>
+            <strong>※ 本項已結算：</strong>
+            下方「實際總支出」與「班費分攤（實際結算）」為廠商實際帳單與實際請款金額，可直接依此金額轉帳；「預算總支出」欄保留原編列數供對照。
+          </>
+        ) : (
+          <>
+            <strong>※ 預算性質說明：</strong>
+            {BUDGET_DISCLAIMER}
+          </>
+        )}
       </div>
 
       {/* 概述 */}
@@ -115,16 +126,39 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
         )}
       </Section>
 
-      {/* 三大金額 */}
-      <section className="bdg-grid bdg-grid-3 bdg-grid-gap-sm" style={{ marginTop: 28, marginBottom: 28 }}>
-        <BigStat label="預估總支出" value={fmt(a.expense.total)} tone="ink" />
+      {/* 三大金額（有實際支出時擴為四項，預算 vs 實際並列） */}
+      <section
+        className={`bdg-grid ${a.actualExpense !== undefined ? 'bdg-grid-4' : 'bdg-grid-3'} bdg-grid-gap-sm`}
+        style={{ marginTop: 28, marginBottom: 28 }}
+      >
+        <BigStat label="預算總支出" value={fmt(a.expense.total)} tone="ink" />
+        {a.actualExpense !== undefined && (
+          <BigStat
+            label="實際總支出"
+            value={fmt(a.actualExpense)}
+            tone="wine"
+            footnote={
+              a.actualExpenseNote ??
+              `較預算 ${a.actualExpense - a.expense.total >= 0 ? '+' : ''}NT$ ${fmt(a.actualExpense - a.expense.total)}`
+            }
+          />
+        )}
         <BigStat
           label={a.conservativeIncome !== undefined ? '預估總收入（樂觀）' : '預估總收入'}
           value={fmt(a.income.total)}
           tone="ok"
           footnote={a.conservativeIncome !== undefined ? `保守估算：NT$ ${fmt(a.conservativeIncome)}` : undefined}
         />
-        <BigStat label="班費淨負擔" value={fmt(a.net)} tone="wine" footnote={a.netNote} />
+        {a.actualSplit ? (
+          <BigStat
+            label="班費實付"
+            value={fmt(a.actualSplit.paidByFund)}
+            tone="wine"
+            footnote={`由 ${a.actualSplit.recipients} 位領取者均攤（預算原編列 NT$ ${fmt(a.net)}）`}
+          />
+        ) : (
+          <BigStat label="班費淨負擔" value={fmt(a.net)} tone="wine" footnote={a.netNote} />
+        )}
       </section>
 
       {/* 支出明細 */}
@@ -214,28 +248,76 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
         )}
       </Section>
 
-      {/* 班費分攤 */}
-      <Section title="班費分攤" subtitle={`淨支出 NT$ ${fmt(a.net)}　${a.type === 'south-only' ? '由南班獨自負擔' : '按南北 83:16 比例攤分'}`}>
-        <div className="bdg-grid bdg-grid-2 bdg-grid-gap-sm">
-          <SplitCard label={`南班負擔（${META.southMembers} 人）`} amount={a.southBurden} perPerson={Math.round(a.southBurden / META.southMembers)} accent={WINE} />
-          {a.type === 'south-only' ? (
-            <div style={{ background: '#FFF8E7', border: `1px solid ${LINE}`, borderRadius: 8, padding: '14px 16px', fontSize: 13, color: '#4A413A', lineHeight: 1.7 }}>
-              本場為南班自辦活動，北班不分攤。
+      {/* 班費分攤 — 已結算者依實際領取人數均攤，未結算者維持預算比例攤分 */}
+      {a.actualSplit ? (
+        <Section
+          title="班費分攤（實際結算）"
+          subtitle={`班費實付 NT$ ${fmt(a.actualSplit.paidByFund)}　由實際領取的 ${a.actualSplit.recipients} 位同學均攤，每人 NT$ ${fmt(a.actualSplit.perPerson)}`}
+        >
+          <div className="bdg-grid bdg-grid-2 bdg-grid-gap-sm">
+            <SplitCard
+              label={`南班（${a.actualSplit.south.count} 位領取）`}
+              amount={a.actualSplit.south.amount}
+              perPerson={a.actualSplit.perPerson}
+              accent={WINE}
+            />
+            <SplitCard
+              label={`北班（${a.actualSplit.north.count} 位領取）`}
+              amount={a.actualSplit.north.amount}
+              perPerson={a.actualSplit.perPerson}
+              accent={INK}
+              note={a.actualSplit.northNote}
+            />
+          </div>
+          {a.actualSplit.basisNote && (
+            <div
+              style={{
+                marginTop: 12,
+                background: PAPER,
+                border: `1px solid ${LINE}`,
+                borderRadius: 6,
+                padding: '12px 16px',
+                fontSize: 12.5,
+                color: '#4A413A',
+                lineHeight: 1.8,
+              }}
+            >
+              <strong style={{ color: WINE_DEEP }}>分攤方式：</strong>
+              {a.actualSplit.basisNote}
             </div>
-          ) : (
-            <SplitCard label={`北班分攤（${META.northMembers} 人）`} amount={a.northBurden} perPerson={Math.round(a.northBurden / META.northMembers)} accent={INK} note="活動結束後按 83:16 比例向北班請款" />
           )}
-        </div>
-      </Section>
+          <div style={{ marginTop: 10, fontSize: 12, color: MUTE, lineHeight: 1.7 }}>
+            （預算階段原按南北 83:16 估算為南班 NT$ {fmt(a.southBurden)} ／ 北班 NT$ {fmt(a.northBurden)}；本項已結算，以上方實際金額為準。）
+          </div>
+        </Section>
+      ) : (
+        <Section title="班費分攤" subtitle={`淨支出 NT$ ${fmt(a.net)}　${a.type === 'south-only' ? '由南班獨自負擔' : '按南北 83:16 比例攤分'}`}>
+          <div className="bdg-grid bdg-grid-2 bdg-grid-gap-sm">
+            <SplitCard label={`南班負擔（${META.southMembers} 人）`} amount={a.southBurden} perPerson={Math.round(a.southBurden / META.southMembers)} accent={WINE} />
+            {a.type === 'south-only' ? (
+              <div style={{ background: '#FFF8E7', border: `1px solid ${LINE}`, borderRadius: 8, padding: '14px 16px', fontSize: 13, color: '#4A413A', lineHeight: 1.7 }}>
+                本場為南班自辦活動，北班不分攤。
+              </div>
+            ) : (
+              <SplitCard label={`北班分攤（${META.northMembers} 人）`} amount={a.northBurden} perPerson={Math.round(a.northBurden / META.northMembers)} accent={INK} note="活動結束後按 83:16 比例向北班請款" />
+            )}
+          </div>
+        </Section>
+      )}
 
       {/* 註解 */}
-      {(a.historicalReference || a.statusNote || a.notes) && (
+      {(a.historicalReference || a.statusNote || a.settlementNote || a.notes) && (
         <Section title="附註">
           <ul style={{ paddingLeft: 22, color: '#4A413A', lineHeight: 1.9, fontSize: 13.5 }}>
             {a.historicalReference && <li><strong>歷史參考：</strong>{a.historicalReference}</li>}
             {a.statusNote && <li><strong>狀態說明：</strong>{a.statusNote}</li>}
+            {a.settlementNote && <li><strong>結算說明：</strong>{a.settlementNote}</li>}
             {a.notes?.map((n, i) => <li key={i}>{n}</li>)}
-            <li>活動結束後實際結算將更新於本頁；差額在期末總對帳時退補。</li>
+            <li>
+              {a.actualSplit
+                ? '本項已完成結算，以上為實際金額；如後續有補製或退換再行更新。'
+                : '活動結束後實際結算將更新於本頁；差額在期末總對帳時退補。'}
+            </li>
           </ul>
         </Section>
       )}
