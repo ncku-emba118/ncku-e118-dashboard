@@ -11,6 +11,7 @@ import {
   createSignedReadUrl,
 } from '@/lib/signoff/dal';
 import { sumIncome } from '@/lib/finance/income';
+import { ACTIVITIES, RESERVES, META, LAST_SETTLED_AT } from '@/lib/budget/data';
 import Breadcrumb from '@/components/Breadcrumb';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +41,7 @@ export default async function FinancePage() {
   const approved = expenses.filter((e) => e.status === 'approved');
   const spent = Math.round(approved.reduce((s, e) => s + n(e.amount), 0));
   const balance = income - spent;
+  const settledCount = ACTIVITIES.filter((a) => a.actualSplit).length;
 
   const catMap = new Map<string, number>();
   for (const e of approved) {
@@ -69,29 +71,25 @@ export default async function FinancePage() {
           <div style={transp}><span style={dot} />全班可查 · 簽核限幹部</div>
         </header>
 
-        {/* 預算報告入口 */}
-        <a
-          href="/budget"
-          style={{
-            display: 'block',
-            margin: '16px',
-            padding: '14px 16px',
-            background: 'linear-gradient(135deg, #FFF8E7 0%, #FAF7F2 100%)',
-            border: '1px solid #C9A961',
-            borderLeft: '4px solid #C9A961',
-            borderRadius: 8,
-            color: '#1A1612',
-            textDecoration: 'none',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 6 }}>
-            <strong style={{ fontFamily: 'serif', fontSize: 16, color: '#6B1622' }}>預算報告（2026 – 2028）</strong>
-            <span style={{ fontSize: 12, color: '#C9A961', fontWeight: 600 }}>查看完整說明書 →</span>
-          </div>
-          <div style={{ fontSize: 12.5, color: '#4A413A', lineHeight: 1.7, marginTop: 6 }}>
-            南班 84 人收 30,000 元/人　·　8 場活動明細　·　4 項預備金規則　·　跟北班的結算機制
-          </div>
-        </a>
+        {/* 班費說明書入口 — 文件（規劃）與執行（結算）兩區並列 */}
+        <div style={{ margin: 16, display: 'grid', gap: 10 }}>
+          <SectionCard
+            href="/budget"
+            accent={GOLD}
+            title={`預算說明書（2026 – 2028）　${META.version}`}
+            cta="查看完整說明書 →"
+            desc={`南班 ${META.southMembers} 人收 30,000 元/人　·　${ACTIVITIES.length} 個活動項目　·　${RESERVES.length} 項預備金規則`}
+            foot={`定稿文件・最後更新 ${META.updatedAt}`}
+          />
+          <SectionCard
+            href="/budget/tracking"
+            accent={WINE}
+            title="執行與結算"
+            cta="看預算 vs 實際 →"
+            desc={`執行追蹤總表　·　活動結算單　·　北班分攤請款（${settledCount} / ${ACTIVITIES.length} 項已結算）`}
+            foot={LAST_SETTLED_AT ? `隨每場結算更新・最後結算 ${LAST_SETTLED_AT}` : '隨每場結算更新・尚無已結算項目'}
+          />
+        </div>
 
         <section style={sec}>
           <div style={secH}><h2 style={h2}>收支總覽</h2><span style={tag}>系統自動統計</span></div>
@@ -195,6 +193,46 @@ export default async function FinancePage() {
       </div>
       </main>
     </>
+  );
+}
+
+/** 經費中心的分區入口卡：規劃（預算說明書）與執行（結算）各一張 */
+function SectionCard({
+  href,
+  accent,
+  title,
+  cta,
+  desc,
+  foot,
+}: {
+  href: string;
+  accent: string;
+  title: string;
+  cta: string;
+  desc: string;
+  foot: string;
+}) {
+  return (
+    <a
+      href={href}
+      style={{
+        display: 'block',
+        padding: '14px 16px',
+        background: '#fff',
+        border: `1px solid ${LINE}`,
+        borderLeft: `4px solid ${accent}`,
+        borderRadius: 8,
+        color: INK,
+        textDecoration: 'none',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 6 }}>
+        <strong style={{ fontFamily: 'serif', fontSize: 16, color: WINE_DEEP }}>{title}</strong>
+        <span style={{ fontSize: 12, color: accent, fontWeight: 600 }}>{cta}</span>
+      </div>
+      <div style={{ fontSize: 12.5, color: '#4A413A', lineHeight: 1.7, marginTop: 6 }}>{desc}</div>
+      <div style={{ fontSize: 11.5, color: MUTE, marginTop: 5 }}>{foot}</div>
+    </a>
   );
 }
 
