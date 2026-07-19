@@ -703,6 +703,16 @@ export const NORTH_ALLOCATION = CO_HOSTED.map((a) => ({
 // 北班總額：已結算項目用實際請款數，未結算項目先彙總 net 再乘 16/99（避免逐場捨入誤差）
 const CO_HOSTED_PENDING_NET = CO_HOSTED.filter((a) => !a.actualSplit).reduce((s, a) => s + a.net, 0);
 const NORTH_SETTLED_TOTAL = CO_HOSTED.reduce((s, a) => s + (a.actualSplit?.north.amount ?? 0), 0);
+/**
+ * 最近一次結算日。執行與結算區的頁尾掛這個值，而非預算書版次——
+ * 該區數字隨每場結算更新，與預算書 v 版本各自獨立。
+ */
+export const LAST_SETTLED_AT =
+  ACTIVITIES.map((a) => a.settledAt)
+    .filter((d): d is string => Boolean(d))
+    .sort()
+    .at(-1) ?? null;
+
 export const NORTH_TOTAL_ESTIMATE =
   Math.round((CO_HOSTED_PENDING_NET * META.northMembers) / META.totalMembers) + NORTH_SETTLED_TOTAL;
 

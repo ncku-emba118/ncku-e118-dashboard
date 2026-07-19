@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { META, NORTH_ALLOCATION, NORTH_TOTAL_ESTIMATE, ACTIVITIES, fmt } from '@/lib/budget/data';
 
 export const metadata: Metadata = {
-  title: '北班分攤通知｜E118 班費預算說明書',
+  title: '北班分攤通知｜E118 南班班費執行與結算',
   description: '給北班幹部的合辦活動分攤估算 — 7 項合辦項目按 16/99 比例的應付金額、結算機制、匯款資訊。',
 };
 
@@ -28,7 +28,7 @@ export default function NorthPage() {
   return (
     <>
       <div style={{ marginBottom: 20 }}>
-        <Link href="/budget" style={{ fontSize: 13, color: MUTE, textDecoration: 'none' }}>← 回總覽</Link>
+        <Link href="/budget/tracking" style={{ fontSize: 13, color: MUTE, textDecoration: 'none' }}>← 回執行追蹤</Link>
         <h1 style={{ fontFamily: TC, fontSize: 28, color: WINE_DEEP, fontWeight: 600, margin: '12px 0 6px' }}>給北班的分攤通知</h1>
         <p style={{ fontSize: 14, color: '#4A413A', lineHeight: 1.8, maxWidth: 800 }}>
           E118 採南北分帳；合辦項目（南北班一起用到的）按南北人頭比例 83:16 攤分，由 E118 統一執行、活動結束後向北班請款。

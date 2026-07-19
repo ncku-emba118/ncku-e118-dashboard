@@ -18,9 +18,9 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const a = settledActivities.find((x) => x.slug === slug);
-  if (!a) return { title: '結算單｜E118 班費預算說明書' };
+  if (!a) return { title: '結算單｜E118 南班班費執行與結算' };
   return {
-    title: `${a.name} 結算單 ${a.settlement!.no}｜E118 班費預算說明書`,
+    title: `${a.name} 結算單 ${a.settlement!.no}｜E118 南班班費執行與結算`,
     description: `${a.name} 活動結算單（第 ${a.settlement!.revision} 版，${a.settlement!.issuedAt} 製表）`,
   };
 }

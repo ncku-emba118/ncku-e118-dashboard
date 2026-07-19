@@ -4,7 +4,7 @@ import { ACTIVITIES, META, fmt } from '@/lib/budget/data';
 import SettlementDoc from '@/components/budget/SettlementDoc';
 
 export const metadata: Metadata = {
-  title: '結算機制｜E118 南班班費預算說明書',
+  title: '結算機制｜E118 南班班費執行與結算',
   description: '預算 vs 實際的結算機制 — 每場活動結算單、跟北班的請款方式、三年期末總對帳。',
 };
 
@@ -24,7 +24,7 @@ export default function SettlementPage() {
   return (
     <>
       <div style={{ marginBottom: 20 }}>
-        <Link href="/budget" style={{ fontSize: 13, color: MUTE, textDecoration: 'none' }}>← 回總覽</Link>
+        <Link href="/budget/tracking" style={{ fontSize: 13, color: MUTE, textDecoration: 'none' }}>← 回執行追蹤</Link>
         <h1 style={{ fontFamily: TC, fontSize: 28, color: WINE_DEEP, fontWeight: 600, margin: '12px 0 6px' }}>結算機制</h1>
         <p style={{ fontSize: 14, color: '#4A413A', lineHeight: 1.8, maxWidth: 800 }}>
           預算的目的是：訂單價、預收現金、跟北班同步預期；

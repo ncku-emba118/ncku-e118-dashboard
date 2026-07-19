@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ACTIVITIES, RESERVES, META, fmt } from '@/lib/budget/data';
 
 export const metadata: Metadata = {
-  title: '執行追蹤｜E118 南班班費預算說明書',
+  title: '執行追蹤｜E118 南班班費執行與結算',
   description: '全部活動與預備金的預算 vs 實際對照總表 — 每場結算後更新，累積至三年期末即為總對帳基礎。',
 };
 
@@ -37,7 +37,7 @@ export default function TrackingPage() {
   return (
     <>
       <div style={{ marginBottom: 20 }}>
-        <Link href="/budget" style={{ fontSize: 13, color: MUTE, textDecoration: 'none' }}>← 回總覽</Link>
+        <Link href="/budget" style={{ fontSize: 13, color: MUTE, textDecoration: 'none' }}>← 回預算說明書</Link>
         <h1 style={{ fontFamily: TC, fontSize: 28, color: WINE_DEEP, fontWeight: 600, margin: '12px 0 6px' }}>執行追蹤</h1>
         <p style={{ fontSize: 14, color: '#4A413A', lineHeight: 1.8, maxWidth: 800 }}>
           全部活動與預備金的「預算 vs 實際」對照總表。每場活動結算後，本表的實際數與差異即更新；

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import Breadcrumb from '@/components/Breadcrumb';
-import { META } from '@/lib/budget/data';
+import { META, LAST_SETTLED_AT } from '@/lib/budget/data';
+import BudgetShell from '@/components/budget/BudgetShell';
 
 export const metadata: Metadata = {
   title: 'E118 南班 班費預算說明書',
@@ -153,48 +152,11 @@ const BUDGET_CSS = `
 
 export default function BudgetLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bdg-shell">
+    <>
       <style dangerouslySetInnerHTML={{ __html: BUDGET_CSS }} />
-      <Breadcrumb
-        items={[
-          { label: '班級面板', href: '/' },
-          { label: '班級經費中心', href: '/finance' },
-          { label: '預算說明書' },
-        ]}
-      />
-      <header className="bdg-header">
-        <div className="bdg-header-inner">
-          <Link href="/budget" className="bdg-brand">
-            <span className="bdg-brand-name">NCKU EMBA · E118 South</span>
-            <span className="bdg-brand-sub">班費預算說明書</span>
-          </Link>
-          <nav className="bdg-nav" aria-label="班費網站導覽">
-            <Link href="/budget">總覽</Link>
-            <Link href="/budget/activities">活動明細</Link>
-            <Link href="/budget/reserves">預備金</Link>
-            <Link href="/budget/rules">申請規則</Link>
-            <span className="bdg-nav-sep" aria-hidden="true" />
-            <Link href="/budget/tracking">執行追蹤</Link>
-            <Link href="/budget/settlement">結算機制</Link>
-            <Link href="/budget/north">北班分攤</Link>
-            <span className="bdg-nav-sep" aria-hidden="true" />
-            <Link href="/budget/changelog">版本歷史</Link>
-            <Link href="/budget/signoff" style={{ color: '#E0C896', fontWeight: 600 }}>✍️ 預算書簽核</Link>
-          </nav>
-        </div>
-      </header>
-      <main className="bdg-main">{children}</main>
-      <footer className="bdg-footer">
-        <div style={{ marginBottom: 6 }}>
-          E118 南班秘書處 · 預算為估算值、實際以結算為準、結餘統一歸入班費總額
-        </div>
-        <div style={{ fontSize: 11.5 }}>
-          當前版本 <strong style={{ color: '#6B1622' }}>{META.version}</strong> · 最後更新 {META.updatedAt} ·{' '}
-          <Link href="/budget/changelog" style={{ color: '#8B1F2F', textDecoration: 'underline' }}>
-            查看版本歷史
-          </Link>
-        </div>
-      </footer>
-    </div>
+      <BudgetShell version={META.version} updatedAt={META.updatedAt} lastSettledAt={LAST_SETTLED_AT}>
+        {children}
+      </BudgetShell>
+    </>
   );
 }
