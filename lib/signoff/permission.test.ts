@@ -73,3 +73,25 @@ describe('canAccessSignoff — nudge / void', () => {
     expect(canAccessSignoff(FINANCE, 'void', ctx)).toBe(false);
   });
 });
+
+describe('canAccessSignoff — supplement（0019 補充資料）', () => {
+  test('creator can supplement', () => {
+    expect(canAccessSignoff(FINANCE, 'supplement', ctx)).toBe(true);
+  });
+  test('super can supplement（秘書長 / 班代 / 副班代）', () => {
+    expect(canAccessSignoff(SUPER, 'supplement', ctx)).toBe(true);
+  });
+  test('assignee who is not creator cannot supplement', () => {
+    // 活動長被指派簽核，但不是申請人 → 不得補充他人的單
+    expect(canAccessSignoff(ACTIVITY, 'supplement', ctx)).toBe(false);
+  });
+  test('unrelated dept cannot supplement', () => {
+    expect(canAccessSignoff(MEDIA, 'supplement', ctx)).toBe(false);
+  });
+  test('same owner_dept but not creator cannot supplement', () => {
+    // 同部門可以「看」，但不能代為補充（避免同部門互相竄改對方單據）
+    const sameDept: SignoffActor = { sub: 'fin-2', role: 'dept', home_dept_id: 'finance' };
+    expect(canAccessSignoff(sameDept, 'view', ctx)).toBe(true);
+    expect(canAccessSignoff(sameDept, 'supplement', ctx)).toBe(false);
+  });
+});

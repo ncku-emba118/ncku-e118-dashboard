@@ -8,6 +8,11 @@
  *   sign/reject   : 必須是 pending 被指派者（即使 super 也要被指派才能簽）
  *   nudge         : super 或 document creator
  *   void          : 僅 super
+ *   supplement    : super 或 document creator（0019 補充資料）
+ *
+ * 補充（supplement）刻意與修改分離：它只追加、不動既有 attachments，
+ * 故既有簽名仍有效、不需重簽。真正要改動已簽內容須走版本鏈（另案）。
+ * 文件狀態限制（僅 routing / approved 可補）在 RPC 內強制，不在此判斷。
  */
 export type SignoffActor = {
   sub: string;
@@ -15,7 +20,7 @@ export type SignoffActor = {
   home_dept_id: string | null;
 };
 
-export type SignoffAction = 'view' | 'sign' | 'reject' | 'nudge' | 'void';
+export type SignoffAction = 'view' | 'sign' | 'reject' | 'nudge' | 'void' | 'supplement';
 
 export type SignoffAccessContext = {
   doc: { created_by: string; owner_dept_id: string };
@@ -43,6 +48,9 @@ export function canAccessSignoff(
       // 必須是「還沒處理」的被指派者；身分不在指派名單一律拒
       return isPendingAssignee;
     case 'nudge':
+      return isSuper || isCreator;
+    case 'supplement':
+      // 申請人本人，或 super（秘書長 / 班代 / 副班代）
       return isSuper || isCreator;
     case 'void':
       return isSuper;

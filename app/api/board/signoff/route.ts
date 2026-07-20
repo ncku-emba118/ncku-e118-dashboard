@@ -22,6 +22,9 @@ import {
   MAX_ASSIGNEES,
   MIN_ATTACHMENTS,
   MAX_ATTACHMENTS,
+  ATTACHMENT_LABELS,
+  MAX_ATTACHMENT_CAPTION,
+  isValidIncomingSourcePath,
   objectPaths,
 } from '@/lib/signoff/constants';
 import { computeSlotLayout } from '@/lib/signoff/layout';
@@ -64,6 +67,8 @@ const createSchema = z.object({
         object_path: z.string().min(1),
         mime: z.string().min(3),
         name: z.string().min(1).max(200),
+        label: z.enum(ATTACHMENT_LABELS).optional(),
+        caption: z.string().max(MAX_ATTACHMENT_CAPTION).optional(),
       }),
     )
     .min(MIN_ATTACHMENTS)
@@ -134,13 +139,13 @@ export async function POST(req: NextRequest) {
   }
   const input = parsed.data;
 
-  // 每個附件：mime 白名單 + path 屬於本 session incoming 前綴（Codex 4-1）
-  const incomingPrefix = objectPaths.incomingSourcePrefix(session.sub);
+  // 每個附件：mime 白名單 + path 必須完全等同 server 發出的格式
+  // （不可用 startsWith：`incoming/A/../B/x.pdf` 會通過前綴檢查但被 URL 正規化成他人路徑）
   for (const s of input.sources) {
     if (!SOURCE_ALLOWED_MIMES.has(s.mime)) {
       return jsonResp({ error: `不支援的憑證類型：${s.mime}` }, 415, traceId);
     }
-    if (!s.object_path.startsWith(incomingPrefix)) {
+    if (!isValidIncomingSourcePath(s.object_path, session.sub)) {
       return jsonResp({ error: '無效的憑證路徑' }, 400, traceId);
     }
   }
@@ -177,6 +182,8 @@ export async function POST(req: NextRequest) {
       sha256: crypto.createHash('sha256').update(b.bytes).digest('hex'),
       mime: s.mime,
       name: s.name,
+      ...(s.label ? { label: s.label } : {}),
+      ...(s.caption ? { caption: s.caption } : {}),
     });
   }
 

@@ -7,7 +7,7 @@
  */
 import 'server-only';
 import { getServerClient } from '../supabase/server';
-import { SIGNOFF_BUCKET, SIGNED_READ_URL_TTL_S } from './constants';
+import { SIGNOFF_BUCKET, SIGNED_READ_URL_TTL_S, MAX_SUPPLEMENTS_PER_DOC } from './constants';
 import { retryResult, isTransientStorageError } from './retry';
 
 export type SignoffStatus = 'routing' | 'approved' | 'rejected' | 'voided';
@@ -18,6 +18,26 @@ export type AttachmentMeta = {
   sha256: string;
   mime: string;
   name: string;
+  /** 類型標籤（報價單/請款單/…）；0019 起新增，舊資料無此欄 */
+  label?: string;
+  /** 單張說明；0019 起新增，舊資料無此欄 */
+  caption?: string;
+};
+
+/**
+ * 補充資料（0019）。append-only：只追加、不修改既有 attachments，
+ * 故既有簽名維持有效。doc_status_at_add / signed_count_at_add 為補充當下的
+ * 快照，供畫面標示「於 N 人簽核後補充」。
+ */
+export type SignoffSupplementRow = {
+  id: string;
+  document_id: string;
+  added_by: string;
+  note: string | null;
+  attachments: AttachmentMeta[];
+  doc_status_at_add: 'routing' | 'approved';
+  signed_count_at_add: number;
+  created_at: string;
 };
 
 export type SignoffDocumentRow = {
@@ -287,6 +307,48 @@ export async function createSignoffDocument(args: {
   });
   if (error) return { documentId: null, error: error.message };
   return { documentId: data as string, error: null };
+}
+
+// ── 補充資料（0019，append-only）─────────────────────────────
+export async function listSupplements(
+  documentId: string,
+): Promise<{ rows: SignoffSupplementRow[]; error: string | null }> {
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from('signoff_supplements')
+    .select('id,document_id,added_by,note,attachments,doc_status_at_add,signed_count_at_add,created_at')
+    .eq('document_id', documentId)
+    .order('created_at', { ascending: true })
+    // 上限保護：每筆補充的每個附件都要換一個 signed URL，無上限時單次開啟
+    // 詳情頁可能對 Storage 打出上千次請求。實務上單一文件不會超過此數。
+    .limit(MAX_SUPPLEMENTS_PER_DOC);
+  if (error) return { rows: [], error: error.message };
+  return { rows: (data ?? []) as SignoffSupplementRow[], error: null };
+}
+
+export async function addSupplement(args: {
+  documentId: string;
+  accountId: string;
+  clientRequestId: string;
+  note: string | null;
+  attachments: AttachmentMeta[];
+  audit: { ip_hash: string | null; ip_hash_version: number | null; user_agent: string | null; trace_id: string };
+}): Promise<{ supplementId: string | null; error: string | null }> {
+  const supabase = getServerClient();
+  // 狀態檢查與快照取值在 RPC 內同一 transaction 完成（避免與簽署/作廢競態）
+  const { data, error } = await supabase.rpc('signoff_add_supplement', {
+    p_document_id: args.documentId,
+    p_account_id: args.accountId,
+    p_client_request_id: args.clientRequestId,
+    p_note: args.note,
+    p_attachments: args.attachments,
+    p_ip_hash: args.audit.ip_hash,
+    p_ip_hash_version: args.audit.ip_hash_version,
+    p_user_agent: args.audit.user_agent,
+    p_trace_id: args.audit.trace_id,
+  });
+  if (error) return { supplementId: null, error: error.message };
+  return { supplementId: data as string, error: null };
 }
 
 // ── challenge（防重放）─────────────────────────────────────

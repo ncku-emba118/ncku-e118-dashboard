@@ -9,7 +9,7 @@ import { resolveClientIp } from '@/lib/ip-resolve';
 import { hashIp } from '@/lib/ip-hash';
 import { jsonResp } from '@/lib/signoff/http';
 import { requireSignoffAccess } from '@/lib/signoff/access';
-import { createSignedReadUrl, getPublicApprovedSummary, recordAudit } from '@/lib/signoff/dal';
+import { createSignedReadUrl, getPublicApprovedSummary, listSupplements, recordAudit } from '@/lib/signoff/dal';
 
 const UUID_RE =
   /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
@@ -39,7 +39,42 @@ export async function GET(
       const attachmentUrls = await Promise.all(
         doc.attachments.map(async (a) => ({
           name: a.name,
+          mime: a.mime,
+          label: a.label ?? null,
+          caption: a.caption ?? null,
           url: (await createSignedReadUrl(a.object_path)).url,
+        })),
+      );
+
+      // 補充資料（0019）：與原始附件分開回傳，畫面才能標示時序。
+      // 查詢失敗必須回 503 —— 若吞掉錯誤回 200，畫面會顯示成「沒有補充資料」，
+      // 使用者無從得知資料其實存在（例如 migration 未套用時）。
+      const { rows: supplementRows, error: supErr } = await listSupplements(id);
+      if (supErr) {
+        console.error('[signoff.supplements.list_failed]', { traceId, document_id: id, error: supErr });
+        return jsonResp({ error: '系統暫時無法讀取補充資料' }, 503, traceId);
+      }
+      const accountNames = new Map(
+        assignments.map((a) => [a.signer_account_id, a.signer_username ?? null]),
+      );
+      const supplements = await Promise.all(
+        supplementRows.map(async (sup) => ({
+          id: sup.id,
+          note: sup.note,
+          added_by_name: accountNames.get(sup.added_by) ?? null,
+          is_mine: sup.added_by === session.sub,
+          doc_status_at_add: sup.doc_status_at_add,
+          signed_count_at_add: sup.signed_count_at_add,
+          created_at: sup.created_at,
+          attachments: await Promise.all(
+            sup.attachments.map(async (a) => ({
+              name: a.name,
+              mime: a.mime,
+              label: a.label ?? null,
+              caption: a.caption ?? null,
+              url: (await createSignedReadUrl(a.object_path)).url,
+            })),
+          ),
         })),
       );
 
@@ -94,8 +129,13 @@ export async function GET(
             final: finalUrl.url,
           },
           attachments: attachmentUrls,
+          supplements,
           my_pending_assignment_id: myPending?.id ?? null,
           can_delete: session.role === 'super', // 班代/副班代/秘書可刪除
+          // 補充權限：申請人本人或 super；且限 routing / approved
+          can_supplement:
+            (session.role === 'super' || doc.created_by === session.sub) &&
+            (doc.status === 'routing' || doc.status === 'approved'),
         },
         200,
         traceId,

@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import SignaturePad from 'signature_pad';
 import Breadcrumb from '@/components/Breadcrumb';
 import { deptInfo } from '@/lib/depts';
+import AttachmentGrid, { type ViewAttachment } from '@/components/signoff/AttachmentGrid';
+import SupplementForm from '@/components/signoff/SupplementForm';
 
 const WINE = '#8B1F2F';
 const CREAM = '#FAF7F2';
@@ -31,9 +33,19 @@ type Detail = {
   };
   assignments: Assignment[];
   urls?: { sheet: string | null; final: string | null };
-  attachments?: { name: string; url: string | null }[];
+  attachments?: ViewAttachment[];
+  supplements?: {
+    id: string;
+    note: string | null;
+    added_by_name: string | null;
+    doc_status_at_add: 'routing' | 'approved';
+    signed_count_at_add: number;
+    created_at: string;
+    attachments: ViewAttachment[];
+  }[];
   my_pending_assignment_id?: string | null;
   can_delete?: boolean;
+  can_supplement?: boolean;
 };
 
 const DOC_STATUS: Record<string, string> = {
@@ -192,14 +204,17 @@ export default function SignoffDetailPage() {
                 />
               </>
             )}
-            <div style={{ fontSize: 13, marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-              {d.attachments?.map((a, i) =>
-                a.url ? (
-                  <a key={i} href={a.url} target="_blank" rel="noreferrer" style={{ color: WINE }}>📎 {a.name}</a>
-                ) : null,
-              )}
-              {d.urls?.final && <a href={d.urls.final} target="_blank" rel="noreferrer" style={{ color: WINE, fontWeight: 600 }}>⬇ 下載最終 PDF（含簽名）</a>}
+            <h2 style={{ fontSize: 15, color: MUTE, borderBottom: '1px solid #E5DCCB', paddingBottom: 6, marginTop: 22 }}>
+              原始附件{d.attachments?.length ? `（${d.attachments.length}）` : ''}
+            </h2>
+            <div style={{ marginTop: 10 }}>
+              <AttachmentGrid items={d.attachments ?? []} />
             </div>
+            {d.urls?.final && (
+              <div style={{ fontSize: 13, marginTop: 10 }}>
+                <a href={d.urls.final} target="_blank" rel="noreferrer" style={{ color: WINE, fontWeight: 600 }}>⬇ 下載最終 PDF（含簽名）</a>
+              </div>
+            )}
           </>
         )}
 
@@ -214,6 +229,44 @@ export default function SignoffDetailPage() {
             </span>
           </div>
         ))}
+
+        {/* 補充資料（0019）：append-only，不動原始附件，故已簽者無須重簽 */}
+        {!d.public && (d.supplements?.length || d.can_supplement) ? (
+          <>
+            <h2 style={{ fontSize: 15, color: MUTE, borderBottom: '1px solid #E5DCCB', paddingBottom: 6, marginTop: 22 }}>
+              補充資料{d.supplements?.length ? `（${d.supplements.length}）` : ''}
+            </h2>
+
+            {d.supplements?.map((sup) => (
+              <div key={sup.id} style={{ marginTop: 12, padding: 12, background: '#fff', border: '1px solid #E5DCCB', borderLeft: `3px solid ${WINE}`, borderRadius: 4 }}>
+                <div style={{ fontSize: 12, color: MUTE, marginBottom: 6 }}>
+                  {sup.added_by_name ?? '（未知）'} 於 {sup.created_at.slice(0, 16).replace('T', ' ')} 補充
+                  {sup.doc_status_at_add === 'approved'
+                    ? '（核准後補充）'
+                    : sup.signed_count_at_add > 0
+                      ? `（已有 ${sup.signed_count_at_add} 人簽核後補充）`
+                      : ''}
+                </div>
+                {sup.note && (
+                  <div style={{ fontSize: 14, color: INK, lineHeight: 1.8, marginBottom: sup.attachments.length ? 10 : 0, whiteSpace: 'pre-wrap' }}>
+                    {sup.note}
+                  </div>
+                )}
+                {sup.attachments.length > 0 && <AttachmentGrid items={sup.attachments} />}
+              </div>
+            ))}
+
+            {d.can_supplement && (
+              <div style={{ marginTop: 12 }}>
+                <SupplementForm
+                  documentId={d.doc.id}
+                  signedCount={d.assignments.filter((a) => a.status === 'signed').length}
+                  onDone={load}
+                />
+              </div>
+            )}
+          </>
+        ) : null}
 
         {/* 我要簽 */}
         {d.my_pending_assignment_id && d.doc.status === 'routing' && (

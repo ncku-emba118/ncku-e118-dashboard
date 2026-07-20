@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Breadcrumb from '@/components/Breadcrumb';
+import { ATTACHMENT_LABELS } from '@/lib/signoff/constants';
 
 const WINE = '#8B1F2F';
 const CREAM = '#FAF7F2';
@@ -25,6 +26,8 @@ export default function SignoffNewPage() {
   const [applicant, setApplicant] = useState('');
   const [category, setCategory] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  // 每檔的類型標籤與說明，索引對齊 files
+  const [meta, setMeta] = useState<{ label: string; caption: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [needLogin, setNeedLogin] = useState(false);
@@ -60,8 +63,8 @@ export default function SignoffNewPage() {
     setBusy(true);
     try {
       // 1. 逐檔上傳到 Storage，收集 sources
-      const sources: { object_path: string; mime: string; name: string }[] = [];
-      for (const f of files) {
+      const sources: { object_path: string; mime: string; name: string; label?: string; caption?: string }[] = [];
+      for (const [fi, f] of files.entries()) {
         const upRes = await fetch('/api/board/signoff/upload-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -75,7 +78,14 @@ export default function SignoffNewPage() {
           body: f,
         });
         if (!put.ok) { setMsg(`「${f.name}」上傳失敗（HTTP ${put.status}）`); setBusy(false); return; }
-        sources.push({ object_path: up.object_path, mime: up.mime, name: f.name });
+        const m = meta[fi];
+        sources.push({
+          object_path: up.object_path,
+          mime: up.mime,
+          name: f.name,
+          ...(m?.label ? { label: m.label } : {}),
+          ...(m?.caption?.trim() ? { caption: m.caption.trim() } : {}),
+        });
       }
 
       // 2. 建立簽核
@@ -151,14 +161,40 @@ export default function SignoffNewPage() {
         </select>
 
         <label style={label}>憑證 *（發票 / 明細 / 收據，可一次選多個）</label>
-        <input type="file" multiple accept="image/png,image/jpeg,application/pdf" onChange={(e) => setFiles(Array.from(e.target.files ?? []))} style={{ ...input, padding: 8 }} />
-        {files.length > 0 && (
-          <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13, color: MUTE }}>
-            {files.map((f, i) => (
-              <li key={i}>{f.name}（{(f.size / 1024 / 1024).toFixed(2)} MB）</li>
-            ))}
-          </ul>
-        )}
+        <input
+          type="file"
+          multiple
+          accept="image/png,image/jpeg,application/pdf"
+          onChange={(e) => {
+            const list = Array.from(e.target.files ?? []);
+            setFiles(list);
+            setMeta(list.map(() => ({ label: '', caption: '' })));
+          }}
+          style={{ ...input, padding: 8 }}
+        />
+        {files.map((f, i) => (
+          <div key={i} style={{ marginTop: 8, padding: 10, background: '#FAF7F2', border: '1px solid #E5DCCB', borderRadius: 4 }}>
+            <div style={{ fontSize: 12.5, color: MUTE, wordBreak: 'break-all' }}>
+              {f.name}（{(f.size / 1024 / 1024).toFixed(2)} MB）
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 7, flexWrap: 'wrap' }}>
+              <select
+                value={meta[i]?.label ?? ''}
+                onChange={(e) => setMeta((prev) => prev.map((m, j) => (j === i ? { ...m, label: e.target.value } : m)))}
+                style={{ padding: '6px 8px', border: '1px solid #D9CDB8', borderRadius: 4, fontSize: 13 }}
+              >
+                <option value="">類型（選填）</option>
+                {ATTACHMENT_LABELS.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+              <input
+                value={meta[i]?.caption ?? ''}
+                onChange={(e) => setMeta((prev) => prev.map((m, j) => (j === i ? { ...m, caption: e.target.value } : m)))}
+                placeholder="說明（選填）"
+                style={{ flex: 1, minWidth: 140, padding: '6px 8px', border: '1px solid #D9CDB8', borderRadius: 4, fontSize: 13 }}
+              />
+            </div>
+          </div>
+        ))}
 
         <label style={label}>指派簽核人 *（勾選 + 填角色）</label>
         <div style={{ border: '1px solid #E5DCCB', borderRadius: 4, background: '#fff' }}>
