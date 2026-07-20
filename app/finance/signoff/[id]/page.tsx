@@ -46,6 +46,7 @@ type Detail = {
   my_pending_assignment_id?: string | null;
   can_delete?: boolean;
   can_supplement?: boolean;
+  can_undo_reject?: boolean;
 };
 
 const DOC_STATUS: Record<string, string> = {
@@ -126,6 +127,15 @@ export default function SignoffDetailPage() {
     window.location.reload();
   }
 
+  async function doUndoReject() {
+    setBusy(true);
+    setMsg('');
+    const res = await fetch(`/api/board/signoff/${id}/undo-reject`, { method: 'POST' });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) { setMsg(r.error || '撤銷失敗'); setBusy(false); return; }
+    window.location.reload();
+  }
+
   async function doNudge() {
     const res = await fetch(`/api/board/signoff/${id}/nudge`, { method: 'POST' });
     const r = await res.json().catch(() => ({}));
@@ -192,6 +202,42 @@ export default function SignoffDetailPage() {
             {d.doc.completed_at ? `　核准完成：${d.doc.completed_at.slice(0, 10)}` : ''}
           </p>
         )}
+
+        {/* 已退回：橫幅置頂，並提供誤觸復原。退回時其他人的簽名未被更動，
+            所以撤銷只需把狀態轉回去，不必重建文件、不必重簽。 */}
+        {!isPublic && d.doc.status === 'rejected' && (() => {
+          const rej = d.assignments.find((a) => a.status === 'rejected');
+          return (
+            <div style={{ marginTop: 14, padding: '13px 15px', background: '#FDF3F3', border: '1px solid #e0b4b4', borderLeft: '5px solid #b00', borderRadius: 6 }}>
+              <div style={{ fontWeight: 600, color: '#b00', marginBottom: 5 }}>這張單已被退回，簽核已停止</div>
+              <div style={{ fontSize: 13, color: '#4A413A', lineHeight: 1.8 }}>
+                {rej ? `${rej.signer_username ?? '（未知）'}（${rej.role_label}）` : '某位簽核人'}
+                {rej?.acted_at ? ` 於 ${rej.acted_at.slice(0, 16).replace('T', ' ')}` : ''} 退回
+                {rej?.reject_reason ? `，理由：${rej.reject_reason}` : ''}。
+              </div>
+              {d.can_undo_reject && (
+                <>
+                  <div style={{ fontSize: 12.5, color: MUTE, marginTop: 8, lineHeight: 1.7 }}>
+                    如果是誤觸，可以直接撤銷：文件回到簽核中、退回者回到待簽，
+                    {signedCount > 0 && `其他已簽的 ${signedCount} 位不受影響、不需要重簽。`}
+                  </div>
+                  <button
+                    onClick={doUndoReject}
+                    disabled={busy}
+                    style={{ marginTop: 10, background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 5, padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}
+                  >
+                    {busy ? '處理中…' : '撤銷退回，恢復簽核'}
+                  </button>
+                </>
+              )}
+              {!d.can_undo_reject && (
+                <div style={{ fontSize: 12.5, color: MUTE, marginTop: 8, lineHeight: 1.7 }}>
+                  若是誤觸，請退回者本人或班代撤銷。
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* 頂部快捷列：簽核表預覽有 420px 高，補充入口若只放在下方會被推出視線外 */}
         {!isPublic && d.can_supplement && (

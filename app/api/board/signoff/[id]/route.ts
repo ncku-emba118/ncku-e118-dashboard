@@ -132,6 +132,13 @@ export async function GET(
           supplements,
           my_pending_assignment_id: myPending?.id ?? null,
           can_delete: session.role === 'super', // 班代/副班代/秘書可刪除
+          // 撤銷退回：限已退回狀態，且操作者是 super 或當初按下退回的那個人
+          can_undo_reject:
+            doc.status === 'rejected' &&
+            (session.role === 'super' ||
+              assignments.some(
+                (a) => a.status === 'rejected' && a.signer_account_id === session.sub,
+              )),
           // 補充權限：申請人本人或 super；且限 routing / approved
           can_supplement:
             (session.role === 'super' || doc.created_by === session.sub) &&

@@ -351,6 +351,25 @@ export async function addSupplement(args: {
   return { supplementId: data as string, error: null };
 }
 
+export async function undoReject(args: {
+  documentId: string;
+  accountId: string;
+  audit: { ip_hash: string | null; ip_hash_version: number | null; user_agent: string | null; trace_id: string };
+}): Promise<{ ok: boolean; error: string | null }> {
+  const supabase = getServerClient();
+  // 狀態檢查、退回者比對、還原與稽核都在 RPC 內同一 transaction 完成
+  const { error } = await supabase.rpc('signoff_undo_reject', {
+    p_document_id: args.documentId,
+    p_account_id: args.accountId,
+    p_ip_hash: args.audit.ip_hash,
+    p_ip_hash_version: args.audit.ip_hash_version,
+    p_user_agent: args.audit.user_agent,
+    p_trace_id: args.audit.trace_id,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, error: null };
+}
+
 // ── challenge（防重放）─────────────────────────────────────
 export async function setAssignmentChallenge(args: {
   assignmentId: string;
