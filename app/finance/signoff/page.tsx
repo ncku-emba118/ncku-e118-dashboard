@@ -134,14 +134,40 @@ export default function SignoffInboxPage() {
                 我發起的（{created.length}）
               </h2>
               {created.length === 0 && <p style={{ color: MUTE, fontSize: 14 }}>你還沒發起過簽核。</p>}
-              {created.map((d) => (
-                <a key={d.id} href={`/finance/signoff/${d.id}`} style={cardStyle}>
-                  <div style={{ fontWeight: 600 }}>{d.title}</div>
-                  <div style={{ fontSize: 13, color: MUTE, marginTop: 4 }}>
-                    {DOC_STATUS[d.status] ?? d.status} · {money(d.amount, d.currency)}
-                  </div>
-                </a>
-              ))}
+              {/* 被退回的單置頂並標紅：它會從「待我簽核」與經費中心支出明細同時消失，
+                  若在這裡也只是照時間排、混在其他單之中，發起人往往找不到、
+                  甚至以為單子不見了。 */}
+              {[...created]
+                .sort((a, b) => Number(b.status === 'rejected') - Number(a.status === 'rejected'))
+                .map((d) => {
+                  const rejected = d.status === 'rejected';
+                  return (
+                    <a
+                      key={d.id}
+                      href={`/finance/signoff/${d.id}`}
+                      style={
+                        rejected
+                          ? { ...cardStyle, borderColor: '#e0b4b4', borderLeft: '4px solid #b00', background: '#FDF3F3' }
+                          : cardStyle
+                      }
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                        <span style={{ fontWeight: 600 }}>{d.title}</span>
+                        {rejected && (
+                          <span style={{ fontSize: 11.5, fontWeight: 600, color: '#b00', flexShrink: 0 }}>需要處理</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 13, color: rejected ? '#b00' : MUTE, marginTop: 4 }}>
+                        {DOC_STATUS[d.status] ?? d.status} · {money(d.amount, d.currency)}
+                      </div>
+                      {rejected && (
+                        <div style={{ fontSize: 11.5, color: '#8A7F73', marginTop: 4, lineHeight: 1.6 }}>
+                          已被退回，簽核已停止。點進去看退回原因；要重跑須請班代作廢後重開。
+                        </div>
+                      )}
+                    </a>
+                  );
+                })}
             </section>
 
             <section style={{ marginTop: 28 }}>

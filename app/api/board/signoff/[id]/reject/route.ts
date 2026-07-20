@@ -15,7 +15,9 @@ import { rejectAssignment } from '@/lib/signoff/dal';
 const UUID_RE =
   /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
 
-const schema = z.object({ reason: z.string().min(1).max(1000) });
+// 理由至少 4 字：曾發生簽核人誤觸退回、理由欄只填「滑到」，
+// 而退回會讓整份單停簽、已簽者需重簽。前端已有確認面板，此處為權威驗證。
+const schema = z.object({ reason: z.string().trim().min(4).max(1000) });
 
 export async function POST(
   req: NextRequest,

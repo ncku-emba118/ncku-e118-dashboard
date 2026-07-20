@@ -61,6 +61,8 @@ export default function SignoffDetailPage() {
   const [needLogin, setNeedLogin] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [comment, setComment] = useState('');
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const [busy, setBusy] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
@@ -106,14 +108,21 @@ export default function SignoffDetailPage() {
   }
 
   async function doReject() {
-    const reason = window.prompt('退回原因？');
-    if (!reason) return;
+    // 退回會讓整份單停止簽核、已簽者需重簽，且目前無法重編重送（需作廢重開）。
+    // 這種代價的動作不該只用 window.prompt —— 實際發生過簽核人誤觸、
+    // 理由欄填「滑到」，兩位已簽者的簽名等於白簽。改為頁內明確確認。
+    const reason = rejectReason.trim();
+    if (reason.length < 4) {
+      setMsg('請填寫至少 4 個字的退回原因');
+      return;
+    }
     setBusy(true);
     const res = await fetch(`/api/board/signoff/${id}/reject`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }),
     });
     const r = await res.json().catch(() => ({}));
     if (!res.ok) { setMsg(r.error || '退回失敗'); setBusy(false); return; }
+    setRejectOpen(false);
     window.location.reload();
   }
 
@@ -160,6 +169,7 @@ export default function SignoffDetailPage() {
   if (!d) return <>{breadcrumb}<main style={{ minHeight: '100vh', background: CREAM, padding: 24 }}><p style={{ color: MUTE }}>載入中…</p></main></>;
 
   const isPublic = d.public === true;
+  const signedCount = d.assignments.filter((a) => a.status === 'signed').length;
 
   return (
     <>
@@ -285,7 +295,7 @@ export default function SignoffDetailPage() {
               <div style={{ marginTop: 12 }}>
                 <SupplementForm
                   documentId={d.doc.id}
-                  signedCount={d.assignments.filter((a) => a.status === 'signed').length}
+                  signedCount={signedCount}
                   onDone={load}
                 />
               </div>
@@ -326,10 +336,45 @@ export default function SignoffDetailPage() {
               <button onClick={doSign} disabled={busy} style={{ flex: 1, background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 4, padding: 11, fontSize: 15, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>
                 {busy ? '處理中…' : '送出簽核'}
               </button>
-              <button onClick={doReject} disabled={busy} style={{ background: 'none', color: '#b00', border: '1px solid #e0b4b4', borderRadius: 4, padding: '11px 16px', fontSize: 14, cursor: 'pointer' }}>
+              <button onClick={() => { setRejectOpen(true); setMsg(''); }} disabled={busy} style={{ background: 'none', color: '#b00', border: '1px solid #e0b4b4', borderRadius: 4, padding: '11px 16px', fontSize: 14, cursor: 'pointer' }}>
                 退回
               </button>
             </div>
+
+            {/* 退回確認：代價高（整份停簽、已簽者需重簽、目前無法重編重送），需明確確認 */}
+            {rejectOpen && (
+              <div style={{ marginTop: 12, padding: 14, background: '#FDF3F3', border: '1px solid #e0b4b4', borderRadius: 6 }}>
+                <div style={{ fontWeight: 600, color: '#b00', marginBottom: 6 }}>確定要退回這張單嗎？</div>
+                <ul style={{ margin: '0 0 10px', paddingLeft: 20, fontSize: 12.5, color: '#4A413A', lineHeight: 1.9 }}>
+                  <li>整份單會立刻停止簽核，其他人不能再簽</li>
+                  {signedCount > 0 && <li>已簽核的 {signedCount} 位，簽名會失效、需要重簽</li>}
+                  <li>目前退回後<strong>無法重新編輯送出</strong>，要重跑須請班代作廢後整張重開</li>
+                </ul>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="退回原因（至少 4 個字，會顯示給發起人與其他簽核人）"
+                  rows={3}
+                  style={{ width: '100%', padding: '9px 10px', border: '1px solid #e0b4b4', borderRadius: 4, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.7 }}
+                />
+                <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                  <button
+                    onClick={doReject}
+                    disabled={busy || rejectReason.trim().length < 4}
+                    style={{ background: busy || rejectReason.trim().length < 4 ? '#c99' : '#b00', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: busy || rejectReason.trim().length < 4 ? 'default' : 'pointer' }}
+                  >
+                    {busy ? '處理中…' : '確認退回'}
+                  </button>
+                  <button
+                    onClick={() => { setRejectOpen(false); setRejectReason(''); setMsg(''); }}
+                    disabled={busy}
+                    style={{ background: 'none', color: MUTE, border: '1px solid #D9CDB8', borderRadius: 4, padding: '10px 16px', fontSize: 14, cursor: 'pointer' }}
+                  >
+                    取消，我要繼續簽
+                  </button>
+                </div>
+              </div>
+            )}
             <p style={{ fontSize: 11, color: MUTE, marginTop: 10, marginBottom: 0 }}>本簽署適用班級內部事務，不作為對外法律文件用途。</p>
           </div>
         )}
