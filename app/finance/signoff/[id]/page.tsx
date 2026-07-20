@@ -183,6 +183,43 @@ export default function SignoffDetailPage() {
           </p>
         )}
 
+        {/* 頂部快捷列：簽核表預覽有 420px 高，補充入口若只放在下方會被推出視線外 */}
+        {!isPublic && d.can_supplement && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+              marginTop: 14,
+              padding: '11px 14px',
+              background: '#FFF8E7',
+              border: '1px solid #E8D9A8',
+              borderRadius: 6,
+            }}
+          >
+            <span style={{ fontSize: 13, color: '#7a5c00', lineHeight: 1.6 }}>
+              要補報價單、請款單或說明嗎？補充不會更動已送出的內容，已簽核的人不需重簽。
+            </span>
+            <a
+              href="#supplements"
+              style={{
+                background: WINE,
+                color: '#fff',
+                textDecoration: 'none',
+                borderRadius: 5,
+                padding: '9px 16px',
+                fontSize: 14,
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ＋ 補充資料
+            </a>
+          </div>
+        )}
+
         {/* 原件（簽核表 / 附件 / 最終 PDF）僅登入幹部可見 */}
         {isPublic ? (
           <p style={{ fontSize: 13, color: MUTE, background: '#F6F0E4', border: '1px solid #E8DFD0', borderRadius: 6, padding: '10px 12px', marginTop: 12 }}>
@@ -218,21 +255,9 @@ export default function SignoffDetailPage() {
           </>
         )}
 
-        {/* 簽核狀態 */}
-        <h2 style={{ fontSize: 15, color: MUTE, borderBottom: '1px solid #E5DCCB', paddingBottom: 6, marginTop: 22 }}>簽核進度</h2>
-        {d.assignments.map((a, i) => (
-          <div key={a.id ?? `${a.role_label}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F0E9DC', fontSize: 14 }}>
-            <span>{a.role_label}：{a.signer_username ?? '—'}</span>
-            <span style={{ color: a.status === 'signed' ? '#2D5F4E' : a.status === 'rejected' ? '#b00' : MUTE }}>
-              {A_STATUS[a.status] ?? a.status}{a.reject_reason ? `（${a.reject_reason}）` : ''}
-              {a.acted_at ? ` · ${a.acted_at.slice(0, 10)}` : ''}
-            </span>
-          </div>
-        ))}
-
         {/* 補充資料（0019）：append-only，不動原始附件，故已簽者無須重簽 */}
         {!d.public && (d.supplements?.length || d.can_supplement) ? (
-          <>
+          <div id="supplements" style={{ scrollMarginTop: 16 }}>
             <h2 style={{ fontSize: 15, color: MUTE, borderBottom: '1px solid #E5DCCB', paddingBottom: 6, marginTop: 22 }}>
               補充資料{d.supplements?.length ? `（${d.supplements.length}）` : ''}
             </h2>
@@ -265,8 +290,20 @@ export default function SignoffDetailPage() {
                 />
               </div>
             )}
-          </>
+          </div>
         ) : null}
+
+        {/* 簽核狀態 */}
+        <h2 style={{ fontSize: 15, color: MUTE, borderBottom: '1px solid #E5DCCB', paddingBottom: 6, marginTop: 22 }}>簽核進度</h2>
+        {d.assignments.map((a, i) => (
+          <div key={a.id ?? `${a.role_label}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F0E9DC', fontSize: 14 }}>
+            <span>{a.role_label}：{a.signer_username ?? '—'}</span>
+            <span style={{ color: a.status === 'signed' ? '#2D5F4E' : a.status === 'rejected' ? '#b00' : MUTE }}>
+              {A_STATUS[a.status] ?? a.status}{a.reject_reason ? `（${a.reject_reason}）` : ''}
+              {a.acted_at ? ` · ${a.acted_at.slice(0, 10)}` : ''}
+            </span>
+          </div>
+        ))}
 
         {/* 我要簽 */}
         {d.my_pending_assignment_id && d.doc.status === 'routing' && (

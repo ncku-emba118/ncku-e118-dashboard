@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { safeNext } from '@/lib/auth/safe-next';
 import Breadcrumb from '@/components/Breadcrumb';
 
 const ACCOUNTS: Array<{ value: string; label: string; role: 'super' | 'dept' }> = [
@@ -15,19 +16,6 @@ const ACCOUNTS: Array<{ value: string; label: string; role: 'super' | 'dept' }> 
   { value: '文宣',   label: '文宣（dept · 僅文宣部）',     role: 'dept' },
   { value: '醫務',   label: '醫務（dept · 僅醫務部）',     role: 'dept' },
 ];
-
-/**
- * ⚠ Codex Sec F3 fix: 不直接信任 `?next=` 參數
- * 攻擊者可釣魚連結 /board/login?next=https://evil.example/fake-login 引導登入後 redirect 出去
- * 只允許 /board/admin 開頭的內部相對 path
- */
-function safeNext(raw: string | null): string {
-  if (!raw) return '/board/admin';
-  if (raw.startsWith('//')) return '/board/admin';
-  if (raw.includes('://')) return '/board/admin';
-  if (!raw.startsWith('/board/admin')) return '/board/admin';
-  return raw;
-}
 
 function LoginForm() {
   const router = useRouter();
@@ -129,7 +117,7 @@ function LoginForm() {
             margin: '0 0 28px',
           }}
         >
-          部門登入 · 公告管理後台
+          幹部登入 · 經費簽核與公告管理
         </p>
 
         <form onSubmit={handleSubmit}>
