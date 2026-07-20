@@ -9,8 +9,8 @@
  * 但 /finance 底下的簽核與收入管理後來也需要登入 —— 從那些頁被踢來登入的人
  * 會被丟回公告欄後台，動線整條斷掉。此處補上遺漏區段。
  */
-export const DEFAULT_NEXT = '/finance';
-export const ALLOWED_NEXT_PREFIXES = ['/board/admin', '/finance', '/budget/signoff'] as const;
+export const DEFAULT_NEXT = '/staff';
+export const ALLOWED_NEXT_PREFIXES = ['/staff', '/board/admin', '/finance', '/budget/signoff'] as const;
 
 export function safeNext(raw: string | null): string {
   if (!raw) return DEFAULT_NEXT;

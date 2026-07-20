@@ -10,6 +10,10 @@ describe('safeNext — 放行站內需登入區段', () => {
     );
     expect(safeNext('/finance/income')).toBe('/finance/income');
   });
+  test('幹部專區（登入後預設落點）', () => {
+    expect(safeNext('/staff')).toBe('/staff');
+    expect(safeNext(null)).toBe('/staff');
+  });
   test('公告欄後台與預算書簽核', () => {
     expect(safeNext('/board/admin')).toBe('/board/admin');
     expect(safeNext('/board/admin/new')).toBe('/board/admin/new');
@@ -41,6 +45,7 @@ describe('safeNext — 擋開放重導向', () => {
   });
   test('非白名單站內路徑退回預設', () => {
     expect(safeNext('/budget')).toBe(DEFAULT_NEXT);
+    expect(safeNext('/staff-evil')).toBe(DEFAULT_NEXT);
     expect(safeNext('/')).toBe(DEFAULT_NEXT);
   });
   test('空值', () => {
