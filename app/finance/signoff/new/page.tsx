@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Breadcrumb from '@/components/Breadcrumb';
 import { ATTACHMENT_LABELS } from '@/lib/signoff/constants';
+import { normalizeImageOrientation } from '@/lib/signoff/normalize-image';
 
 const WINE = '#8B1F2F';
 const CREAM = '#FAF7F2';
@@ -64,7 +65,9 @@ export default function SignoffNewPage() {
     try {
       // 1. 逐檔上傳到 Storage，收集 sources
       const sources: { object_path: string; mime: string; name: string; label?: string; caption?: string }[] = [];
-      for (const [fi, f] of files.entries()) {
+      for (const [fi, f0] of files.entries()) {
+        // 影像先正規化 EXIF 方向，否則合成的最終 PDF 會倒向
+        const f = await normalizeImageOrientation(f0);
         const upRes = await fetch('/api/board/signoff/upload-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -77,7 +80,7 @@ export default function SignoffNewPage() {
           headers: { 'Content-Type': f.type, 'x-upsert': 'false' },
           body: f,
         });
-        if (!put.ok) { setMsg(`「${f.name}」上傳失敗（HTTP ${put.status}）`); setBusy(false); return; }
+        if (!put.ok) { setMsg(`「${f0.name}」上傳失敗（HTTP ${put.status}）`); setBusy(false); return; }
         const m = meta[fi];
         sources.push({
           object_path: up.object_path,

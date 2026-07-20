@@ -53,7 +53,7 @@ export default function AttachmentGrid({ items }: { items: ViewAttachment[] }) {
                   <img
                     src={a.url}
                     alt={a.caption || a.name}
-                    style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block', background: '#F4EFE6' }}
+                    style={{ width: '100%', height: 130, objectFit: 'contain', display: 'block', background: '#F4EFE6' }}
                   />
                 ) : (
                   <div
