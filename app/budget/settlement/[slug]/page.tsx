@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ACTIVITIES, fmt } from '@/lib/budget/data';
 import SettlementDoc from '@/components/budget/SettlementDoc';
+import PrintButton from '@/components/budget/PrintButton';
 
 const WINE = '#8B1F2F';
 const WINE_DEEP = '#6B1622';
@@ -45,8 +46,11 @@ export default async function SettlementDocPage({ params }: { params: Promise<{ 
           <Link href={`/budget/activities/${activity.slug}`} style={{ color: WINE }}>
             活動頁
           </Link>{' '}
-          一致。用瀏覽器列印（⌘P）即可存成 PDF 傳給北班財務長；匯款帳號請另行私訊提供。
+          一致。幹部簽核完成後，按下方按鈕下載 PDF 寄給北班財務長請款；匯款帳號請另行私訊提供。
         </p>
+        <div style={{ marginTop: 14 }}>
+          <PrintButton />
+        </div>
       </div>
 
       <SettlementDoc activity={activity} />

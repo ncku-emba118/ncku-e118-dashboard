@@ -205,39 +205,33 @@ export default function SettlementDoc({ activity }: { activity?: Activity }) {
         </Box>
       )}
 
-      {/* 簽署 — 已走線上會簽者改列覆核註記，否則保留紙本簽名線 */}
-      {s?.signoffRef ? (
-        <div style={signStyle}>
-          <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-            <span style={sealStyle}>已完成線上覆核</span>
-            <span style={{ fontSize: 11.5, color: MUTE }}>
-              經費單簽核 #{s.signoffRef.docId.slice(0, 8).toUpperCase()}　·　{s.signoffRef.approvedAt} 全員簽畢
-            </span>
-          </div>
-          {s.signoffRef.signers.map((p, i) => (
-            <div key={i} style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: NUM, fontSize: 15, fontWeight: 600, color: INK, height: 28, lineHeight: '28px' }}>
-                {p.name ?? '（線上簽署）'}
-              </div>
-              <div style={{ borderTop: `1px solid ${INK}`, marginTop: 0, paddingTop: 6 }}>{p.role}</div>
+      {/* 簽核狀態 — 簽核在「經費單簽核」系統完成，本單不設手寫簽名欄 */}
+      <div style={signStyle}>
+        {s?.signoffRef ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <span style={sealStyle}>已完成幹部簽核</span>
+              <span style={{ fontSize: 11.5, color: MUTE }}>
+                {s.signoffRef.approvedAt} 全數簽畢　·　簽核單 #{s.signoffRef.docId.slice(0, 8).toUpperCase()}
+              </span>
             </div>
-          ))}
-          <div style={{ gridColumn: '1 / -1', fontSize: 11, color: MUTE, lineHeight: 1.7 }}>
-            含手寫簽名的最終 PDF 存於班網「經費單簽核」系統，幹部登入後可下載核對；本頁為對帳內容，不作為簽核憑證。
-          </div>
-        </div>
-      ) : (
-        <div style={signStyle}>
-          <div>
-            <div style={{ borderBottom: `1px solid ${INK}`, height: 28 }} />
-            <div style={{ marginTop: 6, textAlign: 'center' }}>製表人（財務長）</div>
-          </div>
-          <div>
-            <div style={{ borderBottom: `1px solid ${INK}`, height: 28 }} />
-            <div style={{ marginTop: 6, textAlign: 'center' }}>覆核人（秘書長）</div>
-          </div>
-        </div>
-      )}
+            <div style={{ marginTop: 10, fontSize: 12.5, color: '#4A413A', lineHeight: 1.9 }}>
+              <span style={{ color: WINE_DEEP, fontWeight: 500 }}>簽核單位：</span>
+              {s.signoffRef.signers.map((p) => `${p.role}${p.name ? `（${p.name}）` : ''}`).join('　·　')}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 11, color: MUTE, lineHeight: 1.7 }}>
+              本單經上列單位於班網「經費單簽核」完成會簽，簽核紀錄與憑證存於系統備查。
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 12.5, color: MUTE }}>○　待幹部簽核</div>
+            <div style={{ marginTop: 6, fontSize: 11, color: MUTE, lineHeight: 1.7 }}>
+              本單於班網「經費單簽核」完成幹部會簽後，此處自動更新為已簽核並列出簽核單位。
+            </div>
+          </>
+        )}
+      </div>
 
       <div style={footerStyle}>E118 南班秘書處製表　·　本結算單副本同步公告至南班幹部群組</div>
     </div>
@@ -404,9 +398,6 @@ const signStyle: React.CSSProperties = {
   padding: '16px 24px',
   borderTop: `1px solid ${LINE}`,
   background: PAPER,
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: 20,
   fontSize: 12,
   color: '#4A413A',
 };
