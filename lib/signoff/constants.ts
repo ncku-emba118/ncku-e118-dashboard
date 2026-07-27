@@ -33,7 +33,7 @@ export const MAX_ATTACHMENTS = 10;
 export const MIN_ATTACHMENTS = 1;
 
 // 附件類型標籤（下拉，供統計與辨識；caption 補充細節）
-export const ATTACHMENT_LABELS = ['報價單', '請款單', '發票', '收據', '其他'] as const;
+export const ATTACHMENT_LABELS = ['報價單', '請款單', '發票', '收據', '結算單', '其他'] as const;
 export type AttachmentLabel = (typeof ATTACHMENT_LABELS)[number];
 export const MAX_ATTACHMENT_CAPTION = 200;
 

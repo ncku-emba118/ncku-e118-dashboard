@@ -131,6 +131,18 @@ export type SettlementStatement = {
   lineItems?: { name: string; unitPrice: number; qty: number; amount: number; note?: string }[];
   /** 匯款期限 */
   paymentDue?: string;
+  /**
+   * 線上覆核紀錄——本單的 PDF 已走 /finance/signoff 會簽完成。
+   * 填了就把簽署區的紙本簽名線換成線上覆核註記；沒填則維持手簽線。
+   * docId 是簽核系統的 UUID，頁面只顯示前 8 碼，完整值留在此供幹部查件。
+   */
+  signoffRef?: {
+    docId: string;
+    /** 全員簽畢日期 YYYY-MM-DD */
+    approvedAt: string;
+    /** name 選填——公開頁預設只列職務，要具名再填 */
+    signers: { role: string; name?: string }[];
+  };
 };
 
 /**

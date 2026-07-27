@@ -205,17 +205,39 @@ export default function SettlementDoc({ activity }: { activity?: Activity }) {
         </Box>
       )}
 
-      {/* 簽署 */}
-      <div style={signStyle}>
-        <div>
-          <div style={{ borderBottom: `1px solid ${INK}`, height: 28 }} />
-          <div style={{ marginTop: 6, textAlign: 'center' }}>製表人（財務長）</div>
+      {/* 簽署 — 已走線上會簽者改列覆核註記，否則保留紙本簽名線 */}
+      {s?.signoffRef ? (
+        <div style={signStyle}>
+          <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            <span style={sealStyle}>已完成線上覆核</span>
+            <span style={{ fontSize: 11.5, color: MUTE }}>
+              經費單簽核 #{s.signoffRef.docId.slice(0, 8).toUpperCase()}　·　{s.signoffRef.approvedAt} 全員簽畢
+            </span>
+          </div>
+          {s.signoffRef.signers.map((p, i) => (
+            <div key={i} style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: NUM, fontSize: 15, fontWeight: 600, color: INK, height: 28, lineHeight: '28px' }}>
+                {p.name ?? '（線上簽署）'}
+              </div>
+              <div style={{ borderTop: `1px solid ${INK}`, marginTop: 0, paddingTop: 6 }}>{p.role}</div>
+            </div>
+          ))}
+          <div style={{ gridColumn: '1 / -1', fontSize: 11, color: MUTE, lineHeight: 1.7 }}>
+            含手寫簽名的最終 PDF 存於班網「經費單簽核」系統，幹部登入後可下載核對；本頁為對帳內容，不作為簽核憑證。
+          </div>
         </div>
-        <div>
-          <div style={{ borderBottom: `1px solid ${INK}`, height: 28 }} />
-          <div style={{ marginTop: 6, textAlign: 'center' }}>覆核人（秘書長）</div>
+      ) : (
+        <div style={signStyle}>
+          <div>
+            <div style={{ borderBottom: `1px solid ${INK}`, height: 28 }} />
+            <div style={{ marginTop: 6, textAlign: 'center' }}>製表人（財務長）</div>
+          </div>
+          <div>
+            <div style={{ borderBottom: `1px solid ${INK}`, height: 28 }} />
+            <div style={{ marginTop: 6, textAlign: 'center' }}>覆核人（秘書長）</div>
+          </div>
         </div>
-      </div>
+      )}
 
       <div style={footerStyle}>E118 南班秘書處製表　·　本結算單副本同步公告至南班幹部群組</div>
     </div>
@@ -387,6 +409,18 @@ const signStyle: React.CSSProperties = {
   gap: 20,
   fontSize: 12,
   color: '#4A413A',
+};
+
+/** 線上覆核戳記——只是視覺標示，真正的憑證是簽核系統裡那份含簽名的 final.pdf */
+const sealStyle: React.CSSProperties = {
+  display: 'inline-block',
+  padding: '2px 10px',
+  border: `1px solid ${WINE}`,
+  borderRadius: 3,
+  color: WINE,
+  fontSize: 11.5,
+  fontWeight: 700,
+  letterSpacing: 1,
 };
 
 const footerStyle: React.CSSProperties = {
