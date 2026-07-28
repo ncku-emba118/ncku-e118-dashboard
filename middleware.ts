@@ -52,6 +52,10 @@ const GET_PUBLIC_PATTERNS: RegExp[] = [
   // $ 錨定 + 只 36 字元 UUID，故 /sign /challenge /reject /void /delete /nudge /finalize
   // 等子路徑一律不匹配；且僅 GET 走此白名單，POST 到同 path 仍需登入。
   /^\/api\/board\/signoff\/[a-fA-F0-9-]{36}$/,                          // GET 單一簽核詳情（UUID）
+  // LINE 卡片一次性 magic link：免帳密換發 session（規格 §1-2）。
+  // 錨定 + 只 64 位小寫 hex（token 格式），route 端再驗 sha/過期並自簽 session。
+  // 僅此 GET 放行；同 path 無其他 method。
+  /^\/api\/board\/signoff\/magic\/[a-f0-9]{64}$/,                       // GET magic 換發 session
 ];
 
 export async function middleware(request: NextRequest) {

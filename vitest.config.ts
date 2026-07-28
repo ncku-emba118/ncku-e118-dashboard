@@ -4,7 +4,8 @@ import path from 'node:path';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['lib/**/*.test.ts'],
+    // lib 純函式測試 + 未來的 route 測試（app/api/**）都跑得到（Codex #12）。
+    include: ['lib/**/*.test.ts', 'app/api/**/*.test.ts'],
   },
   resolve: {
     alias: {

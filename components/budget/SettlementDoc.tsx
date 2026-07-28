@@ -1,5 +1,6 @@
 import type { Activity } from '@/lib/budget/data';
 import { META, fmt } from '@/lib/budget/data';
+import type { SettlementSignoffSummary } from '@/lib/signoff/dal';
 
 const WINE = '#8B1F2F';
 const WINE_DEEP = '#6B1622';
@@ -20,7 +21,19 @@ const BLANK = '____________';
  * 帶 activity 且含 settlement → 依實際結算資料填妥（/budget/settlement/[slug] 使用）。
  * 兩者共用同一份版面，避免範本改了而實際單沒跟上。
  */
-export default function SettlementDoc({ activity }: { activity?: Activity }) {
+export default function SettlementDoc({
+  activity,
+  liveSignoff,
+}: {
+  activity?: Activity;
+  /**
+   * 即時查 DB 的簽核狀態（0022）。undefined＝呼叫端沒查（例如空白範本頁）；
+   * null＝查過但目前沒有對應這張結算單編號的簽核文件（fallback 靜態 signoffRef，
+   * 若靜態資料也沒有就顯示「待幹部簽核」）。有值時一律以 DB 真實狀態為準，
+   * 絕不因為 UI 方便就顯示成「已完成」。
+   */
+  liveSignoff?: SettlementSignoffSummary | null;
+}) {
   const s = activity?.settlement;
   const split = activity?.actualSplit;
 
@@ -205,36 +218,108 @@ export default function SettlementDoc({ activity }: { activity?: Activity }) {
         </Box>
       )}
 
-      {/* 簽核狀態 — 簽核在「經費單簽核」系統完成，本單不設手寫簽名欄 */}
-      <div style={signStyle}>
-        {s?.signoffRef ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-              <span style={sealStyle}>已完成幹部簽核</span>
-              <span style={{ fontSize: 11.5, color: MUTE }}>
-                {s.signoffRef.approvedAt} 全數簽畢　·　簽核單 #{s.signoffRef.docId.slice(0, 8).toUpperCase()}
-              </span>
-            </div>
-            <div style={{ marginTop: 10, fontSize: 12.5, color: '#4A413A', lineHeight: 1.9 }}>
-              <span style={{ color: WINE_DEEP, fontWeight: 500 }}>簽核單位：</span>
-              {s.signoffRef.signers.map((p) => `${p.role}${p.name ? `（${p.name}）` : ''}`).join('　·　')}
-            </div>
-            <div style={{ marginTop: 8, fontSize: 11, color: MUTE, lineHeight: 1.7 }}>
-              本單經上列單位於班網「經費單簽核」完成會簽，簽核紀錄與憑證存於系統備查。
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: 12.5, color: MUTE }}>○　待幹部簽核</div>
-            <div style={{ marginTop: 6, fontSize: 11, color: MUTE, lineHeight: 1.7 }}>
-              本單於班網「經費單簽核」完成幹部會簽後，此處自動更新為已簽核並列出簽核單位。
-            </div>
-          </>
-        )}
-      </div>
+      {/* 簽核狀態 — 簽核在「經費單簽核」系統完成，本單不設手寫簽名欄。
+          liveSignoff（0022，DB 即時查詢）優先於靜態 signoffRef；只有 DB 查無
+          對應簽核文件時才 fallback 到人工維護的靜態資料。 */}
+      <div style={signStyle}>{renderSignoffStatus(liveSignoff, s?.signoffRef)}</div>
 
       <div style={footerStyle}>E118 南班秘書處製表　·　本結算單副本同步公告至南班幹部群組</div>
     </div>
+  );
+}
+
+/**
+ * 簽核狀態區塊（0022）。優先用 liveSignoff（DB 即時查詢）：
+ *   undefined → 呼叫端沒查（空白範本）→ 顯示待簽核
+ *   null      → 查過但沒有對應此結算單編號的簽核文件 → fallback 靜態 signoffRef
+ *   有值      → 依 status 顯示對應狀態；只有 status==='approved' 才顯示「已完成」，
+ *               其餘一律不得顯示成已完成（DB 真實資料為準，不猜測、不預設 true）
+ */
+function renderSignoffStatus(
+  liveSignoff: SettlementSignoffSummary | null | undefined,
+  staticRef: NonNullable<Activity['settlement']>['signoffRef'],
+) {
+  if (liveSignoff === undefined || liveSignoff === null) {
+    if (staticRef) {
+      return (
+        <>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            <span style={sealStyle}>已完成幹部簽核</span>
+            <span style={{ fontSize: 11.5, color: MUTE }}>
+              {staticRef.approvedAt} 全數簽畢　·　簽核單 #{staticRef.docId.slice(0, 8).toUpperCase()}
+            </span>
+          </div>
+          <div style={{ marginTop: 10, fontSize: 12.5, color: '#4A413A', lineHeight: 1.9 }}>
+            <span style={{ color: WINE_DEEP, fontWeight: 500 }}>簽核單位：</span>
+            {staticRef.signers.map((p) => `${p.role}${p.name ? `（${p.name}）` : ''}`).join('　·　')}
+          </div>
+          <div style={{ marginTop: 8, fontSize: 11, color: MUTE, lineHeight: 1.7 }}>
+            本單經上列單位於班網「經費單簽核」完成會簽，簽核紀錄與憑證存於系統備查。
+          </div>
+        </>
+      );
+    }
+    return (
+      <>
+        <div style={{ fontSize: 12.5, color: MUTE }}>○　待幹部簽核</div>
+        <div style={{ marginTop: 6, fontSize: 11, color: MUTE, lineHeight: 1.7 }}>
+          本單於班網「經費單簽核」完成幹部會簽後，此處自動更新為已簽核並列出簽核單位。
+        </div>
+      </>
+    );
+  }
+
+  const signedCount = liveSignoff.signers.filter((p) => p.status === 'signed').length;
+  const total = liveSignoff.signers.length;
+  const roster = liveSignoff.signers
+    .map((p) => `${p.role_label}${p.username ? `（${p.username}）` : ''}${p.status === 'signed' ? ' ✓' : p.status === 'rejected' ? ' ✕' : ''}`)
+    .join('　·　');
+
+  if (liveSignoff.status === 'approved') {
+    return (
+      <>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          <span style={sealStyle}>已完成幹部簽核</span>
+          <span style={{ fontSize: 11.5, color: MUTE }}>
+            {liveSignoff.approvedAt ?? ''} 全數簽畢　·　簽核單 #{liveSignoff.docId.slice(0, 8).toUpperCase()}
+          </span>
+        </div>
+        <div style={{ marginTop: 10, fontSize: 12.5, color: '#4A413A', lineHeight: 1.9 }}>
+          <span style={{ color: WINE_DEEP, fontWeight: 500 }}>簽核單位：</span>
+          {roster}
+        </div>
+        <div style={{ marginTop: 8, fontSize: 11, color: MUTE, lineHeight: 1.7 }}>
+          本單經上列單位於班網「經費單簽核」完成會簽，簽核紀錄與憑證存於系統備查。
+        </div>
+      </>
+    );
+  }
+
+  if (liveSignoff.status === 'routing') {
+    return (
+      <>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          <span style={pendingSealStyle}>● 簽核中（{signedCount}/{total}）</span>
+          <span style={{ fontSize: 11.5, color: MUTE }}>簽核單 #{liveSignoff.docId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div style={{ marginTop: 10, fontSize: 12.5, color: '#4A413A', lineHeight: 1.9 }}>
+          <span style={{ color: WINE_DEEP, fontWeight: 500 }}>簽核進度：</span>
+          {roster}
+        </div>
+      </>
+    );
+  }
+
+  // rejected / voided：不視為已完成，允許財務長重新發起
+  return (
+    <>
+      <div style={{ fontSize: 12.5, color: MUTE }}>
+        {liveSignoff.status === 'rejected' ? '✕　簽核已退回' : '○　簽核已作廢'}
+      </div>
+      <div style={{ marginTop: 6, fontSize: 11, color: MUTE, lineHeight: 1.7 }}>
+        簽核單 #{liveSignoff.docId.slice(0, 8).toUpperCase()}　·　待財務長重新發起簽核。
+      </div>
+    </>
   );
 }
 
@@ -409,6 +494,18 @@ const sealStyle: React.CSSProperties = {
   border: `1px solid ${WINE}`,
   borderRadius: 3,
   color: WINE,
+  fontSize: 11.5,
+  fontWeight: 700,
+  letterSpacing: 1,
+};
+
+/** 簽核中（routing）狀態戳記——刻意用琥珀色與已核准的酒紅色區分，避免混淆 */
+const pendingSealStyle: React.CSSProperties = {
+  display: 'inline-block',
+  padding: '2px 10px',
+  border: '1px solid #B26B1F',
+  borderRadius: 3,
+  color: '#B26B1F',
   fontSize: 11.5,
   fontWeight: 700,
   letterSpacing: 1,

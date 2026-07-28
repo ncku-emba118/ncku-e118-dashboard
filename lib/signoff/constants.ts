@@ -61,12 +61,37 @@ export function isValidIncomingSourcePath(path: string, accountId: string): bool
   return new RegExp(`^incoming/${accountId}/[0-9a-f]{32}\\.(?:${exts})$`).test(path);
 }
 
+// 簽名 PNG 一律「內容定址」：路徑帶 sha256 前 8 碼 → 不同內容必得不同物件路徑，
+// 永不互相覆寫（Codex #2/#4：避免同帳號重簽 / 一鍵蓋章覆寫掉 finalize 正要讀的 bytes）。
+// finalize 從 signoff_signatures.signature_png_path 讀路徑，故只要寫入 DB 的就是這個
+// 唯一路徑即可，finalize 完全無需改動。
+const sha8 = (sha256: string) => sha256.slice(0, 8);
+
+/** 單張簽核文件內、某帳號本次簽名 PNG 的唯一物件路徑（內容定址）。 */
+export function signatureObjectPath(docId: string, accountId: string, sha256: string): string {
+  return `documents/${docId}/signatures/${accountId}-${sha8(sha256)}.png`;
+}
+
+/**
+ * 帳號層級「預存簽名」（一鍵蓋章印鑑）的唯一物件路徑（內容定址）。
+ * 不綁 docId（跨單重複使用）；換內容即換路徑、不覆寫舊檔——指向哪一張由
+ * account_stored_signatures.png_path 這個 DB 指標決定（sign-stamp 讀它）。
+ */
+export function storedSignatureObjectPath(accountId: string, sha256: string): string {
+  return `stored-signatures/${accountId}-${sha8(sha256)}.png`;
+}
+
 export const objectPaths = {
   incomingSourcePrefix: (accountId: string) => `incoming/${accountId}/`,
   incomingSource: (accountId: string, rand: string, ext: string) =>
     `incoming/${accountId}/${rand}.${ext}`,
   sheet: (docId: string) => `documents/${docId}/sheet.pdf`,
-  signature: (docId: string, accountId: string) =>
-    `documents/${docId}/signatures/${accountId}.png`,
+  signature: signatureObjectPath,
   final: (docId: string) => `documents/${docId}/final.pdf`,
+  storedSignature: storedSignatureObjectPath,
 } as const;
+
+// magic token 格式：crypto.randomBytes(32) → 64 hex（規格 §1-2 白名單）
+export const MAGIC_TOKEN_RE = /^[a-f0-9]{64}$/;
+// magic token 有效期上限：14 天（規格 §4，實際取 min(now+14d, 單據期限)）
+export const MAGIC_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;

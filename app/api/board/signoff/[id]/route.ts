@@ -9,7 +9,7 @@ import { resolveClientIp } from '@/lib/ip-resolve';
 import { hashIp } from '@/lib/ip-hash';
 import { jsonResp } from '@/lib/signoff/http';
 import { requireSignoffAccess } from '@/lib/signoff/access';
-import { createSignedReadUrl, getPublicApprovedSummary, listSupplements, recordAudit } from '@/lib/signoff/dal';
+import { createSignedReadUrl, getPublicApprovedSummary, hasStoredSignature, listSupplements, recordAudit } from '@/lib/signoff/dal';
 
 const UUID_RE =
   /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
@@ -81,6 +81,9 @@ export async function GET(
       const myPending = assignments.find(
         (a) => a.signer_account_id === session.sub && a.status === 'pending',
       );
+      // 只有「輪到我簽」時才需要知道有無預存簽名（決定要不要顯示一鍵蓋章鍵），
+      // 其餘檢視者不必多打一次 DB。
+      const hasStored = myPending ? await hasStoredSignature(session.sub) : false;
 
       // best-effort audit（不阻擋回應）
       const ip = resolveClientIp(req);
@@ -131,6 +134,7 @@ export async function GET(
           attachments: attachmentUrls,
           supplements,
           my_pending_assignment_id: myPending?.id ?? null,
+          has_stored_signature: hasStored, // 有預存簽名 → 前端顯示「同意並蓋預存簽名」主鍵（§1-6）
           can_delete: session.role === 'super', // 班代/副班代/秘書可刪除
           // 撤銷退回：限已退回狀態，且操作者是 super 或當初按下退回的那個人
           can_undo_reject:

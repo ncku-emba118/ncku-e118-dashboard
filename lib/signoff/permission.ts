@@ -31,6 +31,20 @@ export type SignoffAccessContext = {
   allAssigneeIds: string[];
 };
 
+/**
+ * 結算單「送出簽核」白名單（0022）—— 財務長 + 班代。
+ *
+ * 刻意比 lib/finance/income.ts 的 canManageIncome（role==='super' 全放行）窄：
+ * 副班代 / 秘書長等其他 super 帳號不開放發起結算單請款簽核，只有實際經手
+ * 結算金流的財務長，與代表南班對外的班代可以送。API 端（/api/board/signoff
+ * POST，帶 settlement_no 時）與畫面按鈕都呼叫這支同一函式，避免兩邊邏輯漂移。
+ */
+export type SettlementSignoffActor = { username: string; home_dept_id: string | null };
+
+export function canInitiateSettlementSignoff(actor: SettlementSignoffActor): boolean {
+  return actor.home_dept_id === 'finance' || actor.username === '班代';
+}
+
 export function canAccessSignoff(
   actor: SignoffActor,
   action: SignoffAction,

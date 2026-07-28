@@ -222,6 +222,84 @@ export async function getPublicApprovedSummary(documentId: string): Promise<{
   };
 }
 
+/**
+ * 依結算單編號查最新一筆簽核文件（0022）——供 /budget/settlement/[slug] 在
+ * server component 直接查詢，取代原本手動維護在 lib/budget/data.ts 的靜態
+ * signoffRef。同一張結算單若曾被退回/作廢又重新發起，只取 created_at 最新
+ * 那一筆（重新發起視同新單）。
+ *
+ * 該頁面本身是公開頁（未登入也看得到），所以這裡刻意只回安全欄位：
+ * 狀態 / 簽核人姓名與職稱 / 時間，不含金額、附件路徑、帳號 id、slot 座標。
+ */
+export type SettlementSignoffSigner = {
+  role_label: string;
+  username: string | null;
+  status: AssignmentStatus;
+};
+
+export type SettlementSignoffSummary = {
+  docId: string;
+  status: SignoffStatus;
+  createdAt: string;
+  /** 只有 status==='approved' 才有值；一律以 DB 真實資料為準，絕不預設/猜測 */
+  approvedAt: string | null;
+  signers: SettlementSignoffSigner[];
+};
+
+export async function getSettlementSignoffStatus(
+  settlementNo: string,
+): Promise<{ data: SettlementSignoffSummary | null; error: string | null }> {
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from('signoff_documents')
+    .select(
+      'id, status, created_at, updated_at, ' +
+        'signoff_assignments(role_label, status, acted_at, sequence_order, accounts(username))',
+    )
+    .eq('settlement_no', settlementNo)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return { data: null, error: error.message };
+  if (!data) return { data: null, error: null };
+
+  const raw = data as unknown as {
+    id: string;
+    status: SignoffStatus;
+    created_at: string;
+    updated_at: string;
+    signoff_assignments: {
+      role_label: string;
+      status: AssignmentStatus;
+      acted_at: string | null;
+      sequence_order: number | null;
+      accounts: { username: string } | null;
+    }[];
+  };
+
+  const signers = (raw.signoff_assignments ?? [])
+    .slice()
+    .sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0))
+    .map((a) => ({
+      role_label: a.role_label,
+      username: a.accounts?.username ?? null,
+      status: a.status,
+    }));
+
+  const actedTimes = (raw.signoff_assignments ?? [])
+    .map((a) => a.acted_at)
+    .filter((t): t is string => !!t)
+    .sort();
+  // approvedAt 只在 status 真的是 approved 時才給值（絕不預設為已完成）
+  const approvedAt =
+    raw.status === 'approved' ? (actedTimes.length ? actedTimes[actedTimes.length - 1] : raw.updated_at) : null;
+
+  return {
+    data: { docId: raw.id, status: raw.status, createdAt: raw.created_at, approvedAt, signers },
+    error: null,
+  };
+}
+
 /** 收件匣：指派給我、pending、且文件仍在簽核中（!inner + 過濾 doc 狀態，
  *  避免退回/作廢/已核准的文件殘留在待簽清單 — Codex P1）。 */
 export async function listInbox(accountId: string) {
@@ -281,6 +359,8 @@ export type CreateDocPayload = {
   flow_type: 'parallel' | 'sequential';
   supersedes_document_id?: string | null;
   due_at?: string | null;
+  /** 對應的結算單編號（0022），如 E118-S-2026-001；非結算單相關的一般經費簽核留空 */
+  settlement_no?: string | null;
 };
 
 export type CreateAssignment = {
@@ -860,5 +940,189 @@ export async function removeObjects(paths: string[]): Promise<{ error: string | 
   if (paths.length === 0) return { error: null };
   const supabase = getServerClient();
   const { error } = await supabase.storage.from(SIGNOFF_BUCKET).remove(paths);
+  return { error: error?.message ?? null };
+}
+
+// ── LINE 化：magic token（一次性免帳密換發 session）與預存簽名（0023）──
+
+/** 建單／重新送簽時，為單張 pending assignment 寫入 magic token（只存 sha256）。
+ *  單一有效：重發即覆蓋 hash 與到期時間。條件鎖 status='pending'，避免對已簽/
+ *  已退回的指派發 token。回傳是否確實寫到一列。 */
+export async function setAssignmentMagicToken(args: {
+  assignmentId: string;
+  documentId: string;
+  signerAccountId: string;
+  tokenHash: string;
+  expiresAt: string;
+}): Promise<{ ok: boolean; error: string | null }> {
+  const supabase = getServerClient();
+  const { error, count } = await supabase
+    .from('signoff_assignments')
+    .update(
+      { magic_token_hash: args.tokenHash, magic_token_expires_at: args.expiresAt },
+      { count: 'exact' },
+    )
+    .eq('id', args.assignmentId)
+    .eq('document_id', args.documentId)
+    .eq('signer_account_id', args.signerAccountId)
+    .eq('status', 'pending');
+  if (error) return { ok: false, error: error.message };
+  return { ok: (count ?? 0) === 1, error: null };
+}
+
+/** 簽署成功後清空該 assignment 的 magic token（簽完即失效，規格 §1-7）。
+ *  非定義欄位，signoff_assignment_guard 的 UPDATE 分支不會擋。 */
+export async function clearAssignmentMagicToken(args: {
+  documentId: string;
+  signerAccountId: string;
+}): Promise<{ error: string | null }> {
+  const supabase = getServerClient();
+  const { error } = await supabase
+    .from('signoff_assignments')
+    .update({ magic_token_hash: null, magic_token_expires_at: null })
+    .eq('document_id', args.documentId)
+    .eq('signer_account_id', args.signerAccountId);
+  return { error: error?.message ?? null };
+}
+
+/** magic 端點：以 token 的 sha256 反查 assignment，join 簽核者帳號取簽發 session
+ *  所需欄位（role / home_dept_id / session_version），並 join 單據取 status。到期與
+ *  「可否換發」（指派 pending 且單 routing，見 canRedeemAssignment）由呼叫端判斷——此處
+ *  一律回原始資料，讓端點對「查無 / 已過期 / 舊連結」做相同的 302，不留 timing/列舉 oracle。 */
+export type MagicRedeemRow = {
+  documentId: string;
+  assignmentStatus: AssignmentStatus;
+  docStatus: SignoffStatus;
+  expiresAt: string | null;
+  account: {
+    id: string;
+    role: 'super' | 'dept';
+    home_dept_id: string | null;
+    session_version: number;
+  };
+};
+
+export async function getAssignmentByMagicTokenHash(
+  tokenHash: string,
+): Promise<{ data: MagicRedeemRow | null; error: string | null }> {
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from('signoff_assignments')
+    .select(
+      'document_id, status, magic_token_expires_at, accounts(id, role, home_dept_id, session_version), signoff_documents!inner(status)',
+    )
+    .eq('magic_token_hash', tokenHash)
+    .maybeSingle();
+  if (error) return { data: null, error: error.message };
+  if (!data) return { data: null, error: null };
+
+  const raw = data as unknown as {
+    document_id: string;
+    status: AssignmentStatus;
+    magic_token_expires_at: string | null;
+    accounts: {
+      id: string;
+      role: 'super' | 'dept';
+      home_dept_id: string | null;
+      session_version: number;
+    } | null;
+    signoff_documents: { status: SignoffStatus } | null;
+  };
+  if (!raw.accounts || !raw.signoff_documents) return { data: null, error: null };
+  return {
+    data: {
+      documentId: raw.document_id,
+      assignmentStatus: raw.status,
+      docStatus: raw.signoff_documents.status,
+      expiresAt: raw.magic_token_expires_at,
+      account: raw.accounts,
+    },
+    error: null,
+  };
+}
+
+/** 建單／重新送簽通知用：取單據摘要 + 全體指派（lean，只取通知需要的欄位）。 */
+export type SignoffNotifyData = {
+  doc: {
+    id: string;
+    title: string;
+    amount: string | null;
+    owner_dept_id: string;
+    purpose: string | null;
+    due_at: string | null;
+    settlement_no: string | null;
+  };
+  assignments: {
+    id: string;
+    signer_account_id: string;
+    role_label: string;
+    status: AssignmentStatus;
+  }[];
+};
+
+export async function getDocumentForNotify(
+  documentId: string,
+): Promise<{ data: SignoffNotifyData | null; error: string | null }> {
+  const supabase = getServerClient();
+  const { data: doc, error: docErr } = await supabase
+    .from('signoff_documents')
+    .select('id, title, amount, owner_dept_id, purpose, due_at, settlement_no')
+    .eq('id', documentId)
+    .maybeSingle();
+  if (docErr) return { data: null, error: docErr.message };
+  if (!doc) return { data: null, error: null };
+
+  const { data: assigns, error: aErr } = await supabase
+    .from('signoff_assignments')
+    .select('id, signer_account_id, role_label, status')
+    .eq('document_id', documentId);
+  if (aErr) return { data: null, error: aErr.message };
+
+  return {
+    data: {
+      doc: doc as SignoffNotifyData['doc'],
+      assignments: (assigns ?? []) as SignoffNotifyData['assignments'],
+    },
+    error: null,
+  };
+}
+
+// ── 預存簽名（一鍵蓋章）──────────────────────────────────────
+export type StoredSignature = { png_path: string; sha256: string };
+
+export async function getStoredSignature(
+  accountId: string,
+): Promise<{ data: StoredSignature | null; error: string | null }> {
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from('account_stored_signatures')
+    .select('png_path, sha256')
+    .eq('account_id', accountId)
+    .maybeSingle();
+  if (error) return { data: null, error: error.message };
+  return { data: (data as StoredSignature | null) ?? null, error: null };
+}
+
+export async function hasStoredSignature(accountId: string): Promise<boolean> {
+  const { data } = await getStoredSignature(accountId);
+  return !!data;
+}
+
+/** 存／覆蓋某帳號的預存簽名（png_path 固定、內容 upsert）。 */
+export async function upsertStoredSignature(args: {
+  accountId: string;
+  pngPath: string;
+  sha256: string;
+}): Promise<{ error: string | null }> {
+  const supabase = getServerClient();
+  const { error } = await supabase.from('account_stored_signatures').upsert(
+    {
+      account_id: args.accountId,
+      png_path: args.pngPath,
+      sha256: args.sha256,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'account_id' },
+  );
   return { error: error?.message ?? null };
 }

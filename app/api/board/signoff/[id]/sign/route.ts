@@ -16,7 +16,12 @@ import { rateLimit } from '@/lib/signoff/rate-limit';
 import { objectPaths } from '@/lib/signoff/constants';
 import { requireSignoffAccess } from '@/lib/signoff/access';
 import { validateSignaturePng } from '@/lib/signoff/png';
-import { signAssignment, uploadObject } from '@/lib/signoff/dal';
+import {
+  signAssignment,
+  uploadObject,
+  clearAssignmentMagicToken,
+  upsertStoredSignature,
+} from '@/lib/signoff/dal';
 import { composeAndStoreFinal } from '@/lib/signoff/finalize';
 
 const UUID_RE =
@@ -26,6 +31,8 @@ const schema = z.object({
   nonce: z.string().min(8).max(128),
   comment: z.string().max(1000).optional(),
   signature_data_url: z.string().min(64).max(5 * 1024 * 1024),
+  // 選填：把這次的手寫簽名存成「預存簽名」，日後可一鍵蓋章（規格 §1-5）
+  save_as_stored: z.boolean().optional(),
 });
 
 export async function POST(
@@ -84,7 +91,9 @@ export async function POST(
 
   // server 自算 sha（Codex 4-2）
   const sha = crypto.createHash('sha256').update(png).digest('hex');
-  const sigPath = objectPaths.signature(id, session.sub);
+  // 內容定址路徑（Codex #2/#4）：帶 sha 前 8 碼，不同內容→不同路徑→永不覆寫；
+  // 寫進 signoff_signatures.signature_png_path 的即此唯一路徑，finalize 照讀該欄不變。
+  const sigPath = objectPaths.signature(id, session.sub, sha);
   const up = await uploadObject(sigPath, png, 'image/png', true);
   if (up.error) {
     console.error('[signoff.sign.upload_failed]', { traceId, e: up.error });
@@ -116,7 +125,15 @@ export async function POST(
     );
   }
 
-  // 全員到齊 → 合成最終 PDF（best-effort：失敗不回滾簽署，可後續重生）
+  // 簽完即失效該 assignment 的 magic token（規格 §1-7；best-effort，不影響已完成的簽署）
+  const cleared = await clearAssignmentMagicToken({ documentId: id, signerAccountId: session.sub });
+  if (cleared.error) {
+    console.error('[signoff.sign.clear_magic_failed]', { traceId, e: cleared.error });
+  }
+
+  // 全員到齊 → 合成最終 PDF（best-effort：失敗不回滾簽署，可後續重生）。
+  // 關鍵路徑：刻意排在下方非關鍵的「存預存簽名」之前，確保最後一位簽署觸發的
+  // finalize 不被 stored-signature 的上傳 / upsert 拖慢（Codex #10）。
   if (finalized) {
     try {
       const fin = await composeAndStoreFinal(access.bundle.doc);
@@ -125,6 +142,25 @@ export async function POST(
       }
     } catch (e) {
       console.error('[signoff.sign.finalize_threw]', { traceId, e: (e as Error).message });
+    }
+  }
+
+  // 選填：存為預存簽名，日後可一鍵蓋章（規格 §1-5；非關鍵、best-effort，失敗不影響本次簽署）。
+  // 內容定址路徑帶 sha（Codex #2）；排在 finalize 之後（Codex #10）。
+  if (input.save_as_stored) {
+    const storedPath = objectPaths.storedSignature(session.sub, sha);
+    const storeUp = await uploadObject(storedPath, png, 'image/png', true);
+    if (storeUp.error) {
+      console.error('[signoff.sign.store_upload_failed]', { traceId, e: storeUp.error });
+    } else {
+      const storeRes = await upsertStoredSignature({
+        accountId: session.sub,
+        pngPath: storedPath,
+        sha256: sha,
+      });
+      if (storeRes.error) {
+        console.error('[signoff.sign.store_upsert_failed]', { traceId, e: storeRes.error });
+      }
     }
   }
 

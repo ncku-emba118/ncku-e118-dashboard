@@ -44,6 +44,7 @@ type Detail = {
     attachments: ViewAttachment[];
   }[];
   my_pending_assignment_id?: string | null;
+  has_stored_signature?: boolean;
   can_delete?: boolean;
   can_supplement?: boolean;
   can_undo_reject?: boolean;
@@ -65,6 +66,10 @@ export default function SignoffDetailPage() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [busy, setBusy] = useState(false);
+  // 一鍵蓋章 vs 手寫：有預存簽名時預設收合手寫、只露一鍵蓋章鍵（§1-6）
+  const [handwriteOpen, setHandwriteOpen] = useState(false);
+  // 手寫流程「存為預存簽名」勾選，預設勾選（§1-6）
+  const [saveAsStored, setSaveAsStored] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
 
@@ -87,7 +92,9 @@ export default function SignoffDetailPage() {
     canvas.getContext('2d')?.scale(ratio, ratio);
     padRef.current = new SignaturePad(canvas, { penColor: INK, backgroundColor: 'rgba(0,0,0,0)' });
     return () => { padRef.current?.off(); padRef.current = null; };
-  }, [d?.my_pending_assignment_id]);
+    // 有預存簽名時 canvas 一開始不掛載，改用手寫展開後才存在 → 需把 handwriteOpen /
+    // has_stored_signature 納入 deps，canvas 現身時才初始化 signature_pad。
+  }, [d?.my_pending_assignment_id, d?.has_stored_signature, handwriteOpen]);
 
   async function doSign() {
     setMsg(null);
@@ -100,10 +107,22 @@ export default function SignoffDetailPage() {
       if (!cRes.ok) { setMsg(c.error || '無法開始簽署'); setBusy(false); return; }
       const sRes = await fetch(`/api/board/signoff/${id}/sign`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nonce: c.nonce, comment: comment.trim() || undefined, signature_data_url: dataUrl }),
+        body: JSON.stringify({ nonce: c.nonce, comment: comment.trim() || undefined, signature_data_url: dataUrl, save_as_stored: saveAsStored }),
       });
       const s = await sRes.json().catch(() => ({}));
       if (!sRes.ok) { setMsg(s.error || '簽署失敗'); setBusy(false); return; }
+      window.location.reload();
+    } catch (e) { setMsg(`錯誤：${(e as Error).message}`); setBusy(false); }
+  }
+
+  // 一鍵蓋預存簽名（§1-4）：不需手寫、直接以預存簽名完成本單
+  async function doSignStamp() {
+    setMsg(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/board/signoff/${id}/sign-stamp`, { method: 'POST' });
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok) { setMsg(r.error || '一鍵簽核失敗'); setBusy(false); return; }
       window.location.reload();
     } catch (e) { setMsg(`錯誤：${(e as Error).message}`); setBusy(false); }
   }
@@ -180,6 +199,9 @@ export default function SignoffDetailPage() {
 
   const isPublic = d.public === true;
   const signedCount = d.assignments.filter((a) => a.status === 'signed').length;
+  // 有預存簽名且輪到我簽 → 露一鍵蓋章鍵；手寫 canvas 預設收合，點「改用手寫」才展開。
+  const canStamp = !isPublic && !!d.has_stored_signature && !!d.my_pending_assignment_id && d.doc.status === 'routing';
+  const showCanvas = !canStamp || handwriteOpen;
 
   return (
     <>
@@ -364,28 +386,53 @@ export default function SignoffDetailPage() {
         {/* 我要簽 */}
         {d.my_pending_assignment_id && d.doc.status === 'routing' && (
           <div style={{ marginTop: 22, padding: 14, background: '#fff', border: `1px solid ${WINE}`, borderRadius: 6 }}>
-            <div style={{ fontWeight: 600, marginBottom: 8 }}>在下方框內手寫你的簽名</div>
-            <canvas
-              ref={canvasRef}
-              style={{ width: '100%', height: 160, border: '1px dashed #C9A961', borderRadius: 4, touchAction: 'none', background: '#FFFDF8' }}
-            />
-            <div style={{ marginTop: 6 }}>
-              <button onClick={() => padRef.current?.clear()} style={{ fontSize: 13, color: MUTE, background: 'none', border: 'none', cursor: 'pointer' }}>清除重簽</button>
-            </div>
-            <input
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="簽核意見（選填，如：同意）"
-              style={{ width: '100%', padding: '9px 10px', border: '1px solid #D9CDB8', borderRadius: 4, fontSize: 14, marginTop: 8, boxSizing: 'border-box' }}
-            />
-            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-              <button onClick={doSign} disabled={busy} style={{ flex: 1, background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 4, padding: 11, fontSize: 15, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>
-                {busy ? '處理中…' : '送出簽核'}
-              </button>
-              <button onClick={() => { setRejectOpen(true); setMsg(''); }} disabled={busy} style={{ background: 'none', color: '#b00', border: '1px solid #e0b4b4', borderRadius: 4, padding: '11px 16px', fontSize: 14, cursor: 'pointer' }}>
-                退回
-              </button>
-            </div>
+            {/* 有預存簽名：綠色主鍵一鍵蓋章（§1-6） */}
+            {canStamp && (
+              <div style={{ marginBottom: showCanvas ? 16 : 0 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>你已設定預存簽名，可直接完成</div>
+                <button onClick={doSignStamp} disabled={busy} style={{ width: '100%', background: busy ? MUTE : '#2D5F4E', color: '#fff', border: 'none', borderRadius: 4, padding: 12, fontSize: 15, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>
+                  {busy ? '處理中…' : '同意並蓋預存簽名'}
+                </button>
+                <div style={{ display: 'flex', gap: 14, marginTop: 10, alignItems: 'center' }}>
+                  {!handwriteOpen && (
+                    <button onClick={() => { setHandwriteOpen(true); setMsg(''); }} disabled={busy} style={{ fontSize: 13, color: WINE, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>改用手寫簽名</button>
+                  )}
+                  <button onClick={() => { setRejectOpen(true); setMsg(''); }} disabled={busy} style={{ fontSize: 13, color: '#b00', background: 'none', border: 'none', cursor: 'pointer' }}>退回</button>
+                </div>
+              </div>
+            )}
+
+            {/* 手寫簽名：無預存簽名時直接顯示；有預存簽名時點「改用手寫」才展開 */}
+            {showCanvas && (
+              <>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>在下方框內手寫你的簽名</div>
+                <canvas
+                  ref={canvasRef}
+                  style={{ width: '100%', height: 160, border: '1px dashed #C9A961', borderRadius: 4, touchAction: 'none', background: '#FFFDF8' }}
+                />
+                <div style={{ marginTop: 6 }}>
+                  <button onClick={() => padRef.current?.clear()} style={{ fontSize: 13, color: MUTE, background: 'none', border: 'none', cursor: 'pointer' }}>清除重簽</button>
+                </div>
+                <input
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="簽核意見（選填，如：同意）"
+                  style={{ width: '100%', padding: '9px 10px', border: '1px solid #D9CDB8', borderRadius: 4, fontSize: 14, marginTop: 8, boxSizing: 'border-box' }}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 13, color: '#4A413A', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={saveAsStored} onChange={(e) => setSaveAsStored(e.target.checked)} style={{ width: 16, height: 16 }} />
+                  存為我的預存簽名（日後可一鍵簽核）
+                </label>
+                <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                  <button onClick={doSign} disabled={busy} style={{ flex: 1, background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 4, padding: 11, fontSize: 15, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>
+                    {busy ? '處理中…' : '送出簽核'}
+                  </button>
+                  <button onClick={() => { setRejectOpen(true); setMsg(''); }} disabled={busy} style={{ background: 'none', color: '#b00', border: '1px solid #e0b4b4', borderRadius: 4, padding: '11px 16px', fontSize: 14, cursor: 'pointer' }}>
+                    退回
+                  </button>
+                </div>
+              </>
+            )}
 
             {/* 退回確認：代價高（整份停簽、已簽者需重簽、目前無法重編重送），需明確確認 */}
             {rejectOpen && (

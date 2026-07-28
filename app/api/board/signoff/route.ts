@@ -15,6 +15,7 @@ import { resolveClientIp } from '@/lib/ip-resolve';
 import { hashIp } from '@/lib/ip-hash';
 import { jsonResp, isSameOrigin } from '@/lib/signoff/http';
 import { rateLimit } from '@/lib/signoff/rate-limit';
+import { canInitiateSettlementSignoff } from '@/lib/signoff/permission';
 import {
   SOURCE_ALLOWED_MIMES,
   MAX_SOURCE_BYTES,
@@ -30,6 +31,7 @@ import {
 import { computeSlotLayout } from '@/lib/signoff/layout';
 import { computeAssignmentManifestSha256 } from '@/lib/signoff/manifest';
 import { generateSignoffSheet } from '@/lib/signoff/pdf';
+import { notifyApprovalRequested } from '@/lib/board/signoff_notify';
 import {
   createSignoffDocument,
   downloadObject,
@@ -61,6 +63,9 @@ const createSchema = z.object({
     .string()
     .refine((v) => (DEPT_IDS as string[]).includes(v))
     .optional(),
+  // 對應結算單編號（0022），如 E118-S-2026-001；有帶值代表這張是「結算單請款簽核」，
+  // 發起人身分會再多驗一次（見下方 canInitiateSettlementSignoff）。一般經費簽核留空不受影響。
+  settlement_no: z.string().min(1).max(60).nullable().optional(),
   sources: z
     .array(
       z.object({
@@ -138,6 +143,14 @@ export async function POST(req: NextRequest) {
     );
   }
   const input = parsed.data;
+
+  // 結算單請款簽核（帶 settlement_no）：僅財務長 / 班代可發起（0022 拍板決策）。
+  // 前端按鈕已依角色隱藏，這裡是唯一權威判斷——不能只靠前端隱藏就當作驗證完成。
+  if (input.settlement_no) {
+    if (!canInitiateSettlementSignoff({ username: session.username, home_dept_id: session.home_dept_id })) {
+      return jsonResp({ error: '僅財務長或班代可發起結算單請款簽核' }, 403, traceId);
+    }
+  }
 
   // 每個附件：mime 白名單 + path 必須完全等同 server 發出的格式
   // （不可用 startsWith：`incoming/A/../B/x.pdf` 會通過前綴檢查但被 URL 正規化成他人路徑）
@@ -259,6 +272,7 @@ export async function POST(req: NextRequest) {
       signoff_sheet_object_path: sheetPath,
       assignment_manifest_sha256: manifest,
       flow_type: 'parallel',
+      settlement_no: input.settlement_no ?? null,
     },
     assignments,
     audit: {
@@ -280,5 +294,29 @@ export async function POST(req: NextRequest) {
     by: session.username,
     assignees: ids.length,
   });
+
+  // #5：只在「本次真的新建」時才推 LINE 卡片。signoff_create_document 具
+  // client_request_id idempotency——route 於呼叫前自產 docId（sheet 路徑需要），RPC
+  // 對「新建」以 COALESCE(帶入 id, gen) 回存我們帶入的 docId；對「重試命中既有單」回
+  // 原單 id（另一顆 UUID）。故 documentId===docId ⇒ 新建；!== ⇒ 重試命中，跳過通知
+  // （不重發卡片、不旋轉既有 token）。此判斷只讀 RPC 既有回傳契約，未改 RPC / migration。
+  const isNewlyCreated = documentId === docId;
+
+  if (isNewlyCreated) {
+    // 建單完成 → 為每位待簽幹部產 magic token 並推 LINE 卡片（規格 §1-3）。
+    // 沿用 line_push 慣例：await 但失敗只 log、絕不連坐建單（201 照回）。await 而非
+    // detached，是因為 serverless 回應後 lambda 可能凍結、來不及寫 token / 送通知。
+    try {
+      const notify = await notifyApprovalRequested(documentId);
+      if (!notify.ok) {
+        console.error('[signoff.create.notify_failed]', { traceId, reason: notify.reason, detail: notify.detail });
+      }
+    } catch (e) {
+      console.error('[signoff.create.notify_threw]', { traceId, e: (e as Error).message });
+    }
+  } else {
+    console.info('[signoff.create.idempotent_hit]', { traceId, document_id: documentId });
+  }
+
   return jsonResp({ document_id: documentId }, 201, traceId);
 }
