@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'next/navigation';
 import SignaturePad from 'signature_pad';
 import Breadcrumb from '@/components/Breadcrumb';
@@ -9,9 +9,13 @@ import AttachmentGrid, { type ViewAttachment } from '@/components/signoff/Attach
 import SupplementForm from '@/components/signoff/SupplementForm';
 
 const WINE = '#8B1F2F';
+const WINE_DEEP = '#6B1622';
+const GOLD = '#C9A961';
 const CREAM = '#FAF7F2';
 const INK = '#1A1612';
 const MUTE = '#8A7F73';
+const GREEN = '#2D5F4E';
+const LINE = '#E5DCCB';
 
 type Assignment = {
   id?: string;
@@ -55,6 +59,40 @@ const DOC_STATUS: Record<string, string> = {
 };
 const A_STATUS: Record<string, string> = { pending: '待簽', signed: '✅ 已簽', rejected: '已退回' };
 
+// 狀態徽章：色點 + 短標，取代舊的一行純文字，讓狀態一眼可辨（UI-only）
+const STATUS_BADGE: Record<string, { label: string; bg: string; fg: string; dot: string }> = {
+  routing: { label: '簽核中', bg: '#FBF3D9', fg: '#7A5C00', dot: '#C9852E' },
+  approved: { label: '已核准', bg: '#E7F1EC', fg: '#1F5140', dot: GREEN },
+  rejected: { label: '已退回', bg: '#FDECEC', fg: '#9B1B1B', dot: '#B00020' },
+  voided: { label: '已作廢', bg: '#EFECE7', fg: '#6B6258', dot: MUTE },
+};
+
+// 全域樣式（bottom sheet 進場動畫 + 減動偏好）
+const SHEET_KEYFRAMES = `
+@keyframes e118SheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes e118Fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){
+  [data-e118-sheet],[data-e118-backdrop]{animation:none !important}
+}
+`;
+
+const cardStyle: CSSProperties = {
+  background: '#fff',
+  border: `1px solid ${LINE}`,
+  borderRadius: 14,
+  padding: '18px 18px 20px',
+  boxShadow: '0 1px 2px rgba(26,22,18,0.04)',
+};
+const sectionH2: CSSProperties = {
+  fontSize: 13.5,
+  fontWeight: 700,
+  letterSpacing: '.05em',
+  color: MUTE,
+  borderBottom: `1px solid ${LINE}`,
+  paddingBottom: 8,
+  margin: 0,
+};
+
 export default function SignoffDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -70,8 +108,13 @@ export default function SignoffDetailPage() {
   const [handwriteOpen, setHandwriteOpen] = useState(false);
   // 手寫流程「存為預存簽名」勾選，預設勾選（§1-6）
   const [saveAsStored, setSaveAsStored] = useState(true);
+  // UI：簽核動作改「主按鈕 → 底部彈框」，簽名/退回都在 sheet 內完成
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // UI：簽核表 PDF 大框改為可收合，預設收起，不擠壓主流程
+  const [pdfOpen, setPdfOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
 
   async function load() {
     const res = await fetch(`/api/board/signoff/${id}`);
@@ -82,7 +125,8 @@ export default function SignoffDetailPage() {
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
 
-  // signature pad（只在有待簽項時掛載）
+  // signature pad：canvas 現在只在 sheet 開啟且進入手寫時才存在，
+  // 故把 sheetOpen / rejectOpen 一併納入 deps，canvas 現身時才初始化 signature_pad。
   useEffect(() => {
     if (!d?.my_pending_assignment_id || !canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -92,9 +136,26 @@ export default function SignoffDetailPage() {
     canvas.getContext('2d')?.scale(ratio, ratio);
     padRef.current = new SignaturePad(canvas, { penColor: INK, backgroundColor: 'rgba(0,0,0,0)' });
     return () => { padRef.current?.off(); padRef.current = null; };
-    // 有預存簽名時 canvas 一開始不掛載，改用手寫展開後才存在 → 需把 handwriteOpen /
-    // has_stored_signature 納入 deps，canvas 現身時才初始化 signature_pad。
-  }, [d?.my_pending_assignment_id, d?.has_stored_signature, handwriteOpen]);
+  }, [d?.my_pending_assignment_id, d?.has_stored_signature, handwriteOpen, rejectOpen, sheetOpen]);
+
+  // sheet 開啟時鎖背景捲動 + 支援 Esc 關閉（iOS bottom sheet 質感）
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    sheetRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setSheetOpen(false); setRejectOpen(false); setHandwriteOpen(false); setMsg(''); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [sheetOpen]);
+
+  function openSheet() { setSheetOpen(true); setMsg(''); }
+  function closeSheet() { setSheetOpen(false); setRejectOpen(false); setHandwriteOpen(false); setMsg(''); }
 
   async function doSign() {
     setMsg(null);
@@ -199,40 +260,102 @@ export default function SignoffDetailPage() {
 
   const isPublic = d.public === true;
   const signedCount = d.assignments.filter((a) => a.status === 'signed').length;
-  // 有預存簽名且輪到我簽 → 露一鍵蓋章鍵；手寫 canvas 預設收合，點「改用手寫」才展開。
-  const canStamp = !isPublic && !!d.has_stored_signature && !!d.my_pending_assignment_id && d.doc.status === 'routing';
-  const showCanvas = !canStamp || handwriteOpen;
+  const attaches = d.attachments ?? [];
+  const badge = STATUS_BADGE[d.doc.status];
+  // 輪到我簽且單據仍在 routing → 顯示 sticky 主按鈕 / sheet
+  const canSignNow = !isPublic && !!d.my_pending_assignment_id && d.doc.status === 'routing';
+  // 有預存簽名 → sheet 內先露「一鍵蓋章」選單；點「改用手寫」才展開 canvas
+  const canStamp = canSignNow && !!d.has_stored_signature;
+  const sheetShowReject = rejectOpen;
+  const sheetShowMenu = canStamp && !handwriteOpen && !rejectOpen;
+  const sheetShowCanvas = !rejectOpen && (!canStamp || handwriteOpen);
+
+  // 摘要卡的資訊列（只列有值的欄位）
+  const infoRows: { label: string; value: string }[] = [];
+  if (d.doc.purpose) infoRows.push({ label: '用途', value: d.doc.purpose });
+  if (d.doc.applicant) infoRows.push({ label: '申請人', value: d.doc.applicant });
+  if (d.doc.owner_dept_id) infoRows.push({ label: '部門', value: deptInfo(d.doc.owner_dept_id).name });
+  infoRows.push({ label: '建立', value: d.doc.created_at.slice(0, 10) });
+  if (isPublic && d.doc.completed_at) infoRows.push({ label: '核准完成', value: d.doc.completed_at.slice(0, 10) });
 
   return (
     <>
+    <style>{SHEET_KEYFRAMES}</style>
     {breadcrumb}
-    <main style={{ minHeight: '100vh', background: CREAM, color: INK, padding: '24px 16px' }}>
+    <main style={{ minHeight: '100vh', background: CREAM, color: INK, padding: '20px 16px 8px' }}>
       <div style={{ maxWidth: 620, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 20, color: WINE, marginBottom: 4 }}>{d.doc.title}</h1>
-        <p style={{ color: MUTE, fontSize: 14, marginTop: 0 }}>
-          {DOC_STATUS[d.doc.status] ?? d.doc.status}
-          {d.doc.amount ? ` · ${d.doc.currency} ${d.doc.amount}` : ''}
-          {d.doc.applicant ? ` · 申請人：${d.doc.applicant}` : ''}
-        </p>
-        {d.doc.purpose && <p style={{ fontSize: 14 }}>用途：{d.doc.purpose}</p>}
 
-        {/* 訪客公開摘要：部門 + 建立/核准完成時間 */}
-        {isPublic && (
-          <p style={{ color: MUTE, fontSize: 13, marginTop: 0 }}>
-            {d.doc.owner_dept_id ? `部門：${deptInfo(d.doc.owner_dept_id).name}　` : ''}
-            建立：{d.doc.created_at.slice(0, 10)}
-            {d.doc.completed_at ? `　核准完成：${d.doc.completed_at.slice(0, 10)}` : ''}
-          </p>
-        )}
+        {/* ── 單據摘要（置頂）：金額醒目、標題/用途/申請人/部門一眼看完 ── */}
+        <section style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: badge?.bg ?? '#EFECE7', color: badge?.fg ?? MUTE,
+              fontSize: 12.5, fontWeight: 700, padding: '4px 11px', borderRadius: 999,
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: badge?.dot ?? MUTE }} />
+              {badge?.label ?? DOC_STATUS[d.doc.status] ?? d.doc.status}
+            </span>
+            {d.doc.owner_dept_id && (
+              <span style={{ fontSize: 12.5, color: MUTE }}>{deptInfo(d.doc.owner_dept_id).name}板</span>
+            )}
+          </div>
+
+          <h1 style={{ fontSize: 20, lineHeight: 1.35, color: WINE, margin: 0, fontWeight: 700 }}>{d.doc.title}</h1>
+
+          {d.doc.amount && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 12.5, color: MUTE, letterSpacing: '.04em', marginBottom: 3 }}>金額</div>
+              <div style={{ fontSize: 27, fontWeight: 800, color: INK, lineHeight: 1.05, letterSpacing: '-.01em' }}>
+                <span style={{ fontSize: 15, fontWeight: 600, color: MUTE, marginRight: 6 }}>{d.doc.currency}</span>
+                {d.doc.amount}
+              </div>
+            </div>
+          )}
+
+          {infoRows.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '10px 16px', marginTop: 18, fontSize: 16, lineHeight: 1.55 }}>
+              {infoRows.map((r) => (
+                <Fragment key={r.label}>
+                  <span style={{ color: MUTE, fontSize: 13.5, paddingTop: 2 }}>{r.label}</span>
+                  <span style={{ color: INK, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{r.value}</span>
+                </Fragment>
+              ))}
+            </div>
+          )}
+
+          {/* 附件縮圖：讓簽核者一進來就知道有哪些憑證，點一下捲到完整附件區 */}
+          {!isPublic && attaches.length > 0 && (
+            <a href="#attachments" style={{
+              display: 'flex', alignItems: 'center', gap: 10, marginTop: 18, paddingTop: 16,
+              borderTop: `1px solid ${LINE}`, textDecoration: 'none',
+            }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {attaches.slice(0, 4).map((a, i) => {
+                  const isImg = (a.mime ?? '').startsWith('image/');
+                  return isImg && a.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- Supabase 短效 signed URL
+                    <img key={i} src={a.url} alt="" style={{ width: 46, height: 46, objectFit: 'cover', borderRadius: 8, border: `1px solid ${LINE}`, background: '#F4EFE6', display: 'block' }} />
+                  ) : (
+                    <div key={i} style={{ width: 46, height: 46, borderRadius: 8, border: `1px solid ${LINE}`, background: '#F4EFE6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📄</div>
+                  );
+                })}
+              </div>
+              <span style={{ fontSize: 14, color: WINE, fontWeight: 600 }}>
+                {attaches.length} 份附件{attaches.length > 4 ? `（另 ${attaches.length - 4}）` : ''} ›
+              </span>
+            </a>
+          )}
+        </section>
 
         {/* 已退回：橫幅置頂，並提供誤觸復原。退回時其他人的簽名未被更動，
             所以撤銷只需把狀態轉回去，不必重建文件、不必重簽。 */}
         {!isPublic && d.doc.status === 'rejected' && (() => {
           const rej = d.assignments.find((a) => a.status === 'rejected');
           return (
-            <div style={{ marginTop: 14, padding: '13px 15px', background: '#FDF3F3', border: '1px solid #e0b4b4', borderLeft: '5px solid #b00', borderRadius: 6 }}>
-              <div style={{ fontWeight: 600, color: '#b00', marginBottom: 5 }}>這張單已被退回，簽核已停止</div>
-              <div style={{ fontSize: 13, color: '#4A413A', lineHeight: 1.8 }}>
+            <div style={{ marginTop: 14, padding: '14px 16px', background: '#FDF3F3', border: '1px solid #e0b4b4', borderLeft: '5px solid #b00', borderRadius: 8 }}>
+              <div style={{ fontWeight: 700, color: '#b00', marginBottom: 5, fontSize: 15 }}>這張單已被退回，簽核已停止</div>
+              <div style={{ fontSize: 13.5, color: '#4A413A', lineHeight: 1.8 }}>
                 {rej ? `${rej.signer_username ?? '（未知）'}（${rej.role_label}）` : '某位簽核人'}
                 {rej?.acted_at ? ` 於 ${rej.acted_at.slice(0, 16).replace('T', ' ')}` : ''} 退回
                 {rej?.reject_reason ? `，理由：${rej.reject_reason}` : ''}。
@@ -246,7 +369,7 @@ export default function SignoffDetailPage() {
                   <button
                     onClick={doUndoReject}
                     disabled={busy}
-                    style={{ marginTop: 10, background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 5, padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}
+                    style={{ marginTop: 12, minHeight: 44, background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 15, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}
                   >
                     {busy ? '處理中…' : '撤銷退回，恢復簽核'}
                   </button>
@@ -261,38 +384,21 @@ export default function SignoffDetailPage() {
           );
         })()}
 
-        {/* 頂部快捷列：簽核表預覽有 420px 高，補充入口若只放在下方會被推出視線外 */}
+        {/* 頂部快捷列：補充入口 */}
         {!isPublic && d.can_supplement && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              flexWrap: 'wrap',
-              marginTop: 14,
-              padding: '11px 14px',
-              background: '#FFF8E7',
-              border: '1px solid #E8D9A8',
-              borderRadius: 6,
-            }}
-          >
-            <span style={{ fontSize: 13, color: '#7a5c00', lineHeight: 1.6 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            flexWrap: 'wrap', marginTop: 14, padding: '12px 15px',
+            background: '#FFF8E7', border: '1px solid #E8D9A8', borderRadius: 8,
+          }}>
+            <span style={{ fontSize: 13, color: '#7a5c00', lineHeight: 1.6, flex: '1 1 200px' }}>
               要補報價單、請款單或說明嗎？補充不會更動已送出的內容，已簽核的人不需重簽。
             </span>
-            <a
-              href="#supplements"
-              style={{
-                background: WINE,
-                color: '#fff',
-                textDecoration: 'none',
-                borderRadius: 5,
-                padding: '9px 16px',
-                fontSize: 14,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <a href="#supplements" style={{
+              background: WINE, color: '#fff', textDecoration: 'none', borderRadius: 8,
+              padding: '10px 16px', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', minHeight: 44,
+              display: 'inline-flex', alignItems: 'center',
+            }}>
               ＋ 補充資料
             </a>
           </div>
@@ -300,33 +406,55 @@ export default function SignoffDetailPage() {
 
         {/* 原件（簽核表 / 附件 / 最終 PDF）僅登入幹部可見 */}
         {isPublic ? (
-          <p style={{ fontSize: 13, color: MUTE, background: '#F6F0E4', border: '1px solid #E8DFD0', borderRadius: 6, padding: '10px 12px', marginTop: 12 }}>
+          <p style={{ fontSize: 13.5, color: MUTE, background: '#F6F0E4', border: '1px solid #E8DFD0', borderRadius: 8, padding: '12px 14px', marginTop: 14, lineHeight: 1.7 }}>
             原始簽核表與附件僅限幹部登入檢視。
             <a href={`/board/login?next=/finance/signoff/${id}`} style={{ color: WINE, fontWeight: 600, marginLeft: 6 }}>幹部登入 →</a>
           </p>
         ) : (
           <>
-            {/* 內嵌框優先顯示「最終 PDF（含簽名）」；尚未產生（簽核中／極少數合成失敗）才退回空白簽核表 */}
+            {/* 原始附件：簽核者真正要看的憑證，擺在 PDF 之前 */}
+            <section id="attachments" style={{ scrollMarginTop: 16, marginTop: 24 }}>
+              <h2 style={sectionH2}>原始附件{attaches.length ? `（${attaches.length}）` : ''}</h2>
+              <div style={{ marginTop: 12 }}>
+                <AttachmentGrid items={attaches} />
+              </div>
+            </section>
+
+            {/* 簽核表 PDF：改為可收合，預設收起，不再用 420px 大白框擠壓主流程 */}
             {(d.urls?.final || d.urls?.sheet) && (
-              <>
-                <p style={{ fontSize: 12, color: MUTE, margin: '10px 0 4px' }}>
-                  {d.urls?.final ? '簽核表（含各幹部簽名）' : '簽核表（尚未完成簽核，未含簽名）'}
-                </p>
-                <iframe
-                  src={d.urls?.final || d.urls?.sheet || ''}
-                  style={{ width: '100%', height: 420, border: '1px solid #E5DCCB', borderRadius: 4, background: '#fff' }}
-                  title={d.urls?.final ? '簽核表（含簽名）' : '簽核表'}
-                />
-              </>
+              <section style={{ marginTop: 18 }}>
+                <button
+                  type="button"
+                  onClick={() => setPdfOpen((v) => !v)}
+                  aria-expanded={pdfOpen}
+                  style={{
+                    width: '100%', minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: 10, padding: '12px 15px', background: '#fff', border: `1px solid ${LINE}`,
+                    borderRadius: pdfOpen ? '10px 10px 0 0' : 10, cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+                    <span style={{ fontSize: 17 }}>📄</span>
+                    <span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>
+                      {d.urls?.final ? '簽核表（含各幹部簽名）' : '簽核表（尚未完成簽核，未含簽名）'}
+                    </span>
+                  </span>
+                  <span style={{ fontSize: 13, color: WINE, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {pdfOpen ? '收合 ▲' : '展開查看 ▼'}
+                  </span>
+                </button>
+                {pdfOpen && (
+                  <iframe
+                    src={d.urls?.final || d.urls?.sheet || ''}
+                    style={{ width: '100%', height: 460, border: `1px solid ${LINE}`, borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#fff', display: 'block' }}
+                    title={d.urls?.final ? '簽核表（含簽名）' : '簽核表'}
+                  />
+                )}
+              </section>
             )}
-            <h2 style={{ fontSize: 15, color: MUTE, borderBottom: '1px solid #E5DCCB', paddingBottom: 6, marginTop: 22 }}>
-              原始附件{d.attachments?.length ? `（${d.attachments.length}）` : ''}
-            </h2>
-            <div style={{ marginTop: 10 }}>
-              <AttachmentGrid items={d.attachments ?? []} />
-            </div>
+
             {d.urls?.final && (
-              <div style={{ fontSize: 13, marginTop: 10 }}>
+              <div style={{ fontSize: 14, marginTop: 12 }}>
                 <a href={d.urls.final} target="_blank" rel="noreferrer" style={{ color: WINE, fontWeight: 600 }}>⬇ 下載最終 PDF（含簽名）</a>
               </div>
             )}
@@ -336,12 +464,12 @@ export default function SignoffDetailPage() {
         {/* 補充資料（0019）：append-only，不動原始附件，故已簽者無須重簽 */}
         {!d.public && (d.supplements?.length || d.can_supplement) ? (
           <div id="supplements" style={{ scrollMarginTop: 16 }}>
-            <h2 style={{ fontSize: 15, color: MUTE, borderBottom: '1px solid #E5DCCB', paddingBottom: 6, marginTop: 22 }}>
+            <h2 style={{ ...sectionH2, marginTop: 24 }}>
               補充資料{d.supplements?.length ? `（${d.supplements.length}）` : ''}
             </h2>
 
             {d.supplements?.map((sup) => (
-              <div key={sup.id} style={{ marginTop: 12, padding: 12, background: '#fff', border: '1px solid #E5DCCB', borderLeft: `3px solid ${WINE}`, borderRadius: 4 }}>
+              <div key={sup.id} style={{ marginTop: 12, padding: 13, background: '#fff', border: `1px solid ${LINE}`, borderLeft: `3px solid ${WINE}`, borderRadius: 8 }}>
                 <div style={{ fontSize: 12, color: MUTE, marginBottom: 6 }}>
                   {sup.added_by_name ?? '（未知）'} 於 {sup.created_at.slice(0, 16).replace('T', ' ')} 補充
                   {sup.doc_status_at_add === 'approved'
@@ -351,7 +479,7 @@ export default function SignoffDetailPage() {
                       : ''}
                 </div>
                 {sup.note && (
-                  <div style={{ fontSize: 14, color: INK, lineHeight: 1.8, marginBottom: sup.attachments.length ? 10 : 0, whiteSpace: 'pre-wrap' }}>
+                  <div style={{ fontSize: 15, color: INK, lineHeight: 1.8, marginBottom: sup.attachments.length ? 10 : 0, whiteSpace: 'pre-wrap' }}>
                     {sup.note}
                   </div>
                 )}
@@ -371,74 +499,176 @@ export default function SignoffDetailPage() {
           </div>
         ) : null}
 
-        {/* 簽核狀態 */}
-        <h2 style={{ fontSize: 15, color: MUTE, borderBottom: '1px solid #E5DCCB', paddingBottom: 6, marginTop: 22 }}>簽核進度</h2>
-        {d.assignments.map((a, i) => (
-          <div key={a.id ?? `${a.role_label}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F0E9DC', fontSize: 14 }}>
-            <span>{a.role_label}：{a.signer_username ?? '—'}</span>
-            <span style={{ color: a.status === 'signed' ? '#2D5F4E' : a.status === 'rejected' ? '#b00' : MUTE }}>
-              {A_STATUS[a.status] ?? a.status}{a.reject_reason ? `（${a.reject_reason}）` : ''}
-              {a.acted_at ? ` · ${a.acted_at.slice(0, 10)}` : ''}
-            </span>
-          </div>
-        ))}
-
-        {/* 我要簽 */}
-        {d.my_pending_assignment_id && d.doc.status === 'routing' && (
-          <div style={{ marginTop: 22, padding: 14, background: '#fff', border: `1px solid ${WINE}`, borderRadius: 6 }}>
-            {/* 有預存簽名：綠色主鍵一鍵蓋章（§1-6） */}
-            {canStamp && (
-              <div style={{ marginBottom: showCanvas ? 16 : 0 }}>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>你已設定預存簽名，可直接完成</div>
-                <button onClick={doSignStamp} disabled={busy} style={{ width: '100%', background: busy ? MUTE : '#2D5F4E', color: '#fff', border: 'none', borderRadius: 4, padding: 12, fontSize: 15, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>
-                  {busy ? '處理中…' : '同意並蓋預存簽名'}
-                </button>
-                <div style={{ display: 'flex', gap: 14, marginTop: 10, alignItems: 'center' }}>
-                  {!handwriteOpen && (
-                    <button onClick={() => { setHandwriteOpen(true); setMsg(''); }} disabled={busy} style={{ fontSize: 13, color: WINE, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>改用手寫簽名</button>
-                  )}
-                  <button onClick={() => { setRejectOpen(true); setMsg(''); }} disabled={busy} style={{ fontSize: 13, color: '#b00', background: 'none', border: 'none', cursor: 'pointer' }}>退回</button>
-                </div>
+        {/* 簽核進度 */}
+        <section style={{ marginTop: 24 }}>
+          <h2 style={sectionH2}>簽核進度</h2>
+          <div style={{ marginTop: 4 }}>
+            {d.assignments.map((a, i) => (
+              <div key={a.id ?? `${a.role_label}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderBottom: '1px solid #F0E9DC', fontSize: 15 }}>
+                <span>{a.role_label}：{a.signer_username ?? '—'}</span>
+                <span style={{ textAlign: 'right', color: a.status === 'signed' ? GREEN : a.status === 'rejected' ? '#b00' : MUTE }}>
+                  {A_STATUS[a.status] ?? a.status}{a.reject_reason ? `（${a.reject_reason}）` : ''}
+                  {a.acted_at ? ` · ${a.acted_at.slice(0, 10)}` : ''}
+                </span>
               </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 管理動作（僅登入幹部；訪客公開摘要不顯示） */}
+        {!isPublic && (
+          <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button onClick={doNudge} style={{ minHeight: 40, fontSize: 13.5, color: WINE, background: 'none', border: '1px solid #D9CDB8', borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }}>催簽 / 看誰沒簽</button>
+            <button onClick={doVoid} style={{ minHeight: 40, fontSize: 13.5, color: MUTE, background: 'none', border: `1px solid ${LINE}`, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }}>作廢（限班代）</button>
+            {d.can_delete && (
+              <button onClick={doDelete} disabled={busy} style={{ minHeight: 40, fontSize: 13.5, color: '#fff', background: '#b00', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: busy ? 'default' : 'pointer' }}>刪除</button>
+            )}
+          </div>
+        )}
+
+        {/* 頁面層訊息（sheet 關閉時；催簽 / 作廢等回饋） */}
+        {msg && !sheetOpen && (
+          <p style={{ marginTop: 14, color: INK, background: '#FBF3D9', border: '1px solid #E8D89A', borderRadius: 8, padding: '10px 12px', fontSize: 14 }}>{msg}</p>
+        )}
+
+        <p style={{ marginTop: 24 }}><a href={isPublic ? '/finance' : '/finance/signoff'} style={{ color: MUTE, fontSize: 13.5 }}>{isPublic ? '← 回經費中心' : '← 回簽核清單'}</a></p>
+
+        {/* ── sticky 主按鈕：只在「輪到我簽 + routing」時出現，點開底部彈框 ── */}
+        {canSignNow && (
+          <div style={{
+            position: 'sticky', bottom: 0, zIndex: 20, margin: '20px -16px 0',
+            padding: '12px 16px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+            background: 'rgba(250,247,242,0.86)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+            borderTop: `1px solid ${LINE}`,
+          }}>
+            <button
+              onClick={openSheet}
+              style={{
+                width: '100%', minHeight: 54, background: WINE, color: '#fff', border: 'none',
+                borderRadius: 12, fontSize: 18, fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 6px 18px rgba(139,31,47,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              簽核這張單
+            </button>
+            <div style={{ textAlign: 'center', fontSize: 12, color: MUTE, marginTop: 7 }}>
+              {canStamp ? '可一鍵蓋預存簽名，或改手寫' : '手寫簽名，或退回'}
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+
+    {/* ── 底部彈框（bottom sheet）：簽名 / 退回都在這裡完成 ── */}
+    {sheetOpen && canSignNow && (
+      <div
+        data-e118-backdrop
+        onClick={closeSheet}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(20,15,12,0.45)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'e118Fade .2s ease',
+        }}
+      >
+        <div
+          ref={sheetRef}
+          data-e118-sheet
+          role="dialog"
+          aria-modal="true"
+          aria-label={sheetShowReject ? '退回這張單' : '簽核這張單'}
+          tabIndex={-1}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: '100%', maxWidth: 620, background: CREAM, borderRadius: '18px 18px 0 0',
+            maxHeight: '90vh', overflowY: 'auto', padding: '0 18px',
+            paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
+            boxShadow: '0 -8px 40px rgba(0,0,0,0.25)', outline: 'none',
+            animation: 'e118SheetUp .3s cubic-bezier(.32,.72,0,1)',
+          }}
+        >
+          {/* sticky 頂欄：抓握條 + 標題 + 關閉 */}
+          <div style={{ position: 'sticky', top: 0, background: CREAM, paddingTop: 10, zIndex: 1 }}>
+            <div style={{ width: 40, height: 5, borderRadius: 3, background: '#D9CDB8', margin: '0 auto 12px' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: `1px solid ${LINE}` }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: INK }}>{sheetShowReject ? '退回這張單' : '簽核這張單'}</span>
+              <button onClick={closeSheet} aria-label="關閉" style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: '#EFE9DF', color: MUTE, fontSize: 17, cursor: 'pointer', flexShrink: 0 }}>✕</button>
+            </div>
+          </div>
+
+          <div style={{ paddingTop: 18 }}>
+            {/* 摘要提示，讓人在彈框裡也記得在簽什麼 */}
+            <div style={{ fontSize: 14, color: MUTE, lineHeight: 1.6, marginBottom: 16 }}>
+              <span style={{ color: INK, fontWeight: 600 }}>{d.doc.title}</span>
+              {d.doc.amount ? ` · ${d.doc.currency} ${d.doc.amount}` : ''}
+            </div>
+
+            {/* ① 選單：有預存簽名 → 一鍵蓋章為主，其餘為次選 */}
+            {sheetShowMenu && (
+              <>
+                <button onClick={doSignStamp} disabled={busy} style={{ width: '100%', minHeight: 54, background: busy ? MUTE : GREEN, color: '#fff', border: 'none', borderRadius: 12, padding: 14, fontSize: 18, fontWeight: 700, cursor: busy ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  {busy ? '處理中…' : '同意．蓋我的簽名'}
+                </button>
+                <p style={{ fontSize: 12.5, color: MUTE, textAlign: 'center', margin: '8px 0 0', lineHeight: 1.6 }}>
+                  會用你先前存下的預存簽名完成這張單
+                </p>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0' }}>
+                  <span style={{ flex: 1, height: 1, background: LINE }} />
+                  <span style={{ fontSize: 12.5, color: MUTE }}>或</span>
+                  <span style={{ flex: 1, height: 1, background: LINE }} />
+                </div>
+
+                <button onClick={() => { setHandwriteOpen(true); setMsg(''); }} disabled={busy} style={{ width: '100%', minHeight: 48, background: '#fff', color: WINE, border: `1px solid ${WINE}`, borderRadius: 10, padding: 12, fontSize: 15.5, fontWeight: 600, cursor: 'pointer', marginBottom: 10 }}>
+                  改用手寫簽名
+                </button>
+                <button onClick={() => { setRejectOpen(true); setMsg(''); }} disabled={busy} style={{ width: '100%', minHeight: 48, background: 'none', color: '#b00', border: '1px solid #e0b4b4', borderRadius: 10, padding: 12, fontSize: 15.5, fontWeight: 600, cursor: 'pointer' }}>
+                  退回這張單
+                </button>
+              </>
             )}
 
-            {/* 手寫簽名：無預存簽名時直接顯示；有預存簽名時點「改用手寫」才展開 */}
-            {showCanvas && (
+            {/* ② 手寫簽名：無預存簽名時直接顯示；有預存簽名時點「改用手寫」才展開 */}
+            {sheetShowCanvas && (
               <>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>在下方框內手寫你的簽名</div>
+                {canStamp && (
+                  <button onClick={() => { setHandwriteOpen(false); setMsg(''); }} style={{ background: 'none', border: 'none', color: WINE, fontSize: 14, cursor: 'pointer', padding: '2px 0', marginBottom: 10 }}>
+                    ‹ 回上一步（改用一鍵蓋章）
+                  </button>
+                )}
+                <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 15.5 }}>在下方框內手寫你的簽名</div>
                 <canvas
                   ref={canvasRef}
-                  style={{ width: '100%', height: 160, border: '1px dashed #C9A961', borderRadius: 4, touchAction: 'none', background: '#FFFDF8' }}
+                  style={{ width: '100%', height: 180, border: '1px dashed #C9A961', borderRadius: 10, touchAction: 'none', background: '#FFFDF8', display: 'block' }}
                 />
-                <div style={{ marginTop: 6 }}>
-                  <button onClick={() => padRef.current?.clear()} style={{ fontSize: 13, color: MUTE, background: 'none', border: 'none', cursor: 'pointer' }}>清除重簽</button>
+                <div style={{ marginTop: 8 }}>
+                  <button onClick={() => padRef.current?.clear()} style={{ minHeight: 40, fontSize: 13.5, color: MUTE, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 2px' }}>清除重簽</button>
                 </div>
                 <input
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   placeholder="簽核意見（選填，如：同意）"
-                  style={{ width: '100%', padding: '9px 10px', border: '1px solid #D9CDB8', borderRadius: 4, fontSize: 14, marginTop: 8, boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '12px 12px', border: '1px solid #D9CDB8', borderRadius: 10, fontSize: 16, marginTop: 6, boxSizing: 'border-box' }}
                 />
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 13, color: '#4A413A', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={saveAsStored} onChange={(e) => setSaveAsStored(e.target.checked)} style={{ width: 16, height: 16 }} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, fontSize: 14, color: '#4A413A', cursor: 'pointer', minHeight: 44 }}>
+                  <input type="checkbox" checked={saveAsStored} onChange={(e) => setSaveAsStored(e.target.checked)} style={{ width: 20, height: 20, flexShrink: 0 }} />
                   存為我的預存簽名（日後可一鍵簽核）
                 </label>
-                <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-                  <button onClick={doSign} disabled={busy} style={{ flex: 1, background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 4, padding: 11, fontSize: 15, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>
-                    {busy ? '處理中…' : '送出簽核'}
-                  </button>
-                  <button onClick={() => { setRejectOpen(true); setMsg(''); }} disabled={busy} style={{ background: 'none', color: '#b00', border: '1px solid #e0b4b4', borderRadius: 4, padding: '11px 16px', fontSize: 14, cursor: 'pointer' }}>
-                    退回
-                  </button>
-                </div>
+                <button onClick={doSign} disabled={busy} style={{ width: '100%', minHeight: 54, marginTop: 16, background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 12, padding: 14, fontSize: 18, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>
+                  {busy ? '處理中…' : '送出簽核'}
+                </button>
+                <button onClick={() => { setRejectOpen(true); setMsg(''); }} disabled={busy} style={{ width: '100%', minHeight: 48, marginTop: 10, background: 'none', color: '#b00', border: '1px solid #e0b4b4', borderRadius: 10, padding: 12, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+                  改為退回
+                </button>
               </>
             )}
 
-            {/* 退回確認：代價高（整份停簽、已簽者需重簽、目前無法重編重送），需明確確認 */}
-            {rejectOpen && (
-              <div style={{ marginTop: 12, padding: 14, background: '#FDF3F3', border: '1px solid #e0b4b4', borderRadius: 6 }}>
-                <div style={{ fontWeight: 600, color: '#b00', marginBottom: 6 }}>確定要退回這張單嗎？</div>
-                <ul style={{ margin: '0 0 10px', paddingLeft: 20, fontSize: 12.5, color: '#4A413A', lineHeight: 1.9 }}>
+            {/* ③ 退回：代價高（整份停簽、已簽者需重簽、目前無法重編重送），理由必填 */}
+            {sheetShowReject && (
+              <>
+                <button onClick={() => { setRejectOpen(false); setRejectReason(''); setMsg(''); }} disabled={busy} style={{ background: 'none', border: 'none', color: WINE, fontSize: 14, cursor: 'pointer', padding: '2px 0', marginBottom: 12 }}>
+                  ‹ 我要繼續簽，不退回
+                </button>
+                <div style={{ fontWeight: 700, color: '#b00', marginBottom: 8, fontSize: 15.5 }}>退回前請確認</div>
+                <ul style={{ margin: '0 0 12px', paddingLeft: 20, fontSize: 13, color: '#4A413A', lineHeight: 1.9 }}>
                   <li>整份單會立刻停止簽核，其他人不能再簽</li>
                   {signedCount > 0 && <li>已簽核的 {signedCount} 位，簽名會失效、需要重簽</li>}
                   <li>目前退回後<strong>無法重新編輯送出</strong>，要重跑須請班代作廢後整張重開</li>
@@ -448,46 +678,28 @@ export default function SignoffDetailPage() {
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="退回原因（至少 4 個字，會顯示給發起人與其他簽核人）"
                   rows={3}
-                  style={{ width: '100%', padding: '9px 10px', border: '1px solid #e0b4b4', borderRadius: 4, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.7 }}
+                  style={{ width: '100%', padding: '12px 12px', border: '1px solid #e0b4b4', borderRadius: 10, fontSize: 16, boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.7 }}
                 />
-                <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                  <button
-                    onClick={doReject}
-                    disabled={busy || rejectReason.trim().length < 4}
-                    style={{ background: busy || rejectReason.trim().length < 4 ? '#c99' : '#b00', color: '#fff', border: 'none', borderRadius: 4, padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: busy || rejectReason.trim().length < 4 ? 'default' : 'pointer' }}
-                  >
-                    {busy ? '處理中…' : '確認退回'}
-                  </button>
-                  <button
-                    onClick={() => { setRejectOpen(false); setRejectReason(''); setMsg(''); }}
-                    disabled={busy}
-                    style={{ background: 'none', color: MUTE, border: '1px solid #D9CDB8', borderRadius: 4, padding: '10px 16px', fontSize: 14, cursor: 'pointer' }}
-                  >
-                    取消，我要繼續簽
-                  </button>
-                </div>
-              </div>
+                <button
+                  onClick={doReject}
+                  disabled={busy || rejectReason.trim().length < 4}
+                  style={{ width: '100%', minHeight: 54, marginTop: 12, background: busy || rejectReason.trim().length < 4 ? '#c99' : '#b00', color: '#fff', border: 'none', borderRadius: 12, padding: 14, fontSize: 17, fontWeight: 700, cursor: busy || rejectReason.trim().length < 4 ? 'default' : 'pointer' }}
+                >
+                  {busy ? '處理中…' : '確認退回'}
+                </button>
+              </>
             )}
-            <p style={{ fontSize: 11, color: MUTE, marginTop: 10, marginBottom: 0 }}>本簽署適用班級內部事務，不作為對外法律文件用途。</p>
-          </div>
-        )}
 
-        {/* 管理動作（僅登入幹部；訪客公開摘要不顯示） */}
-        {!isPublic && (
-          <div style={{ marginTop: 18, display: 'flex', gap: 14 }}>
-            <button onClick={doNudge} style={{ fontSize: 13, color: WINE, background: 'none', border: '1px solid #D9CDB8', borderRadius: 4, padding: '7px 12px', cursor: 'pointer' }}>催簽 / 看誰沒簽</button>
-            <button onClick={doVoid} style={{ fontSize: 13, color: MUTE, background: 'none', border: '1px solid #E5DCCB', borderRadius: 4, padding: '7px 12px', cursor: 'pointer' }}>作廢（限班代）</button>
-            {d.can_delete && (
-              <button onClick={doDelete} disabled={busy} style={{ fontSize: 13, color: '#fff', background: '#b00', border: 'none', borderRadius: 4, padding: '7px 12px', cursor: busy ? 'default' : 'pointer' }}>刪除</button>
+            {/* sheet 內訊息（簽署 / 退回錯誤就地顯示，不必捲到頁尾找） */}
+            {msg && (
+              <p style={{ marginTop: 14, color: INK, background: '#FBF3D9', border: '1px solid #E8D89A', borderRadius: 8, padding: '10px 12px', fontSize: 14 }}>{msg}</p>
             )}
+
+            <p style={{ fontSize: 11.5, color: MUTE, marginTop: 16, marginBottom: 4, textAlign: 'center', lineHeight: 1.6 }}>本簽署適用班級內部事務，不作為對外法律文件用途。</p>
           </div>
-        )}
-
-        {msg && <p style={{ marginTop: 14, color: INK, background: '#FBF3D9', border: '1px solid #E8D89A', borderRadius: 4, padding: '8px 10px', fontSize: 14 }}>{msg}</p>}
-
-        <p style={{ marginTop: 24 }}><a href={isPublic ? '/finance' : '/finance/signoff'} style={{ color: MUTE, fontSize: 13 }}>{isPublic ? '← 回經費中心' : '← 回簽核清單'}</a></p>
+        </div>
       </div>
-    </main>
+    )}
     </>
   );
 }
