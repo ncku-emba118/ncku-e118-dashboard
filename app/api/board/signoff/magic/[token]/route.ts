@@ -17,10 +17,18 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import crypto from 'node:crypto';
 import { signSession, COOKIE_NAME } from '@/lib/auth/jwt';
-import { getEnv } from '@/lib/env';
-import { MAGIC_TOKEN_RE } from '@/lib/signoff/constants';
+import { MAGIC_TOKEN_RE, MAGIC_TOKEN_TTL_MS } from '@/lib/signoff/constants';
 import { getAssignmentByMagicTokenHash } from '@/lib/signoff/dal';
 import { canRedeemAssignment } from '@/lib/signoff/redeem';
+
+/**
+ * magic 換發的 session 有效期＝連結有效期（14 天）。
+ *
+ * ⚠ 只作用在 magic 這條路徑：密碼登入仍走 env.SESSION_TTL_SECONDS（8h，不變）。
+ * 語意上「登入有效期＝連結有效期」最一致，故直接取 MAGIC_TOKEN_TTL_MS（連結 14 天 TTL）
+ * 換算成秒。JWT exp 與 cookie maxAge 都用這個值 → 兩者對齊，不會一先一後過期。
+ */
+const MAGIC_SESSION_TTL_SECONDS = Math.floor(MAGIC_TOKEN_TTL_MS / 1000);
 
 /** 比照 login route：secure 判斷涵蓋 reverse-proxy + prod env（__Host- 前綴需 Secure）。 */
 function isHttpsContext(req: NextRequest): boolean {
@@ -72,13 +80,12 @@ export async function GET(
       role: data.account.role,
       home_dept_id: data.account.home_dept_id,
       session_version: data.account.session_version,
-    });
+    }, MAGIC_SESSION_TTL_SECONDS);
   } catch (e) {
     console.error('[signoff.magic.sign_failed]', { e: (e as Error).message });
     return redirectToLogin(req);
   }
 
-  const env = getEnv();
   const res = NextResponse.redirect(
     new URL(`/finance/signoff/${data.documentId}`, req.url),
   );
@@ -93,7 +100,7 @@ export async function GET(
     secure: isHttpsContext(req),
     sameSite: 'lax',
     path: '/',
-    maxAge: env.SESSION_TTL_SECONDS,
+    maxAge: MAGIC_SESSION_TTL_SECONDS,
   });
   return res;
 }

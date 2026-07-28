@@ -93,6 +93,20 @@ const sectionH2: CSSProperties = {
   margin: 0,
 };
 
+// session 過期後的統一引導文案：刻意不分「找不到單」或「登入過期」（不洩露單據存在性），
+// 一律引導幹部回 LINE 重新點卡片連結（連結內含一次性免登入換發 session）。
+const SESSION_EXPIRED_MSG =
+  '登入已過期。請回到 LINE 訊息，重新點一次簽核卡片的連結後再操作。';
+
+/**
+ * 寫入動作（簽核 / 退回 / 作廢…）失敗訊息：
+ *   • 401（session 過期、被 middleware 擋下）→ 一律回引導文案（請回 LINE 點卡片）
+ *   • 其餘 → 沿用後端 error，否則給定的預設字
+ */
+function writeFailMsg(status: number, data: { error?: string }, fallback: string): string {
+  return status === 401 ? SESSION_EXPIRED_MSG : data.error || fallback;
+}
+
 export default function SignoffDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -165,13 +179,13 @@ export default function SignoffDetailPage() {
     try {
       const cRes = await fetch(`/api/board/signoff/${id}/challenge`, { method: 'POST' });
       const c = await cRes.json().catch(() => ({}));
-      if (!cRes.ok) { setMsg(c.error || '無法開始簽署'); setBusy(false); return; }
+      if (!cRes.ok) { setMsg(writeFailMsg(cRes.status, c, '無法開始簽署')); setBusy(false); return; }
       const sRes = await fetch(`/api/board/signoff/${id}/sign`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nonce: c.nonce, comment: comment.trim() || undefined, signature_data_url: dataUrl, save_as_stored: saveAsStored }),
       });
       const s = await sRes.json().catch(() => ({}));
-      if (!sRes.ok) { setMsg(s.error || '簽署失敗'); setBusy(false); return; }
+      if (!sRes.ok) { setMsg(writeFailMsg(sRes.status, s, '簽署失敗')); setBusy(false); return; }
       window.location.reload();
     } catch (e) { setMsg(`錯誤：${(e as Error).message}`); setBusy(false); }
   }
@@ -183,7 +197,7 @@ export default function SignoffDetailPage() {
     try {
       const res = await fetch(`/api/board/signoff/${id}/sign-stamp`, { method: 'POST' });
       const r = await res.json().catch(() => ({}));
-      if (!res.ok) { setMsg(r.error || '一鍵簽核失敗'); setBusy(false); return; }
+      if (!res.ok) { setMsg(writeFailMsg(res.status, r, '一鍵簽核失敗')); setBusy(false); return; }
       window.location.reload();
     } catch (e) { setMsg(`錯誤：${(e as Error).message}`); setBusy(false); }
   }
@@ -202,7 +216,7 @@ export default function SignoffDetailPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }),
     });
     const r = await res.json().catch(() => ({}));
-    if (!res.ok) { setMsg(r.error || '退回失敗'); setBusy(false); return; }
+    if (!res.ok) { setMsg(writeFailMsg(res.status, r, '退回失敗')); setBusy(false); return; }
     setRejectOpen(false);
     window.location.reload();
   }
@@ -212,14 +226,14 @@ export default function SignoffDetailPage() {
     setMsg('');
     const res = await fetch(`/api/board/signoff/${id}/undo-reject`, { method: 'POST' });
     const r = await res.json().catch(() => ({}));
-    if (!res.ok) { setMsg(r.error || '撤銷失敗'); setBusy(false); return; }
+    if (!res.ok) { setMsg(writeFailMsg(res.status, r, '撤銷失敗')); setBusy(false); return; }
     window.location.reload();
   }
 
   async function doNudge() {
     const res = await fetch(`/api/board/signoff/${id}/nudge`, { method: 'POST' });
     const r = await res.json().catch(() => ({}));
-    if (!res.ok) { setMsg(r.error || '催簽失敗'); return; }
+    if (!res.ok) { setMsg(writeFailMsg(res.status, r, '催簽失敗')); return; }
     setMsg(r.pending?.length ? `尚未簽核：${r.pending.join('、')}` : '全部已簽核');
   }
 
@@ -228,7 +242,7 @@ export default function SignoffDetailPage() {
     setBusy(true);
     const res = await fetch(`/api/board/signoff/${id}/void`, { method: 'POST' });
     const r = await res.json().catch(() => ({}));
-    if (!res.ok) { setMsg(r.error || '作廢失敗'); setBusy(false); return; }
+    if (!res.ok) { setMsg(writeFailMsg(res.status, r, '作廢失敗')); setBusy(false); return; }
     window.location.reload();
   }
 
@@ -237,7 +251,7 @@ export default function SignoffDetailPage() {
     setBusy(true);
     const res = await fetch(`/api/board/signoff/${id}/delete`, { method: 'POST' });
     const r = await res.json().catch(() => ({}));
-    if (!res.ok) { setMsg(r.error || '刪除失敗'); setBusy(false); return; }
+    if (!res.ok) { setMsg(writeFailMsg(res.status, r, '刪除失敗')); setBusy(false); return; }
     window.location.href = '/finance/signoff';
   }
 
@@ -255,7 +269,24 @@ export default function SignoffDetailPage() {
       <p>請先<a href={`/board/login?next=/finance/signoff/${id}`} style={{ color: WINE }}>登入幹部帳號</a>。</p>
     </main></>;
   }
-  if (err) return <>{breadcrumb}<main style={{ minHeight: '100vh', background: CREAM, padding: 24 }}><p style={{ color: '#b00' }}>{err}</p></main></>;
+  // 載入失敗（404 未登入＋單仍 routing / 400 / 503…）：後端 404 是刻意「不洩露單據存在」的安全設計，
+  // 前端不照抄「找不到單據」（會讓幹部誤以為單不見了），改成友善引導 + 回登入頁備援，
+  // 措辭保持「找不到或已過期」的不確定性，不透露單據是否存在。
+  if (err) return (
+    <>{breadcrumb}
+    <main style={{ minHeight: '100vh', background: CREAM, color: INK, padding: '28px 16px' }}>
+      <div style={{ ...cardStyle, maxWidth: 480, margin: '0 auto' }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: WINE, marginBottom: 10 }}>打不開這張簽核單</div>
+        <p style={{ fontSize: 15, color: '#4A413A', lineHeight: 1.9, margin: 0 }}>
+          可能是這張單還在簽核中、你沒有檢視權限，或你的登入已過期。<br />
+          最快的方式是回到 LINE 訊息，重新點一次簽核卡片的連結，就能免登入直接進來。
+        </p>
+        <a href={`/board/login?next=/finance/signoff/${id}`} style={{ display: 'inline-block', marginTop: 18, color: WINE, fontWeight: 600, fontSize: 14 }}>
+          改用幹部帳號登入 →
+        </a>
+      </div>
+    </main></>
+  );
   if (!d) return <>{breadcrumb}<main style={{ minHeight: '100vh', background: CREAM, padding: 24 }}><p style={{ color: MUTE }}>載入中…</p></main></>;
 
   const isPublic = d.public === true;

@@ -41,8 +41,18 @@ function getSecret(): Uint8Array {
   return new TextEncoder().encode(env.SESSION_SECRET);
 }
 
-export async function signSession(payload: SessionPayload): Promise<string> {
+/**
+ * @param ttlSeconds 選填。session 有效期（秒）。省略時用 env.SESSION_TTL_SECONDS（預設 8h）。
+ *   ⚠ 密碼登入 (app/api/board/login) 不帶此參數 → 行為不變、維持 8h；
+ *   只有 magic 連結換發 session (app/api/board/signoff/magic) 會傳入 14 天秒數，
+ *   讓 session 有效期對齊連結 TTL（避免連結還沒過期、session 卻先過期要求重新登入）。
+ */
+export async function signSession(
+  payload: SessionPayload,
+  ttlSeconds?: number,
+): Promise<string> {
   const env = getEnv();
+  const ttl = ttlSeconds ?? env.SESSION_TTL_SECONDS;
   // 簽前先過自己 schema 一次（避免我們自己 bug 寫出畸形 JWT）
   const validated = SessionPayloadSchema.parse(payload);
   return await new SignJWT(validated as unknown as Record<string, unknown>)
@@ -51,7 +61,7 @@ export async function signSession(payload: SessionPayload): Promise<string> {
     .setAudience(AUDIENCE)
     .setIssuedAt()
     .setJti(crypto.randomUUID())
-    .setExpirationTime(`${env.SESSION_TTL_SECONDS}s`)
+    .setExpirationTime(`${ttl}s`)
     .sign(getSecret());
 }
 
