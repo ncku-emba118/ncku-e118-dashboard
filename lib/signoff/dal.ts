@@ -300,6 +300,32 @@ export async function getSettlementSignoffStatus(
   };
 }
 
+/**
+ * 依結算單編號查最新一筆簽核文件的「原始附件」（發票/收據等，0022 延伸）。
+ *
+ * 專供 /api/board/settlement/[slug]/attachments 這支已驗證權限的 route 使用
+ * ——刻意獨立於 getSettlementSignoffStatus 之外，避免把 attachments 混進
+ * 那支服務公開頁（未登入可讀）的查詢欄位，造成敏感欄位外洩到公開資料流。
+ * 呼叫端必須自行先過 canDownloadSettlementProof 權限檢查。
+ */
+export async function getSettlementDocAttachments(
+  settlementNo: string,
+): Promise<{ data: { docId: string; attachments: AttachmentMeta[] } | null; error: string | null }> {
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from('signoff_documents')
+    .select('id, attachments')
+    .eq('settlement_no', settlementNo)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return { data: null, error: error.message };
+  if (!data) return { data: null, error: null };
+
+  const raw = data as unknown as { id: string; attachments: AttachmentMeta[] | null };
+  return { data: { docId: raw.id, attachments: raw.attachments ?? [] }, error: null };
+}
+
 /** 收件匣：指派給我、pending、且文件仍在簽核中（!inner + 過濾 doc 狀態，
  *  避免退回/作廢/已核准的文件殘留在待簽清單 — Codex P1）。 */
 export async function listInbox(accountId: string) {

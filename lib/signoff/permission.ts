@@ -45,6 +45,25 @@ export function canInitiateSettlementSignoff(actor: SettlementSignoffActor): boo
   return actor.home_dept_id === 'finance' || actor.username === '班代';
 }
 
+/**
+ * 結算單「下載原始憑證附件」白名單——班代、執行副班代、秘書長、財務長四人。
+ *
+ * 依 scripts/apply-db.ts 的 ACCOUNT_MAP：班代/副班代/秘書三個帳號 role
+ * 皆為 'super'（全系統僅此三個 super 帳號），財務帳號 role 為 'dept' 但
+ * home_dept_id === 'finance'。用角色/部門判斷、不比對 username 中文字串，
+ * 職務輪替換帳號使用者也不用改這支函式。
+ *
+ * 刻意獨立於 canInitiateSettlementSignoff（送出簽核仍只開放財務長＋班代
+ * 兩人）——下載憑證的範圍比送出簽核更寬（四人都能看，兩人才能發起）。
+ * 只回傳布林值，呼叫端（API route）仍須各自過 requireSignoffAccess 等
+ * 既有流程之外自行做 401/403，不能只靠這支函式的結果渲染前端就當作完整防護。
+ */
+export type SettlementProofActor = { role: 'super' | 'dept'; home_dept_id: string | null };
+
+export function canDownloadSettlementProof(actor: SettlementProofActor): boolean {
+  return actor.role === 'super' || actor.home_dept_id === 'finance';
+}
+
 export function canAccessSignoff(
   actor: SignoffActor,
   action: SignoffAction,

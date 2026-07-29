@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   canAccessSignoff,
+  canDownloadSettlementProof,
   type SignoffActor,
   type SignoffAccessContext,
 } from './permission';
@@ -93,5 +94,22 @@ describe('canAccessSignoff — supplement（0019 補充資料）', () => {
     const sameDept: SignoffActor = { sub: 'fin-2', role: 'dept', home_dept_id: 'finance' };
     expect(canAccessSignoff(sameDept, 'view', ctx)).toBe(true);
     expect(canAccessSignoff(sameDept, 'supplement', ctx)).toBe(false);
+  });
+});
+
+describe('canDownloadSettlementProof — 結算單憑證下載四人白名單', () => {
+  test('班代／副班代／秘書長（role=super）可下載', () => {
+    expect(canDownloadSettlementProof({ role: 'super', home_dept_id: null })).toBe(true);
+    expect(canDownloadSettlementProof({ role: 'super', home_dept_id: 'secretary' })).toBe(true);
+  });
+  test('財務長（role=dept, home_dept_id=finance）可下載', () => {
+    expect(canDownloadSettlementProof({ role: 'dept', home_dept_id: 'finance' })).toBe(true);
+  });
+  test('其他部門幹部（學務／活動／公關／文宣／醫務）不可下載', () => {
+    expect(canDownloadSettlementProof({ role: 'dept', home_dept_id: 'academic' })).toBe(false);
+    expect(canDownloadSettlementProof({ role: 'dept', home_dept_id: 'activity' })).toBe(false);
+    expect(canDownloadSettlementProof({ role: 'dept', home_dept_id: 'pr' })).toBe(false);
+    expect(canDownloadSettlementProof({ role: 'dept', home_dept_id: 'media' })).toBe(false);
+    expect(canDownloadSettlementProof({ role: 'dept', home_dept_id: 'medical' })).toBe(false);
   });
 });

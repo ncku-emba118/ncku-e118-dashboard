@@ -5,9 +5,10 @@ import { ACTIVITIES, fmt } from '@/lib/budget/data';
 import SettlementDoc from '@/components/budget/SettlementDoc';
 import PrintButton from '@/components/budget/PrintButton';
 import SettlementSignoffLauncher from '@/components/budget/SettlementSignoffLauncher';
+import SettlementProofPanel from '@/components/budget/SettlementProofPanel';
 import { readSession } from '@/lib/auth/session';
 import { getSettlementSignoffStatus } from '@/lib/signoff/dal';
-import { canInitiateSettlementSignoff } from '@/lib/signoff/permission';
+import { canInitiateSettlementSignoff, canDownloadSettlementProof } from '@/lib/signoff/permission';
 
 const WINE = '#8B1F2F';
 const WINE_DEEP = '#6B1622';
@@ -59,6 +60,10 @@ export default async function SettlementDocPage({ params }: { params: Promise<{ 
   const showLaunch =
     canInitiate && (!liveSignoff || liveSignoff.status === 'rejected' || liveSignoff.status === 'voided');
 
+  // 憑證下載區：登入 + 四人白名單（班代／副班代／秘書長／財務長）才渲染，
+  // 未登入或其他幹部身分完全不出現這一區（不是渲染後用 CSS 藏）。
+  const showProof = !!session && canDownloadSettlementProof(session);
+
   // 送簽 modal 預設帶入值：金額用班費實際負擔（actualSplit.paidByFund，即結算單「班費淨負擔」），
   // 沒有 actualSplit 時退回帳單總額；用途帶活動名稱＋結算單編號方便簽核人辨識。
   const defaultAmount = activity.actualSplit?.paidByFund ?? activity.settlement?.invoiceTotal ?? null;
@@ -97,6 +102,7 @@ export default async function SettlementDocPage({ params }: { params: Promise<{ 
             </span>
           )}
         </div>
+        {showProof && <SettlementProofPanel slug={slug} />}
       </div>
 
       <SettlementDoc activity={activity} liveSignoff={liveSignoff} />
