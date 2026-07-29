@@ -23,6 +23,7 @@ import {
   upsertStoredSignature,
 } from '@/lib/signoff/dal';
 import { composeAndStoreFinal } from '@/lib/signoff/finalize';
+import { notifyApprovalCompleted } from '@/lib/board/signoff_notify';
 
 const UUID_RE =
   /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
@@ -139,6 +140,16 @@ export async function POST(
       const fin = await composeAndStoreFinal(access.bundle.doc);
       if (!fin.ok) {
         console.error('[signoff.sign.finalize_failed]', { traceId, e: fin.error });
+      } else {
+        // 請款單真的生出來了才通知財務長；上面 !fin.ok 分支（合成失敗）不發通知。
+        try {
+          const notify = await notifyApprovalCompleted(id);
+          if (!notify.ok) {
+            console.warn('[signoff.sign.notify_completed_failed]', { traceId, reason: notify.reason, detail: notify.detail });
+          }
+        } catch (e) {
+          console.error('[signoff.sign.notify_completed_threw]', { traceId, e: (e as Error).message });
+        }
       }
     } catch (e) {
       console.error('[signoff.sign.finalize_threw]', { traceId, e: (e as Error).message });
