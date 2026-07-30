@@ -766,6 +766,50 @@
 .qicheng-egg:hover .line { background: #8B1F2F; width: 60px; }
 .qicheng-egg:hover .en { color: #6B1622; }
 @media (max-width: 560px) { .foot .foot-inner { justify-content: center; text-align: center; } .qicheng-egg { margin-top: 8px; } }
+
+/* 啟程彩蛋 — B 款漸進發現：看完一站才長出下一行 */
+.qicheng-col { display: flex; flex-direction: column; align-items: flex-end; gap: 13px; }
+.qicheng-reveal { animation: qichengReveal .9s cubic-bezier(.22,.61,.36,1) both; }
+@keyframes qichengReveal { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: none; } }
+.qicheng-egg.is-locked { cursor: default; opacity: .38; }
+.qicheng-egg.is-locked .line { height: 0; background: none; border-top: 1px dashed #C9A961; }
+.qicheng-egg.is-locked .zh { color: #8A7F73; }
+
+/* 彩蛋檢視器（全螢幕大合照 + 日期／標題／一句話） */
+.qcv { position: fixed; inset: 0; background: rgba(18,11,13,.95); z-index: 99; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 20px 68px; overflow: hidden; animation: qcvFade .35s ease both; }
+@keyframes qcvFade { from { opacity: 0; } to { opacity: 1; } }
+.qcv-figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 18px; max-width: 96vw; }
+.qcv-photo { max-width: 92vw; max-height: 60vh; object-fit: contain; border-radius: 6px; display: block; animation: qcvPhoto .5s ease both; }
+@keyframes qcvPhoto { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+.qcv-cap { display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; }
+.qcv-date { font-family: "Cormorant Garamond", serif; font-size: 15px; letter-spacing: .28em; color: #C9A961; }
+.qcv-title { font-family: "Noto Serif TC", serif; font-size: 19px; font-weight: 600; letter-spacing: .16em; color: #fff; }
+.qcv-line { font-family: "Noto Serif TC", serif; font-size: 13px; color: rgba(255,255,255,.6); letter-spacing: .06em; margin-top: 2px; }
+.qcv-x { position: absolute; top: 14px; right: 18px; color: #fff; font-size: 30px; line-height: 1; cursor: pointer; z-index: 3; opacity: .75; }
+.qcv-x:hover { opacity: 1; }
+.qcv-hint { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.8); font-size: 12px; background: rgba(0,0,0,.35); padding: 6px 14px; border-radius: 99px; white-space: nowrap; }
+.qcv-h-m { display: none; }
+.qcv-nav { position: absolute; top: 50%; transform: translateY(-50%); background: none; border: 0; color: rgba(255,255,255,.55); font-size: 46px; line-height: 1; cursor: pointer; padding: 12px 18px; z-index: 3; transition: color .2s; }
+.qcv-nav:hover:not(:disabled) { color: #C9A961; }
+.qcv-nav:disabled { opacity: .16; cursor: default; }
+.qcv-prev { left: 8px; }
+.qcv-next { right: 8px; }
+.qcv-dots { display: flex; align-items: center; gap: 14px; margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(201,169,97,.22); }
+.qcv-dot { width: 7px; height: 7px; padding: 0; border-radius: 99px; border: 1px solid #C9A961; background: none; cursor: pointer; transition: background .25s, transform .25s; }
+.qcv-dot.on { background: #C9A961; transform: scale(1.25); }
+
+@media (max-width: 560px) {
+  .qicheng-col { align-items: center; }
+  .qcv-photo { max-height: 48vh; }
+  /* 手機改用左右滑動；箭頭壓在照片上難按又擋畫面 */
+  .qcv-nav { display: none; }
+  .qcv-h-d { display: none; }
+  .qcv-h-m { display: inline; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qicheng-reveal, .qcv, .qcv-photo { animation: none !important; }
+}
 @media (max-width: 780px) {
   .bx-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 128px; }
   /* 手機：.lg 卡片高度自然延展，避免 desktop 的 236 鎖死搭配 grid-row span 造成空白或溢出 */

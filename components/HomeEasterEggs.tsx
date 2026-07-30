@@ -4,8 +4,10 @@
  * 首頁彩蛋（純 client、零新依賴）：
  *
  * 1. Logo 連點 5 下（間隔 <2 秒累計）→ 全螢幕 overlay 淡入：
- *    全班合照（僅 class.jpeg 一張，無輪播）+ 純 CSS 彩帶紙屑 +
+ *    從「已在啟程彩蛋解鎖的照片」裡隨機挑一張 + 純 CSS 彩帶紙屑 +
  *    「E118，我們一起走過 🎓」。點任意處關閉。
+ *    刻意不顯示日期／標題／一句話 — 那是 footer「啟程」彩蛋的敘事，
+ *    這顆只留驚喜感。沒解鎖過任何東西時就只會抽到新生報到那張。
  *    事件掛在既有 server-rendered header 的 .brand 上（不動 page.tsx 結構）。
  *
  * 2. 深夜問候 toast：台灣時間 00:00–05:00 開首頁，右下角淡入
@@ -19,8 +21,13 @@
  * 元件內 <style> 與 inline style 皆可；JS 都在 bundle 內（script-src 'self' OK）。
  */
 import { useEffect, useRef, useState } from 'react';
+import { type Photo, unlockedPhotos } from '@/lib/dashboard/milestones';
 
-const CLASS_PHOTO = { src: '/assets/class.jpeg', alt: 'E118 班級合照' };
+/** 從已解鎖的照片裡隨機挑一張（只在點擊當下呼叫 → 不影響 SSR / hydration） */
+function pickPhoto(): Photo {
+  const pool = unlockedPhotos();
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 const CLICKS_NEEDED = 5;
 const CLICK_WINDOW_MS = 2000;
@@ -111,6 +118,7 @@ const FESTIVALS: Festival[] = [
 
 export default function HomeEasterEggs() {
   const [overlayOpen, setOverlayOpen] = useState(false);
+  const [photo, setPhoto] = useState<Photo | null>(null);
   const [confetti, setConfetti] = useState<Confetto[]>([]);
   const [toastState, setToastState] = useState<'hidden' | 'in' | 'out'>('hidden');
   const [festival, setFestival] = useState<Festival | null>(null);
@@ -128,6 +136,7 @@ export default function HomeEasterEggs() {
       clickTimes.current.push(now);
       if (clickTimes.current.length >= CLICKS_NEEDED) {
         clickTimes.current = [];
+        setPhoto(pickPhoto());
         setConfetti(makeConfetti());
         setOverlayOpen(true);
       }
@@ -227,7 +236,7 @@ export default function HomeEasterEggs() {
         }
       `}</style>
 
-      {overlayOpen && (
+      {overlayOpen && photo && (
         <div
           className="ee-overlay"
           role="dialog"
@@ -251,7 +260,7 @@ export default function HomeEasterEggs() {
           ))}
           <div className="ee-photo-wrap">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={CLASS_PHOTO.src} alt={CLASS_PHOTO.alt} className="ee-photo on" />
+            <img key={photo.src} src={photo.src} alt={photo.alt} className="ee-photo on" />
           </div>
           <div className="ee-caption">E118，我們一起走過 🎓</div>
           <div className="ee-hint">點擊任意處關閉</div>
