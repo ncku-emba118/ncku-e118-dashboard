@@ -2,7 +2,8 @@
  * 各活動總召名單 — 兩站共用的單一資料來源。
  *
  * 資料以幹部會議紀錄為準（2026-07-26 第二次幹部會議「活動分工」段），
- * 姓名／英文名／職稱取自 E118 通訊錄母檔（2026-06-11 版）。
+ * 姓名／英文名／公司／職稱取自「學務-E118通訊錄」（Google Drive，2026-08-01 版，學務長維護）。
+ * 公司一律用簡稱，全銜以通訊錄為準。
  * 活動日期與 lib/budget/data.ts 的 ACTIVITIES 對齊，改一邊記得對另一邊。
  *
  * 新增活動：在陣列末端加一筆即可，頁面依 sortKey 由小到大排，版面自動延長。
@@ -22,6 +23,8 @@ export type Lead = {
   desc: string;
   name: string;
   nameEn: string;
+  /** 公司簡稱（避免全銜把版面撐亂） */
+  org: string;
   title: string;
   /** public/assets/leads/ 底下的檔名；未提供時為 null */
   photo: string | null;
@@ -37,7 +40,8 @@ export const LEADS: Lead[] = [
     desc: '迎接 E119 新生入學報到，主題視覺、動線與接待由本班統籌。',
     name: '詹培梅',
     nameEn: 'Vivian',
-    title: '護理長',
+    org: '成大醫院',
+    title: '督導長',
     photo: 'zhan-peimei.jpg',
   },
   {
@@ -49,6 +53,7 @@ export const LEADS: Lead[] = [
     desc: '18:00 – 21:00。年度最大型對外活動，招待系所師長、校友總會與各級學長姐。',
     name: '陳亭穎',
     nameEn: 'Fion',
+    org: '宜伸企業',
     title: '財務副理',
     photo: null,
   },
@@ -61,6 +66,7 @@ export const LEADS: Lead[] = [
     desc: '為 E116 學長姐舉辦，本班主辦；細部規格 2027 年初確認。',
     name: '李政慧',
     nameEn: 'Faye',
+    org: '聯華電子',
     title: '高級管理師',
     photo: 'li-zhenghui.jpg',
   },
@@ -73,6 +79,7 @@ export const LEADS: Lead[] = [
     desc: '兩天一夜，本班主辦。全年度規模最大、籌備期最長之活動。',
     name: '唐有建',
     nameEn: 'David',
+    org: '錦揚企業／富驛集團',
     title: '總經理／法人董事代表',
     photo: 'tang-youjian.jpg',
   },
@@ -85,6 +92,7 @@ export const LEADS: Lead[] = [
     desc: '南班自辦，本班辦給 E119 學弟妹。',
     name: '林孟勤',
     nameEn: 'King',
+    org: '瑞營塑膠',
     title: '營運長',
     photo: null,
   },
@@ -97,6 +105,7 @@ export const LEADS: Lead[] = [
     desc: '為 E117 學長姐舉辦之畢業典禮、晚會與謝師宴，本班主辦。',
     name: '劉忠明',
     nameEn: 'Ethan',
+    org: '長勝機電工程',
     title: '總經理',
     photo: null,
   },

@@ -67,7 +67,11 @@ export default function LeadsPage() {
                       <span className="n">{l.name}</span>
                       <span className="e">{l.nameEn}</span>
                     </div>
-                    <div className="t">{l.title}</div>
+                    <div className="t">
+                      <span className="org">{l.org}</span>
+                      <span className="sep">·</span>
+                      {l.title}
+                    </div>
                   </div>
                 </div>
               </article>

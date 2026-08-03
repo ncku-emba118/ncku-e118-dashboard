@@ -170,6 +170,13 @@
   letter-spacing: .14em;
   color: #A69C91;
   font-weight: 300;
+  line-height: 1.9;
+}
+/* 公司比職稱稍深，讓「哪家公司」先被讀到 */
+.lead-who .t .org { color: #8A7F73; }
+.lead-who .t .sep {
+  margin: 0 .55em;
+  color: #C9A961;
 }
 
 .lead-slot {
