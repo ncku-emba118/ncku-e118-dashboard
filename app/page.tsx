@@ -6,7 +6,7 @@ import HomeEasterEggs from '@/components/HomeEasterEggs';
 /**
  * 主 dashboard 首頁 — Bento 版型（2026-05 改版）。
  * 上方兩個「即時看板」：班級行事曆（Google ICS）+ 班級公告欄（Supabase posts），server 端撈、ISR 5 分快取。
- * 下方功能卡 + 班級幹部（倒數第二）+ 班級成員（最後）。保留 PWA 安裝區與 footer。
+ * 下方功能卡 + 金卡三連（班級幹部 → 各活動總召 → 班級成員）。保留 PWA 安裝區與 footer。
  * 舊版單欄 + ? help popover 設計保留在 git 歷史，可隨時還原。
  */
 export const revalidate = 300;
@@ -29,6 +29,7 @@ export default async function Home() {
   const cal = byKey['calendar'];
   const board = byKey['board'];
   const members = byKey['members'];
+  const leads = byKey['leads'];
 
   return (
     <>
@@ -120,6 +121,14 @@ export default async function Home() {
                 <div className="bx-ic" dangerouslySetInnerHTML={{ __html: OFFICER_SVG }} />
                 <div className="bx-title">班級幹部</div>
                 <div className="bx-meta">南班 / 北班 組織圖</div>
+              </a>
+
+              {/* 幹部與成員之間：各活動總召 */}
+              <a className="bx-tile bx-gold" href={leads.href}>
+                <span className="bx-arr">→</span>
+                <div className="bx-ic" dangerouslySetInnerHTML={{ __html: leads.svg }} />
+                <div className="bx-title">{leads.title}</div>
+                <div className="bx-meta">{leads.meta}</div>
               </a>
 
               {/* 最後：班級成員 */}

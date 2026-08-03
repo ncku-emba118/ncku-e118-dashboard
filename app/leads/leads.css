@@ -1,0 +1,211 @@
+/* 各活動總召頁 — 縱線時間軸版型（D2）。
+   刻意留白、照片做小，主角是「時間推進」而非人物特寫。
+   色票沿用全站 NCKU 酒紅／金，字型 Cormorant Garamond + Noto Serif TC。 */
+
+.lead-page {
+  min-height: 100vh;
+  background: #F7F3EA;
+  color: #1E1A17;
+}
+.lead-main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 32px 120px;
+}
+
+.lead-intro {
+  padding: 6px 0 62px;
+}
+.lead-eyebrow {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 11.5px;
+  letter-spacing: .5em;
+  text-transform: uppercase;
+  color: #8B1F2F;
+}
+.lead-intro h1 {
+  margin: 22px 0 0;
+  font-family: 'Noto Serif TC', serif;
+  font-weight: 300;
+  font-size: clamp(30px, 5vw, 42px);
+  letter-spacing: .24em;
+  line-height: 1.5;
+}
+.lead-intro p {
+  margin: 26px 0 0;
+  max-width: 460px;
+  font-size: 13.5px;
+  line-height: 2.15;
+  color: #8A8078;
+}
+
+/* ── 時間軸 ── */
+.lead-tl {
+  position: relative;
+  padding-left: 118px;
+}
+.lead-tl::before {
+  content: '';
+  position: absolute;
+  left: 118px;
+  top: 6px;
+  bottom: 44px;
+  width: 1px;
+  background: #E3DCD2;
+}
+.lead-item {
+  position: relative;
+  padding: 0 0 74px 46px;
+  display: grid;
+  grid-template-columns: 124px 1fr;
+  gap: 30px;
+  align-items: start;
+}
+.lead-item::before {
+  content: '';
+  position: absolute;
+  left: -4.5px;
+  top: 7px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #F7F3EA;
+  border: 1px solid #C9A961;
+}
+/* 未來場次：實心酒紅節點，一眼看出下一場輪到誰 */
+.lead-item.is-upcoming::before {
+  background: #8B1F2F;
+  border-color: #8B1F2F;
+}
+
+.lead-date {
+  position: absolute;
+  left: -118px;
+  top: 0;
+  width: 100px;
+  text-align: right;
+}
+.lead-date .y {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  line-height: 1.1;
+}
+.lead-date .m {
+  margin-top: 4px;
+  font-size: 10.5px;
+  letter-spacing: .22em;
+  color: #8A8078;
+}
+
+.lead-photo {
+  width: 124px;
+  aspect-ratio: 4 / 5;
+  background: #EFEAE2;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: #B5AB9E;
+  font-size: 10px;
+  letter-spacing: .16em;
+  line-height: 2;
+  overflow: hidden;
+}
+.lead-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lead-txt h2 {
+  margin: 0;
+  font-family: 'Noto Serif TC', serif;
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: .08em;
+}
+.lead-txt .en {
+  margin-top: 6px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  letter-spacing: .16em;
+  color: #8A8078;
+}
+.lead-txt .desc {
+  margin: 16px 0 0;
+  font-size: 13px;
+  line-height: 2.05;
+  color: #8A8078;
+  max-width: 380px;
+}
+.lead-who {
+  margin-top: 24px;
+}
+.lead-who .k {
+  font-size: 9.5px;
+  letter-spacing: .32em;
+  color: #8B1F2F;
+}
+.lead-who .line {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 11px;
+  flex-wrap: wrap;
+}
+.lead-who .n {
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: .18em;
+}
+.lead-who .e {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px;
+  letter-spacing: .12em;
+  color: #8A8078;
+}
+.lead-who .t {
+  margin-top: 8px;
+  font-size: 11.5px;
+  letter-spacing: .14em;
+  color: #A69C91;
+  font-weight: 300;
+}
+
+.lead-slot {
+  margin-left: 46px;
+  padding-top: 30px;
+  border-top: 1px dashed #E3DCD2;
+  color: #B3A99E;
+  font-size: 12px;
+  letter-spacing: .14em;
+  line-height: 2;
+}
+.lead-foot {
+  margin-top: 66px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: .24em;
+  color: #B3A99E;
+  line-height: 2.4;
+}
+
+@media (max-width: 720px) {
+  .lead-main { padding: 28px 20px 90px; }
+  .lead-tl { padding-left: 0; }
+  .lead-tl::before { left: 4px; }
+  .lead-item {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 0 0 58px 30px;
+  }
+  .lead-item::before { left: 0; }
+  .lead-date {
+    position: static;
+    width: auto;
+    text-align: left;
+    margin-bottom: 2px;
+  }
+  .lead-date .y { font-size: 20px; }
+  .lead-slot { margin-left: 30px; }
+}
