@@ -35,6 +35,9 @@ export default function OfficersPage() {
           <a href="/" style={{ fontFamily: '"Cormorant Garamond",serif', fontSize: 24, fontWeight: 700, color: '#fff', textDecoration: 'none' }}>
             E118<span style={{ fontFamily: '"Noto Serif TC",serif', fontSize: 13, color: '#E0C896', marginLeft: 8 }}>班級幹部</span>
           </a>
+          <a href="/leads" style={{ fontFamily: '"Noto Serif TC",serif', fontSize: 12.5, color: '#E0C896', textDecoration: 'none', letterSpacing: '.08em' }}>
+            各活動總召 →
+          </a>
         </div>
       </header>
 
