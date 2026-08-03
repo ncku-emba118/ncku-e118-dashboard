@@ -38,7 +38,7 @@ export const LEADS: Lead[] = [
     name: '詹培梅',
     nameEn: 'Vivian',
     title: '護理長',
-    photo: null,
+    photo: 'zhan-peimei.jpg',
   },
   {
     sortKey: 202612,
@@ -62,7 +62,7 @@ export const LEADS: Lead[] = [
     name: '李政慧',
     nameEn: 'Faye',
     title: '高級管理師',
-    photo: null,
+    photo: 'li-zhenghui.jpg',
   },
   {
     sortKey: 202707,
@@ -74,7 +74,7 @@ export const LEADS: Lead[] = [
     name: '唐有建',
     nameEn: 'David',
     title: '總經理／法人董事代表',
-    photo: null,
+    photo: 'tang-youjian.jpg',
   },
   {
     sortKey: 202709,
