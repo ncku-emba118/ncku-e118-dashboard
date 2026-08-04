@@ -55,7 +55,7 @@ export const LEADS: Lead[] = [
     nameEn: 'Fion',
     org: '宜伸企業',
     title: '財務副理',
-    photo: null,
+    photo: 'chen-tingying.jpg',
   },
   {
     sortKey: 202706,
@@ -94,7 +94,7 @@ export const LEADS: Lead[] = [
     nameEn: 'King',
     org: '瑞營塑膠',
     title: '營運長',
-    photo: null,
+    photo: 'lin-mengqin.jpg',
   },
   {
     sortKey: 202806,
@@ -107,7 +107,7 @@ export const LEADS: Lead[] = [
     nameEn: 'Ethan',
     org: '長勝機電工程',
     title: '總經理',
-    photo: null,
+    photo: 'liu-zhongming.jpg',
   },
 ];
 
