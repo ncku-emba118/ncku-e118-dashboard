@@ -1,218 +1,365 @@
-/* 各活動總召頁 — 縱線時間軸版型（D2）。
-   刻意留白、照片做小，主角是「時間推進」而非人物特寫。
-   色票沿用全站 NCKU 酒紅／金，字型 Cormorant Garamond + Noto Serif TC。 */
+/* 各活動總召頁 — 編輯式跨頁版型。
+   年份放大成鏤空襯線大字當骨架，活動名接手，照片保留全彩、以直幅圖版落在另一側，
+   左右交錯避免單調。常設角色（活動長／慶生天使）收成頂端一條深色名條。
+   色票在全站 NCKU 酒紅／金的基礎上調深調啞，字型沿用 Cormorant Garamond + Noto Serif TC。 */
 
 .lead-page {
+  --lead-ink: #17130F;
+  --lead-ink-soft: #4A423B;
+  --lead-grey: #8D8377;
+  --lead-grey-2: #B3AA9E;
+  --lead-paper: #F4F0E8;
+  --lead-line: #E0D8C8;
+  --lead-maroon: #7A1B28;
+  --lead-deep: #25090E;
+  --lead-brass: #A98B52;
+  --lead-brass-lt: #D8C08A;
+
   min-height: 100vh;
-  background: #F7F3EA;
-  color: #1E1A17;
+  background: var(--lead-paper);
+  color: var(--lead-ink);
 }
-.lead-main {
-  max-width: 860px;
+.lead-page .lead-wrap {
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 40px 32px 120px;
+  padding-left: 32px;
+  padding-right: 32px;
 }
 
-.lead-intro {
-  padding: 6px 0 62px;
+/* ── 刊頭 ── */
+.lead-mast {
+  background: var(--lead-maroon);
+  border-bottom: 3px solid var(--lead-brass);
+  padding: 26px 0;
 }
+.lead-mast .lead-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.lead-id {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 27px;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+.lead-id span {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 14px;
+  font-weight: 400;
+  margin-left: 12px;
+  color: var(--lead-brass-lt);
+  letter-spacing: 0.14em;
+}
+.lead-side {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 13px;
+  color: var(--lead-brass-lt);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+}
+.lead-side:hover { color: #fff; }
+
+/* ── 標題區 ── */
+.lead-hero { padding: 74px 0 54px; }
 .lead-eyebrow {
   font-family: 'Cormorant Garamond', serif;
   font-size: 11.5px;
-  letter-spacing: .5em;
+  letter-spacing: 0.5em;
   text-transform: uppercase;
-  color: #8B1F2F;
+  color: var(--lead-maroon);
 }
-.lead-intro h1 {
-  margin: 22px 0 0;
+.lead-hero h1 {
+  margin: 18px 0 20px;
   font-family: 'Noto Serif TC', serif;
-  font-weight: 300;
-  font-size: clamp(30px, 5vw, 42px);
-  letter-spacing: .24em;
-  line-height: 1.5;
+  font-weight: 700;
+  font-size: clamp(34px, 5.2vw, 54px);
+  letter-spacing: 0.16em;
+  line-height: 1.35;
 }
-.lead-intro p {
-  margin: 26px 0 0;
-  max-width: 460px;
-  font-size: 13.5px;
-  line-height: 2.15;
-  color: #8A8078;
+.lead-hero p {
+  margin: 0;
+  max-width: 620px;
+  font-size: 14.5px;
+  line-height: 2;
+  color: var(--lead-ink-soft);
 }
 
-/* ── 時間軸 ── */
-.lead-tl {
+/* ── 常設角色名條 ── */
+.lead-band {
+  background: var(--lead-deep);
+  color: #fff;
   position: relative;
-  padding-left: 118px;
 }
-.lead-tl::before {
+.lead-band::before,
+.lead-band::after {
   content: '';
   position: absolute;
-  left: 118px;
-  top: 6px;
-  bottom: 44px;
-  width: 1px;
-  background: #E3DCD2;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lead-brass), transparent);
 }
-.lead-item {
-  position: relative;
-  padding: 0 0 74px 46px;
+.lead-band::before { top: 0; }
+.lead-band::after { bottom: 0; }
+.lead-band .lead-wrap {
   display: grid;
-  grid-template-columns: 124px 1fr;
-  gap: 30px;
-  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-top: 48px;
+  padding-bottom: 48px;
 }
-.lead-item::before {
-  content: '';
-  position: absolute;
-  left: -4.5px;
-  top: 7px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #F7F3EA;
-  border: 1px solid #C9A961;
+.lead-fig {
+  display: flex;
+  gap: 26px;
+  align-items: center;
+  padding-right: 40px;
 }
-/* 未來場次：實心酒紅節點，一眼看出下一場輪到誰 */
-.lead-item.is-upcoming::before {
-  background: #8B1F2F;
-  border-color: #8B1F2F;
+.lead-fig + .lead-fig {
+  padding-left: 48px;
+  padding-right: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
 }
-
-.lead-date {
-  position: absolute;
-  left: -118px;
-  top: 0;
-  width: 100px;
-  text-align: right;
-}
-.lead-date .y {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 24px;
-  line-height: 1.1;
-}
-.lead-date .m {
-  margin-top: 4px;
-  font-size: 10.5px;
-  letter-spacing: .22em;
-  color: #8A8078;
-}
-
-.lead-photo {
-  width: 124px;
-  aspect-ratio: 4 / 5;
-  background: #EFEAE2;
+.lead-fig-photo {
+  width: 148px;
+  aspect-ratio: 3 / 4;
+  flex: none;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
   display: grid;
   place-items: center;
   text-align: center;
-  color: #B5AB9E;
+  color: rgba(255, 255, 255, 0.35);
   font-size: 10px;
-  letter-spacing: .16em;
+  letter-spacing: 0.16em;
   line-height: 2;
-  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
 }
-.lead-photo img {
+.lead-fig-photo img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-
-.lead-txt h2 {
-  margin: 0;
+.lead-role {
+  font-size: 10.5px;
+  letter-spacing: 0.24em;
+  font-weight: 700;
+  color: var(--lead-brass-lt);
+}
+.lead-fig h2 {
+  margin: 10px 0 0;
   font-family: 'Noto Serif TC', serif;
+  font-weight: 700;
+  font-size: 27px;
+  letter-spacing: 0.08em;
+  color: #fff;
+}
+.lead-fig h2 .e {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px;
+  font-weight: 400;
+  margin-left: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+}
+.lead-band .lead-org { color: rgba(255, 255, 255, 0.62); }
+.lead-band .lead-org .org { color: rgba(255, 255, 255, 0.8); }
+.lead-note {
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 11.5px;
+  line-height: 1.85;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.06em;
+}
+
+/* ── 活動列 ── */
+.lead-rows { padding-top: 14px; }
+.lead-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 60px;
+  align-items: center;
+  padding: 70px 0;
+  border-bottom: 1px solid var(--lead-line);
+}
+.lead-row.is-flip { grid-template-columns: 300px minmax(0, 1fr); }
+.lead-row.is-flip .lead-img { order: 1; }
+.lead-row.is-flip .lead-txt { order: 2; }
+
+.lead-yr {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(58px, 8vw, 108px);
   font-weight: 600;
-  font-size: 21px;
-  letter-spacing: .08em;
+  line-height: 0.84;
+  letter-spacing: -0.02em;
+  color: transparent;
+  -webkit-text-stroke: 1.4px var(--lead-brass);
+}
+.lead-mo {
+  margin-top: 14px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--lead-maroon);
+}
+.lead-txt h2 {
+  margin: 16px 0 0;
+  font-family: 'Noto Serif TC', serif;
+  font-weight: 700;
+  font-size: clamp(27px, 3.7vw, 42px);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
 }
 .lead-txt .en {
-  margin-top: 6px;
+  margin-top: 7px;
   font-family: 'Cormorant Garamond', serif;
   font-size: 13px;
-  letter-spacing: .16em;
-  color: #8A8078;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lead-grey-2);
 }
 .lead-txt .desc {
   margin: 16px 0 0;
-  font-size: 13px;
-  line-height: 2.05;
-  color: #8A8078;
-  max-width: 380px;
+  max-width: 450px;
+  font-size: 14px;
+  line-height: 2;
+  color: var(--lead-ink-soft);
+}
+.lead-rule {
+  width: 56px;
+  height: 2px;
+  margin: 26px 0 16px;
+  background: var(--lead-maroon);
 }
 .lead-who {
-  margin-top: 24px;
-}
-.lead-who .k {
-  font-size: 9.5px;
-  letter-spacing: .32em;
-  color: #8B1F2F;
-}
-.lead-who .line {
   display: flex;
   align-items: baseline;
-  gap: 12px;
-  margin-top: 11px;
+  gap: 13px;
   flex-wrap: wrap;
 }
+.lead-who .k {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: var(--lead-brass);
+}
 .lead-who .n {
-  font-size: 23px;
-  font-weight: 600;
-  letter-spacing: .18em;
+  font-family: 'Noto Serif TC', serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
 }
 .lead-who .e {
   font-family: 'Cormorant Garamond', serif;
   font-size: 15px;
-  letter-spacing: .12em;
-  color: #8A8078;
-}
-.lead-who .t {
-  margin-top: 8px;
-  font-size: 11.5px;
-  letter-spacing: .14em;
-  color: #A69C91;
-  font-weight: 300;
-  line-height: 1.9;
+  letter-spacing: 0.12em;
+  color: var(--lead-grey-2);
 }
 /* 公司比職稱稍深，讓「哪家公司」先被讀到 */
-.lead-who .t .org { color: #8A7F73; }
-.lead-who .t .sep {
-  margin: 0 .55em;
-  color: #C9A961;
+.lead-org {
+  margin-top: 3px;
+  font-size: 12.5px;
+  letter-spacing: 0.1em;
+  line-height: 1.9;
+  color: var(--lead-grey);
 }
+.lead-org .org { color: var(--lead-ink-soft); }
+.lead-org .sep {
+  margin: 0 0.55em;
+  color: var(--lead-brass);
+}
+
+.lead-img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #EFEAE2;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--lead-grey-2);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  line-height: 2;
+  box-shadow: 0 18px 42px rgba(37, 9, 14, 0.17);
+  transition: transform 0.5s ease, box-shadow 0.5s ease;
+}
+.lead-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.lead-row:hover .lead-img {
+  transform: translateY(-5px);
+  box-shadow: 0 26px 54px rgba(37, 9, 14, 0.22);
+}
+/* 已過的場次留在頁面上（總召是功績、不是待辦），但退一階以標示已完成 */
+.lead-row.is-past .lead-img { opacity: 0.72; }
+.lead-row.is-past .lead-yr { -webkit-text-stroke-color: var(--lead-grey-2); }
 
 .lead-slot {
-  margin-left: 46px;
-  padding-top: 30px;
-  border-top: 1px dashed #E3DCD2;
-  color: #B3A99E;
-  font-size: 12px;
-  letter-spacing: .14em;
-  line-height: 2;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-top: 44px;
+  font-size: 12.5px;
+  letter-spacing: 0.1em;
+  color: var(--lead-grey-2);
+}
+.lead-slot i {
+  flex: 1;
+  height: 1px;
+  background: var(--lead-line);
 }
 .lead-foot {
-  margin-top: 66px;
-  text-align: center;
-  font-size: 11px;
-  letter-spacing: .24em;
-  color: #B3A99E;
-  line-height: 2.4;
+  margin-top: 52px;
+  padding-top: 22px;
+  padding-bottom: 80px;
+  border-top: 1px solid var(--lead-line);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  line-height: 1.9;
+  color: var(--lead-grey);
 }
 
-@media (max-width: 720px) {
-  .lead-main { padding: 28px 20px 90px; }
-  .lead-tl { padding-left: 0; }
-  .lead-tl::before { left: 4px; }
-  .lead-item {
+@media (max-width: 860px) {
+  .lead-band .lead-wrap { grid-template-columns: 1fr; gap: 36px; }
+  .lead-fig { padding-right: 0; }
+  .lead-fig + .lead-fig {
+    padding-left: 0;
+    padding-top: 36px;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+}
+
+@media (max-width: 760px) {
+  .lead-page .lead-wrap { padding-left: 20px; padding-right: 20px; }
+  .lead-hero { padding: 48px 0 36px; }
+  .lead-row,
+  .lead-row.is-flip {
     grid-template-columns: 1fr;
-    gap: 18px;
-    padding: 0 0 58px 30px;
+    gap: 30px;
+    padding: 52px 0;
   }
-  .lead-item::before { left: 0; }
-  .lead-date {
-    position: static;
-    width: auto;
-    text-align: left;
-    margin-bottom: 2px;
-  }
-  .lead-date .y { font-size: 20px; }
-  .lead-slot { margin-left: 30px; }
+  .lead-row.is-flip .lead-img,
+  .lead-row.is-flip .lead-txt { order: initial; }
+  .lead-img { max-width: 250px; }
+  .lead-fig-photo { width: 120px; }
+}
+
+@media print {
+  .lead-side { display: none; }
+  .lead-page { background: #fff; }
+  .lead-row { break-inside: avoid; }
+  .lead-band { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

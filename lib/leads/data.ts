@@ -30,6 +30,42 @@ export type Lead = {
   photo: string | null;
 };
 
+/**
+ * 常設角色 — 不綁單一場次、整學年持續執行的職務。
+ * 與 LEADS 分開存放：LEADS 是「一場活動一個總召」，這裡是「全年都在」。
+ */
+export type Principal = {
+  role: string;
+  name: string;
+  nameEn: string;
+  org: string;
+  title: string;
+  /** 一句話說明職務範圍 */
+  note: string;
+  photo: string | null;
+};
+
+export const PRINCIPALS: Principal[] = [
+  {
+    role: '活動長',
+    name: '楊其峻',
+    nameEn: 'Alex Yang',
+    org: '太乙珠寶',
+    title: '執行董事',
+    note: '全年統籌．協助每場總召籌備、資源調度與跨組協調',
+    photo: 'yang-qijun.jpg',
+  },
+  {
+    role: '慶生天使',
+    name: '趙芫儀',
+    nameEn: 'Jill',
+    org: '森吉企業',
+    title: '負責人',
+    note: '每月壽星驚喜',
+    photo: 'zhao-yuanyi.jpg',
+  },
+];
+
 export const LEADS: Lead[] = [
   {
     sortKey: 202611,
