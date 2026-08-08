@@ -9,10 +9,10 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/assets/pwa-icon-192-v2.png', sizes: '192x192', type: 'image/png' },
-      { url: '/assets/pwa-icon-512-v2.png', sizes: '512x512', type: 'image/png' },
+      { url: '/assets/pwa-icon-192-v3.png', sizes: '192x192', type: 'image/png' },
+      { url: '/assets/pwa-icon-512-v3.png', sizes: '512x512', type: 'image/png' },
     ],
-    apple: '/assets/pwa-icon-180-v2.png',
+    apple: '/assets/pwa-icon-180-v3.png',
   },
   appleWebApp: {
     capable: true,

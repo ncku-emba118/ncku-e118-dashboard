@@ -49,7 +49,7 @@ BANNER_TEXT = "E118"
 VB = 512
 C = VB // 2
 MASK_SCALE = 0.78
-SUFFIX = "-v2"
+SUFFIX = "-v3"
 
 OUTPUTS = [
     ("pwa-icon-192", 192, False),
@@ -87,7 +87,7 @@ def shield_b64():
 
 def build_svg(px, maskable, b64, shield_size):
     sw, sh_ = shield_size
-    shield_w = 180
+    shield_w = 220
     shield_h = round(shield_w * sh_ / sw, 1)
 
     teeth = "".join(
@@ -99,18 +99,18 @@ def build_svg(px, maskable, b64, shield_size):
     # 單獨渲染卻完全正常（齒紋環／校徽圖／濾鏡群組／雙弧字逐項二分測試都
     # 無法重現），根因未明。勳章掛銘牌本來也比下弧字合理，故不再追。
     # ⚠️ 上弧字（arcUp）沒有這個問題，維持 textPath。
-    by, bh, half = 372, 62, 134
+    by, bh, half = 366, 72, 150
     x0, x1 = C - half, C + half
     banner = f"""
 <g filter="url(#softShadow)">
-  <path d="M{x0-42} {by+4} L{x0} {by-8} V{by+bh+8} L{x0-42} {by+bh+20} Z" fill="#8F7135"/>
-  <path d="M{x1+42} {by+4} L{x1} {by-8} V{by+bh+8} L{x1+42} {by+bh+20} Z" fill="#8F7135"/>
+  <path d="M{x0-46} {by+4} L{x0} {by-8} V{by+bh+8} L{x0-46} {by+bh+22} Z" fill="#8F7135"/>
+  <path d="M{x1+46} {by+4} L{x1} {by-8} V{by+bh+8} L{x1+46} {by+bh+22} Z" fill="#8F7135"/>
   <rect x="{x0}" y="{by}" width="{half*2}" height="{bh}" rx="4" fill="url(#metal)"/>
   <rect x="{x0+7}" y="{by+7}" width="{half*2-14}" height="{bh-14}" rx="2" fill="none"
         stroke="#6B4E18" stroke-width="1.5" opacity=".5"/>
 </g>
-<text x="{C+5}" y="{by + bh - 17}" text-anchor="middle" font-family="Georgia,serif"
-      font-weight="bold" font-size="40" fill="#4E0E18" letter-spacing="10">{BANNER_TEXT}</text>"""
+<text x="{C+5}" y="{by + bh - 19}" text-anchor="middle" font-family="Georgia,serif"
+      font-weight="bold" font-size="48" fill="#4E0E18" letter-spacing="10">{BANNER_TEXT}</text>"""
 
     figure = f"""
 <use href="#teeth"/>
@@ -118,13 +118,13 @@ def build_svg(px, maskable, b64, shield_size):
 <circle cx="{C}" cy="{C}" r="215" fill="none" stroke="#6B4E18" stroke-width="1.5" opacity=".55"/>
 <circle cx="{C}" cy="{C}" r="240" fill="none" stroke="#6B4E18" stroke-width="1.5" opacity=".4"/>
 <g filter="url(#emboss)">
-  <circle cx="{C}" cy="{C}" r="140" fill="url(#plate)"/>
-  <circle cx="{C}" cy="{C}" r="140" fill="none" stroke="url(#metal)" stroke-width="7"/>
+  <circle cx="{C}" cy="{C}" r="160" fill="url(#plate)"/>
+  <circle cx="{C}" cy="{C}" r="160" fill="none" stroke="url(#metal)" stroke-width="7"/>
 </g>
-<image href="data:image/png;base64,{b64}" x="{C-shield_w//2}" y="{232-shield_h/2}"
+<image href="data:image/png;base64,{b64}" x="{C-shield_w//2}" y="{229-shield_h/2}"
        width="{shield_w}" height="{shield_h}"/>
-<text font-family="Georgia,serif" font-weight="bold" font-size="38"
-      fill="url(#metalSoft)" letter-spacing="9">
+<text font-family="Georgia,serif" font-weight="bold" font-size="44"
+      fill="url(#metalSoft)" letter-spacing="8">
   <textPath href="#arcUp" startOffset="50%" text-anchor="middle">NCKU · EMBA</textPath></text>
 {banner}"""
 
