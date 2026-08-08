@@ -4,7 +4,7 @@ import PWARegister from '../components/PWARegister';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://emba.aqualux.dev'),
-  title: 'E118 第 118 班｜成大 EMBA',
+  title: 'E118 班｜成大 EMBA',
   description: '國立成功大學 EMBA 第 118 班 — 班級資訊系統入口',
   manifest: '/manifest.json',
   icons: {
@@ -20,15 +20,15 @@ export const metadata: Metadata = {
     title: 'E118',
   },
   openGraph: {
-    title: 'E118 第 118 班｜成大 EMBA',
+    title: 'E118 班｜成大 EMBA',
     description: '國立成功大學 EMBA 第 118 班 — 班級資訊系統入口',
     url: 'https://emba.aqualux.dev',
-    siteName: '成大 EMBA E118',
+    siteName: 'E118 班｜成大 EMBA',
     images: [
       {
         url: '/og-thumb.png',
-        width: 400,
-        height: 400,
+        width: 1200,
+        height: 630,
         alt: '成大 EMBA 第 118 班',
       },
     ],
@@ -36,8 +36,8 @@ export const metadata: Metadata = {
     type: 'website',
   },
   twitter: {
-    card: 'summary',
-    title: 'E118 第 118 班｜成大 EMBA',
+    card: 'summary_large_image',
+    title: 'E118 班｜成大 EMBA',
     description: '國立成功大學 EMBA 第 118 班 — 班級資訊系統入口',
     images: ['/og-thumb.png'],
   },
