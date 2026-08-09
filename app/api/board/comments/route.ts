@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { getServerClient } from '@/lib/supabase/server';
 import { hashIp } from '@/lib/ip-hash';
 import { resolveClientIp } from '@/lib/ip-resolve';
+import { processQueuedJobs } from '@/lib/push/dispatcher';
 
 const MAX_BODY_BYTES = 4096;
 
@@ -157,6 +158,33 @@ export async function POST(req: NextRequest) {
     post_id: input.post_id,
     status,
   });
+
+  // ── Enqueue comment_created push_job（只給 visible 留言，pending_review 審核前不推）──
+  // 目標是部門幹部（dept_filter opt-in），不是全班——見 lib/push/dispatcher.ts processCommentJob。
+  // ON CONFLICT (comment_id) WHERE event_type='comment_created' DO NOTHING — 同留言只一個 job。
+  if (status === 'visible') {
+    const { error: jobErr } = await supabase.from('push_jobs').insert({
+      post_id: input.post_id,
+      event_type: 'comment_created',
+      comment_id: inserted.id,
+      status: 'queued',
+    });
+    if (jobErr) {
+      console.warn('[comments.create.push_job_enqueue_failed]', {
+        traceId,
+        comment_id: inserted.id,
+        error: jobErr.message,
+      });
+    } else {
+      // fire-and-forget，不阻擋留言送出的 response
+      processQueuedJobs().catch((err) => {
+        console.error('[comments.create.dispatcher_async_failed]', {
+          traceId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
+  }
 
   return NextResponse.json(
     {

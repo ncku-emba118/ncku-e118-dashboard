@@ -36,3 +36,20 @@ export function makePayload(post: {
     short_excerpt: truncate(post.content, MAX_EXCERPT),
   };
 }
+
+/**
+ * comment_created 事件 payload — 給部門幹部看「哪篇公告有新留言 + 留言內容」。
+ * 跟 makePayload 共用同一個 PushPayload shape（sw.js 不用分辨事件類型）。
+ */
+export function makeCommentPayload(
+  comment: { author_name: string | null; content: string },
+  post: { id: string; department_id: string; title: string },
+): PushPayload {
+  const author = comment.author_name?.trim() || '匿名同學';
+  return {
+    post_id: post.id,
+    department_id: post.department_id,
+    short_title: truncate(`「${post.title}」有新留言`, MAX_TITLE),
+    short_excerpt: truncate(`${author}：${comment.content}`, MAX_EXCERPT),
+  };
+}

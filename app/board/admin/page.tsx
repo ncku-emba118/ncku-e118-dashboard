@@ -5,10 +5,11 @@
  * super 看全部 7 部門公告；dept 只看自己部門公告。
  */
 import { redirect } from 'next/navigation';
-import { readSession, deptInfo } from '@/lib/auth/session';
+import { readSession, deptInfo, manageableDepts } from '@/lib/auth/session';
 import { getServerClient } from '@/lib/supabase/server';
 import AdminPostsTable from '@/components/AdminPostsTable';
 import AdminLineRouting from '@/components/AdminLineRouting';
+import AdminCommentSubscribeButton from '@/components/AdminCommentSubscribeButton';
 import { getPostViewCounts } from '@/lib/board/view_logger';
 import Breadcrumb from '@/components/Breadcrumb';
 
@@ -498,6 +499,9 @@ export default async function AdminHome() {
             · 可管 {deptLabel}
           </span>
         </div>
+
+        {/* 留言通知訂閱 — 部門層級 opt-in，不是全班廣播 */}
+        <AdminCommentSubscribeButton depts={manageableDepts(session)} />
 
         {/* Push stats（只給 super 看）*/}
         {pushStats && (
