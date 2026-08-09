@@ -6,6 +6,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { hasNotifySession } from '@/lib/notify/session';
 import { fetchNotifyHistory } from '@/lib/notify/gas';
 
+// 理由同 candidates/route.ts：明確拉長逾時，避免 Netlify 預設值比 GAS 回應時間短。
+export const maxDuration = 60;
+
 export async function GET(req: NextRequest) {
   if (!(await hasNotifySession())) {
     return NextResponse.json({ error: '未登入或已過期' }, { status: 401 });

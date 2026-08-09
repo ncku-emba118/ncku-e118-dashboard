@@ -10,6 +10,10 @@ import { NextResponse } from 'next/server';
 import { hasNotifySession } from '@/lib/notify/session';
 import { fetchNotifyCandidates } from '@/lib/notify/gas';
 
+// 呼叫 GAS 讀「同學名冊」+ LINE 額度查詢，冷啟動/名冊列數多時可能超過
+// Netlify function 預設逾時，跟 send/route.ts 一致明確拉到 60 秒（gas.ts 的 GAS_TIMEOUT_MS 上限）。
+export const maxDuration = 60;
+
 export async function GET() {
   if (!(await hasNotifySession())) {
     return NextResponse.json({ error: '未登入或已過期' }, { status: 401 });
