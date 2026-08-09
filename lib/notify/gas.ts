@@ -18,8 +18,17 @@ export type NotifyQuota =
   | { available: true; unlimited: boolean; limit: number | null; used: number | null; remaining: number | null }
   | { available: false; reason: string };
 
+/**
+ * names / unavailable 的每個項目都是 GAS 端組好的顯示字串「正式姓名（LINE暱稱）」
+ *   （暱稱與正式姓名相同、或沒有暱稱時，就只有正式姓名，不會出現空括號）。
+ * 送出時原樣送回 GAS，GAS 依同一份「手動通知名單」對照表反查 userId。
+ *
+ * unavailable：確定沒加入 LINE 機器人、發不出去的同學 → 前端仍要列出來但灰階不可勾，
+ *   秘書才知道「這個人存在、只是得改用別的方式通知」。
+ * ambiguous：名單表同一正式姓名有多列、無法安全定位 → 兩邊都不列（與 unavailable 意義不同）。
+ */
 export type CandidatesResult =
-  | { ok: true; names: string[]; ambiguous: string[]; quota: NotifyQuota }
+  | { ok: true; names: string[]; unavailable: string[]; ambiguous: string[]; quota: NotifyQuota }
   | { ok: false; error: string };
 
 export type SendResult =

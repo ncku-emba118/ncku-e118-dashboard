@@ -26,6 +26,8 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     names: r.names ?? [],
+    // 沒加入機器人的同學：前端要列出來但灰階不可勾（GAS v18.7 起提供）
+    unavailable: r.unavailable ?? [],
     ambiguous: r.ambiguous ?? [],
     quota: r.quota,
   });

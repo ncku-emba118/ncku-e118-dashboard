@@ -197,6 +197,8 @@ function PinGate({ onPass }: { onPass: () => void }) {
 // ════════════════════════════════════════════════════════════════
 function Console({ onSessionExpired }: { onSessionExpired: () => void }) {
   const [names, setNames] = useState<string[]>([]);
+  /** 確定沒加入 LINE 機器人的同學：一樣列出來讓秘書看得到，但不能勾（要改用別的方式通知） */
+  const [unavailable, setUnavailable] = useState<string[]>([]);
   const [ambiguous, setAmbiguous] = useState<string[]>([]);
   const [quota, setQuota] = useState<Quota | null>(null);
   const [loadingList, setLoadingList] = useState(true);
@@ -242,6 +244,7 @@ function Console({ onSessionExpired }: { onSessionExpired: () => void }) {
       }
       const data = (await res.json().catch(() => ({}))) as {
         names?: string[];
+        unavailable?: string[];
         ambiguous?: string[];
         quota?: Quota;
         error?: string;
@@ -251,6 +254,7 @@ function Console({ onSessionExpired }: { onSessionExpired: () => void }) {
         return;
       }
       setNames(data.names ?? []);
+      setUnavailable(data.unavailable ?? []);
       setAmbiguous(data.ambiguous ?? []);
       setQuota(data.quota ?? null);
     } catch {
@@ -265,13 +269,27 @@ function Console({ onSessionExpired }: { onSessionExpired: () => void }) {
     void loadHistory();
   }, [loadCandidates, loadHistory]);
 
+  /**
+   * 清單一次列出全部南班同學：可通知的在前、沒加入機器人的排在後面（灰階不可勾）。
+   * 搜尋兩邊都吃得到 —— 秘書搜一個名字要能看到「這個人存在、只是沒辦法通知」。
+   */
+  const allRows = useMemo(
+    () => [
+      ...names.map((n) => ({ name: n, canNotify: true })),
+      ...unavailable.map((n) => ({ name: n, canNotify: false })),
+    ],
+    [names, unavailable],
+  );
+
   const visible = useMemo(() => {
     const k = keyword.trim();
-    return k ? names.filter((n) => n.includes(k)) : names;
-  }, [names, keyword]);
+    return k ? allRows.filter((r) => r.name.includes(k)) : allRows;
+  }, [allRows, keyword]);
 
   // 收件人/內容一有變動，就視為「新的一次送出」，之前留著要重試的 requestId 作廢。
   function toggle(name: string) {
+    // 防禦：灰階（未加入機器人）的人永遠不進 selected，即使 checkbox 的 disabled 被繞過
+    if (!names.includes(name)) return;
     requestIdRef.current = null;
     setSelected((prev) => {
       const next = new Set(prev);
@@ -285,7 +303,8 @@ function Console({ onSessionExpired }: { onSessionExpired: () => void }) {
     requestIdRef.current = null;
     setSelected((prev) => {
       const next = new Set(prev);
-      visible.forEach((n) => next.add(n));
+      // 只全選得到「可通知」的人；灰階那些連勾都勾不起來
+      visible.forEach((r) => { if (r.canNotify) next.add(r.name); });
       return next;
     });
   }
@@ -415,6 +434,11 @@ function Console({ onSessionExpired }: { onSessionExpired: () => void }) {
           1 · 選擇收件人
           <span style={{ fontSize: 13, color: MUTE, fontWeight: 400 }}>（已選 {selected.size} 位）</span>
         </h2>
+        {!loadingList && !listError && (
+          <p style={{ fontSize: 12, color: MUTE, margin: '0 0 10px', lineHeight: 1.7 }}>
+            全班 {allRows.length} 位 · 可通知 {names.length} 位 · 未加入機器人 {unavailable.length} 位（灰色、不可勾選）
+          </p>
+        )}
 
         <input
           type="search"
@@ -452,8 +476,9 @@ function Console({ onSessionExpired }: { onSessionExpired: () => void }) {
             {visible.length === 0 && (
               <div style={{ padding: 14, fontSize: 13, color: MUTE }}>沒有符合的姓名</div>
             )}
-            {visible.map((n) => {
-              const on = selected.has(n);
+            {visible.map((r) => {
+              const n = r.name;
+              const on = r.canNotify && selected.has(n);
               return (
                 <label
                   key={n}
@@ -465,16 +490,24 @@ function Console({ onSessionExpired }: { onSessionExpired: () => void }) {
                     borderBottom: `1px solid ${GOLD_LINE}`,
                     background: on ? 'rgba(139, 31, 47, 0.06)' : 'transparent',
                     fontSize: 15,
-                    cursor: 'pointer',
+                    cursor: r.canNotify ? 'pointer' : 'not-allowed',
+                    color: r.canNotify ? INK : MUTE,
+                    opacity: r.canNotify ? 1 : 0.65,
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={on}
+                    disabled={!r.canNotify}
                     onChange={() => toggle(n)}
-                    style={{ width: 20, height: 20, accentColor: WINE }}
+                    style={{ width: 20, height: 20, accentColor: WINE, cursor: r.canNotify ? 'pointer' : 'not-allowed' }}
                   />
-                  <span>{n}</span>
+                  <span>
+                    {n}
+                    {!r.canNotify && (
+                      <span style={{ fontSize: 12, color: MUTE }}>（未加入機器人，無法通知）</span>
+                    )}
+                  </span>
                 </label>
               );
             })}
