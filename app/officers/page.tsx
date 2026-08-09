@@ -4,16 +4,24 @@
  * 班級幹部組織圖頁 — 南班 / 北班 切換 + 點圖全螢幕放大 + 下載大圖。
  *
  * 圖分兩種尺寸，別再把原始檔直接掛上頁面：
- *   SRC  = 1600px（約 200KB）→ 頁面內嵌用，實際只顯示約 1050px 寬
- *   FULL = 3000px（約 500KB）→ 只在打開全螢幕或按下載時才抓，職掌小字清晰可讀
+ *   SRC  = 1600px JPEG（約 200KB）→ 頁面內嵌用，實際只顯示約 1050px 寬
+ *   FULL = 6000px WebP（約 650KB）→ 只在打開全螢幕或按下載時才抓
+ *
+ * FULL 用 6000px 是為了「放大看得清楚人臉」：副班代那排小頭像在 3000px 版
+ * 只有 150px，手機捏放大就糊掉；6000px 版有 300px，五官與衣服細節都清楚。
+ * 改用 WebP 才付得起這個解析度 —— 同樣 6000px，JPEG 要 1.4MB、WebP 只要 650KB。
+ * FULL_FB 是 3000px JPEG，僅在極少數不支援 WebP 的環境當退路。
+ *
  * 2026-08-09 之前這裡直接掛 10670x7118／12247x8165 的原始檔（6.6MB／7.3MB，
  * 一億像素等級），光解碼就要數百 MB 記憶體，切換南北班會明顯卡頓。
+ * 原始檔不放網站上（使用者自行留存），需要時從 git 歷史 49106a3 取回。
  */
 import { useState, useEffect } from 'react';
 import Breadcrumb from '@/components/Breadcrumb';
 
 const SRC = { south: '/assets/officers/south.jpeg', north: '/assets/officers/north.jpeg' } as const;
-const FULL = { south: '/assets/officers/south-full.jpeg', north: '/assets/officers/north-full.jpeg' } as const;
+const FULL = { south: '/assets/officers/south-full.webp', north: '/assets/officers/north-full.webp' } as const;
+const FULL_FB = { south: '/assets/officers/south-full.jpeg', north: '/assets/officers/north-full.jpeg' } as const;
 const NAME = { south: '南班', north: '北班' } as const;
 type Cls = keyof typeof SRC;
 
@@ -75,7 +83,7 @@ export default function OfficersPage() {
           </button>
           <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
             <button onClick={() => { setOpen(true); setZoomed(false); }} style={btnPri}>全螢幕看大圖</button>
-            <a href={FULL[tab]} download={`E118${NAME[tab]}幹部組織圖.jpeg`} style={btn}>下載大圖</a>
+            <a href={FULL[tab]} download={`E118${NAME[tab]}幹部組織圖.webp`} style={btn}>下載大圖</a>
           </div>
           <div style={{ fontSize: 12, color: '#8A7F73', marginTop: 12 }}>
             點圖或「全螢幕看大圖」→ 黑底全螢幕；再點圖切換原始大小、可捲動看清每位幹部與職掌（手機亦可雙指縮放）。
@@ -91,8 +99,10 @@ export default function OfficersPage() {
             display: 'flex', alignItems: zoomed ? 'flex-start' : 'center', justifyContent: zoomed ? 'flex-start' : 'center', padding: 20,
           }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {/* 全螢幕才載 3000px 版，放大到原始大小時職掌小字才看得清楚 */}
+            {/* 全螢幕才載 6000px 版。點一下放到 3000 CSS px，等於只用一半解析度，
+                手機再捏放大到 2 倍仍是原生畫質，臉不會糊。 */}
             <img src={FULL[tab]} alt="幹部組織圖放大" onClick={() => setZoomed((z) => !z)}
+              onError={(e) => { const el = e.currentTarget; if (!el.dataset.fb) { el.dataset.fb = '1'; el.src = FULL_FB[tab]; } }}
               style={zoomed
                 ? { width: 3000, maxWidth: 'none', cursor: 'zoom-out', borderRadius: 6 }
                 : { maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', cursor: 'zoom-in', borderRadius: 6 }} />
