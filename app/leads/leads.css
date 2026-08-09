@@ -183,13 +183,13 @@
 .lead-rows { padding-top: 14px; }
 .lead-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) 240px;
   gap: 60px;
   align-items: center;
   padding: 70px 0;
   border-bottom: 1px solid var(--lead-line);
 }
-.lead-row.is-flip { grid-template-columns: 300px minmax(0, 1fr); }
+.lead-row.is-flip { grid-template-columns: 240px minmax(0, 1fr); }
 .lead-row.is-flip .lead-img { order: 1; }
 .lead-row.is-flip .lead-txt { order: 2; }
 
@@ -353,8 +353,9 @@
   }
   .lead-row.is-flip .lead-img,
   .lead-row.is-flip .lead-txt { order: initial; }
-  .lead-img { max-width: 250px; }
-  .lead-fig-photo { width: 120px; }
+  /* 手機上照片別喧賓奪主：一張卡片要能一眼看完照片＋姓名＋公司 */
+  .lead-img { max-width: 160px; }
+  .lead-fig-photo { width: 108px; }
 }
 
 @media print {
