@@ -66,17 +66,6 @@
   "feed": null
  },
  {
-  "key": "present",
-  "title": "上台簡報模式",
-  "meta": "教室全螢幕播放，手機掃碼當遙控器",
-  "domain": "reports.e118.aqualux.dev/present",
-  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 3h20\"/><path d=\"M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3\"/><path d=\"m7 21 5-5 5 5\"/></svg>",
-  "href": "https://reports.e118.aqualux.dev/present.html",
-  "localHref": null,
-  "external": false,
-  "feed": null
- },
- {
   "key": "credits",
   "title": "學分追蹤",
   "meta": "個人畢業學分自我試算",
