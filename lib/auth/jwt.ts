@@ -27,11 +27,27 @@ const ALG = 'HS256';
 export const COOKIE_NAME =
   process.env.NODE_ENV === 'production' ? '__Host-sid' : 'sid';
 
+/**
+ * 財務長 magic 連結換發的唯讀 session claim（敵對審查修正2）。
+ *
+ * 存在時，下游 lib/signoff/access.ts 的 requireSignoffAccess 只放行對
+ * document_id 相符文件的 'view' 動作，其餘（其他文件／任何寫入動作）一律拒絕。
+ * 密碼登入與既有 assignment magic session 都不帶此欄位（zod optional，
+ * 缺欄位時 parse 出來是 undefined）——相容性鐵律：無此 claim＝行為與現在完全一致。
+ */
+const MagicScopeSchema = z.object({
+  kind: z.literal('finance_readonly'),
+  document_id: z.string().uuid(),
+});
+
+export type MagicScope = z.infer<typeof MagicScopeSchema>;
+
 const SessionPayloadSchema = z.object({
   sub: z.string().uuid(),
   role: z.enum(['super', 'dept']),
   home_dept_id: z.string().nullable(),
   session_version: z.number().int().positive(),
+  magic_scope: MagicScopeSchema.optional(),
 });
 
 export type SessionPayload = z.infer<typeof SessionPayloadSchema>;
@@ -82,6 +98,7 @@ export async function verifySession(token: string): Promise<SessionPayload | nul
       role: payload.role,
       home_dept_id: payload.home_dept_id ?? null,
       session_version: payload.session_version,
+      magic_scope: payload.magic_scope,
     });
     if (!parsed.success) return null;
     return parsed.data;

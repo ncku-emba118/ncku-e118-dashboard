@@ -649,6 +649,8 @@ export type AccountLite = {
   username: string;
   role: 'super' | 'dept';
   home_dept_id: string | null;
+  /** 敵對審查修正1：財務長永久連結核發時要快照這個值，見 setDocumentFinanceMagicToken。 */
+  session_version: number;
 };
 
 export async function listAccounts(): Promise<{
@@ -658,7 +660,7 @@ export async function listAccounts(): Promise<{
   const supabase = getServerClient();
   const { data, error } = await supabase
     .from('accounts')
-    .select('id, username, role, home_dept_id')
+    .select('id, username, role, home_dept_id, session_version')
     .order('username');
   if (error) return { data: null, error: error.message };
   return { data: (data ?? []) as AccountLite[], error: null };
@@ -750,6 +752,14 @@ export async function setFinalPdf(
 /**
  * 合成最終 PDF 失敗時留痕（0025）：best-effort、失敗只 console.error，不拋出、
  * 不影響呼叫端已完成的簽署 / 已回應的請求。error 字串截斷避免超長訊息塞爆欄位。
+ *
+ * 敵對審查修正4（race guard）：加 `WHERE final_pdf_object_path IS NULL`。
+ * sign route 與 finalize route 都可能對同一份文件並發呼叫 composeAndStoreFinal；
+ * 沒有這個守衛時，較慢那個請求的失敗留痕可能落在較快那個 setFinalPdf 成功
+ * 之後寫入，把「其實已經成功」的文件誤標成 finalize_failed_at 非 null（假警報）。
+ * 有這個守衛後，一旦 setFinalPdf 已經把 final_pdf_object_path 寫成非 null，
+ * 任何稍後才到的失敗留痕 UPDATE 都會因為 WHERE 條件不成立而 rowcount=0、
+ * 靜默不生效——不需要 advisory lock 或新欄位。
  */
 export async function recordFinalizeFailure(
   documentId: string,
@@ -762,7 +772,8 @@ export async function recordFinalizeFailure(
       finalize_failed_at: new Date().toISOString(),
       finalize_last_error: errorMessage.slice(0, 2000),
     })
-    .eq('id', documentId);
+    .eq('id', documentId)
+    .is('final_pdf_object_path', null);
   return { error: error?.message ?? null };
 }
 
@@ -1107,13 +1118,23 @@ export async function getAssignmentByMagicTokenHash(
 // token 欄位，產生方式、TTL、換發端點三者都與 assignment 版一致，只是掛的表
 // 不同——/api/board/signoff/magic/[token] 這一個既有端點兩種 token 都認。
 
-/** 全員簽畢通知財務長時，為該文件寫入一次性 magic token（只存 sha256）。
- *  不要求財務長是這張文件的指派人；單一有效，重發即覆蓋。 */
+/**
+ * 全員簽畢通知財務長時，為該文件寫入財務長下載連結（只存 sha256）。
+ * 不要求財務長是這張文件的指派人；單一有效，重發即覆蓋。
+ *
+ * 敵對審查修正1定案（2026-08-13）：連結不設 TTL、可重複使用，只能靠
+ * clearDocumentFinanceMagicToken 手動作廢——故這裡 finance_magic_token_expires_at
+ * 一律寫 NULL（欄位保留，未來若要改回有期限，改這裡傳非 null 值即可，
+ * 不用再動 schema）。連結永久有效時，`issuedSessionVersion` 是唯一防線：
+ * 快照核發當下 accounts.session_version，兌換時（getDocumentByFinanceMagicTokenHash
+ * 的呼叫端）需與該帳號「現在」的 session_version 比對，職務輪替 / 密碼重設
+ * 會讓比對失敗，逼舊連結失效（見 0026 migration + redeem.ts）。
+ */
 export async function setDocumentFinanceMagicToken(args: {
   documentId: string;
   accountId: string;
   tokenHash: string;
-  expiresAt: string;
+  issuedSessionVersion: number;
 }): Promise<{ ok: boolean; error: string | null }> {
   const supabase = getServerClient();
   const { error, count } = await supabase
@@ -1122,7 +1143,8 @@ export async function setDocumentFinanceMagicToken(args: {
       {
         finance_magic_token_hash: args.tokenHash,
         finance_magic_token_account_id: args.accountId,
-        finance_magic_token_expires_at: args.expiresAt,
+        finance_magic_token_expires_at: null,
+        finance_magic_token_session_version: args.issuedSessionVersion,
       },
       { count: 'exact' },
     )
@@ -1131,13 +1153,40 @@ export async function setDocumentFinanceMagicToken(args: {
   return { ok: (count ?? 0) === 1, error: null };
 }
 
+/** 手動作廢財務長下載連結（敵對審查修正1）——連結不設 TTL，這是使用者唯一的
+ *  作廢手段：清空 hash / 核發對象 / session_version 快照後，舊連結（即使還沒
+ *  過期，因為根本不會過期）一律查無資料、失效。呼叫端：
+ *    • app/api/board/signoff/[id]/finance-link/route.ts「重新產生下載連結」
+ *      （先清空這個，再呼叫 setDocumentFinanceMagicToken 核發新的）
+ *  Best-effort 語意比照 clearAssignmentMagicToken：失敗只記 log，不擋放行。 */
+export async function clearDocumentFinanceMagicToken(
+  documentId: string,
+): Promise<{ error: string | null }> {
+  const supabase = getServerClient();
+  const { error } = await supabase
+    .from('signoff_documents')
+    .update({
+      finance_magic_token_hash: null,
+      finance_magic_token_account_id: null,
+      finance_magic_token_expires_at: null,
+      finance_magic_token_session_version: null,
+    })
+    .eq('id', documentId);
+  return { error: error?.message ?? null };
+}
+
 /** magic 端點擴充查詢：以 token 的 sha256 反查文件層級 token，join 核發對象帳號
- *  取簽發 session 所需欄位。不像 assignment 版有「pending 才可換發」的門檻——
- *  財務長換發只是免登入檢視，讀 doc 現況即可，不代表任何寫入動作。 */
+ *  取簽發 session 所需欄位（含現在的 session_version，供呼叫端與 issuedSessionVersion
+ *  快照比對）。不像 assignment 版有「pending 才可換發」的門檻——財務長換發只是
+ *  免登入檢視，讀 doc 現況即可，不代表任何寫入動作。 */
 export type FinanceMagicRedeemRow = {
   documentId: string;
   docStatus: SignoffStatus;
+  /** 一律為 null（修正1定案：不設 TTL）；欄位保留供日後改回有期限時使用。 */
   expiresAt: string | null;
+  /** 核發當下的 accounts.session_version 快照；null 代表舊資料（修正1上線前
+   *  核發、無快照）—— 呼叫端應視為「無法驗證仍有效」而拒絕，不可放行。 */
+  issuedSessionVersion: number | null;
   account: {
     id: string;
     role: 'super' | 'dept';
@@ -1153,7 +1202,7 @@ export async function getDocumentByFinanceMagicTokenHash(
   const { data, error } = await supabase
     .from('signoff_documents')
     .select(
-      'id, status, finance_magic_token_expires_at, accounts:finance_magic_token_account_id(id, role, home_dept_id, session_version)',
+      'id, status, finance_magic_token_expires_at, finance_magic_token_session_version, accounts:finance_magic_token_account_id(id, role, home_dept_id, session_version)',
     )
     .eq('finance_magic_token_hash', tokenHash)
     .maybeSingle();
@@ -1164,6 +1213,7 @@ export async function getDocumentByFinanceMagicTokenHash(
     id: string;
     status: SignoffStatus;
     finance_magic_token_expires_at: string | null;
+    finance_magic_token_session_version: number | null;
     accounts: {
       id: string;
       role: 'super' | 'dept';
@@ -1177,6 +1227,7 @@ export async function getDocumentByFinanceMagicTokenHash(
       documentId: raw.id,
       docStatus: raw.status,
       expiresAt: raw.finance_magic_token_expires_at,
+      issuedSessionVersion: raw.finance_magic_token_session_version,
       account: raw.accounts,
     },
     error: null,

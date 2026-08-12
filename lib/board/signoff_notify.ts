@@ -22,6 +22,8 @@ import {
   listAccounts,
   setAssignmentMagicToken,
   setDocumentFinanceMagicToken,
+  clearDocumentFinanceMagicToken,
+  type AccountLite,
 } from '../signoff/dal';
 import { ACTIVITIES } from '../budget/data';
 
@@ -213,12 +215,17 @@ export async function notifyApprovalRequested(
 // settlement_url：文件帶 settlement_no 且能在 lib/budget/data.ts 的 ACTIVITIES 查到
 // 對應 slug 時才給值（指向免登入公開的結算單頁，財務長可直接下載請款單）；沒帶
 // settlement_no、或帶了但查無對應 slug（寧可降級也不給壞連結），一律給 null。
-// doc_url（0025 新增）：一律有值，帶財務長專屬一次性 magic token，指向
-// /finance/signoff/[id]（免登入即可看到完整原件與最終 PDF 下載連結，比對照組
-// notifyApprovalRequested 給每位待簽幹部的 magic_url 同一套機制）——
-// settlement_url 只在「掛在活動結算單」時才有，doc_url 補上「一般簽核單也要有
-// 可點連結」這個缺口。bot 端沒有 settlement_url 時應改用 doc_url 當「查看/下載」
-// 按鈕的目標，而不是像之前一樣直接不附按鈕。
+// doc_url：一律嘗試給值，帶財務長專屬下載連結，指向 /finance/signoff/[id]
+// （免登入即可看到完整原件與最終 PDF 下載連結）——settlement_url 只在「掛在
+// 活動結算單」時才有，doc_url 補上「一般簽核單也要有可點連結」這個缺口。
+// bot 端沒有 settlement_url 時應改用 doc_url 當「查看/下載」按鈕的目標。
+//
+// 敵對審查修正1定案（2026-08-13）：doc_url 這條連結不設 TTL、可重複使用，
+// 只能由使用者在 /finance/signoff/[id] 頁面手動按「重新產生下載連結」作廢重發
+// （app/api/board/signoff/[id]/finance-link/route.ts）。連結核發／重發的實際
+// 邏輯抽成 issueFinanceMagicLink（純粹寫 token）+ regenerateFinanceMagicLink
+// （含收件人查找 + 先作廢舊連結），兩處呼叫端（本函式 + finance-link route）
+// 共用同一份邏輯，不重複維護。
 // ============================================================
 export type ApprovalCompletedNotifyResult =
   | { ok: true; status: number }
@@ -260,27 +267,16 @@ export async function notifyApprovalCompleted(
   }
 
   // 收件人＝財務長；查無 / 查到多筆都不硬猜，fail-soft 收斂並記警告，絕不亂送。
-  const accountsRes = await listAccounts();
-  if (accountsRes.error || !accountsRes.data) {
-    console.warn('[signoff.notify_completed.recipient_lookup_failed]', {
+  const financeLookup = await findSoleFinanceOfficer();
+  if (!financeLookup.ok) {
+    console.warn(`[signoff.notify_completed.${financeLookup.reason}]`, {
       document_id: documentId,
-      e: accountsRes.error,
+      detail: financeLookup.detail,
     });
-    return { ok: false, reason: 'recipient_lookup_failed', detail: accountsRes.error ?? 'listAccounts failed' };
+    return { ok: false, reason: financeLookup.reason, detail: financeLookup.detail };
   }
-  const financeOfficers = accountsRes.data.filter((a) => a.home_dept_id === 'finance');
-  if (financeOfficers.length === 0) {
-    console.warn('[signoff.notify_completed.no_recipient]', { document_id: documentId });
-    return { ok: false, reason: 'no_recipient' };
-  }
-  if (financeOfficers.length > 1) {
-    console.warn('[signoff.notify_completed.ambiguous_recipient]', {
-      document_id: documentId,
-      count: financeOfficers.length,
-    });
-    return { ok: false, reason: 'ambiguous_recipient' };
-  }
-  const financeAccountId = financeOfficers[0].id;
+  const financeAccount = financeLookup.account;
+  const financeAccountId = financeAccount.id;
 
   // settlement_url：只有帶 settlement_no 且查得到對應 slug 才給值；查不到寧可降級
   // 給 null 也不給壞連結（見檔頭說明）。
@@ -297,28 +293,12 @@ export async function notifyApprovalCompleted(
     }
   }
 
-  // doc_url：財務長專屬一次性 magic token（0025），比照 notifyApprovalRequested
-  // 給待簽幹部的 magic_url 同一套產生方式（256-bit 隨機、庫內只存 sha256、
-  // TTL=14 天），只是掛在 signoff_documents（財務長不一定是這張文件的指派人，
-  // 見 dal.ts setDocumentFinanceMagicToken 檔頭說明）。寫入失敗就不給連結
-  // （寧可 doc_url 為 null、由 bot 端退化成純文字通知，也不給壞連結）。
-  let docUrl: string | null = null;
-  const financeToken = crypto.randomBytes(32).toString('hex');
-  const financeTokenHash = crypto.createHash('sha256').update(financeToken).digest('hex');
-  const financeExpiresAt = new Date(Date.now() + MAGIC_TOKEN_TTL_MS).toISOString();
-  const tokenWrite = await setDocumentFinanceMagicToken({
-    documentId,
-    accountId: financeAccountId,
-    tokenHash: financeTokenHash,
-    expiresAt: financeExpiresAt,
-  });
-  if (tokenWrite.error || !tokenWrite.ok) {
-    console.error('[signoff.notify_completed.doc_url_token_write_failed]', {
-      document_id: documentId,
-      e: tokenWrite.error,
-    });
-  } else {
-    docUrl = `${PUBLIC_DASHBOARD_BASE}/api/board/signoff/magic/${financeToken}?openExternalBrowser=1`;
+  // doc_url：財務長專屬下載連結（見檔頭「敵對審查修正1定案」說明，不設 TTL、
+  // 可重複使用）。寫入失敗就不給連結（寧可 doc_url 為 null、由 bot 端退化成
+  // 純文字通知，也不給壞連結）。
+  const docUrl = await issueFinanceMagicLink(documentId, financeAccount);
+  if (!docUrl) {
+    console.error('[signoff.notify_completed.doc_url_token_write_failed]', { document_id: documentId });
   }
 
   const payload = {
@@ -388,4 +368,89 @@ export async function notifyApprovalCompleted(
     const detail = err instanceof Error ? err.message : String(err);
     return { ok: false, reason: 'network_error', detail };
   }
+}
+
+// ============================================================
+// 財務長下載連結（doc_url）共用邏輯（敵對審查修正1）
+//
+// 抽成獨立函式的原因：連結不設 TTL、可重複使用，除了 notifyApprovalCompleted
+// 首次核發之外，使用者還能在 /finance/signoff/[id] 頁面按「重新產生下載連結」
+// 手動作廢重發（app/api/board/signoff/[id]/finance-link/route.ts）——兩處都要
+// 「找出唯一財務長」與「寫入 token」，抽出來避免邏輯漂移。
+// ============================================================
+
+type FinanceOfficerLookupResult =
+  | { ok: true; account: AccountLite }
+  | { ok: false; reason: 'recipient_lookup_failed' | 'no_recipient' | 'ambiguous_recipient'; detail?: string };
+
+/** 找出「現在」唯一的財務長帳號；查無 / 查到多筆一律 fail-soft，不硬猜。 */
+async function findSoleFinanceOfficer(): Promise<FinanceOfficerLookupResult> {
+  const accountsRes = await listAccounts();
+  if (accountsRes.error || !accountsRes.data) {
+    return { ok: false, reason: 'recipient_lookup_failed', detail: accountsRes.error ?? 'listAccounts failed' };
+  }
+  const financeOfficers = accountsRes.data.filter((a) => a.home_dept_id === 'finance');
+  if (financeOfficers.length === 0) return { ok: false, reason: 'no_recipient' };
+  if (financeOfficers.length > 1) {
+    return { ok: false, reason: 'ambiguous_recipient', detail: `count=${financeOfficers.length}` };
+  }
+  return { ok: true, account: financeOfficers[0] };
+}
+
+/**
+ * 寫入財務長下載連結的 token（只做這一步：256-bit 隨機 → sha256 存庫 → 快照
+ * 核發當下的 session_version → 組 URL）。收件人查找交給呼叫端。
+ * 寫入失敗回 null，呼叫端各自決定要不要視為致命錯誤。
+ */
+async function issueFinanceMagicLink(
+  documentId: string,
+  financeAccount: Pick<AccountLite, 'id' | 'session_version'>,
+): Promise<string | null> {
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const tokenWrite = await setDocumentFinanceMagicToken({
+    documentId,
+    accountId: financeAccount.id,
+    tokenHash,
+    issuedSessionVersion: financeAccount.session_version,
+  });
+  if (tokenWrite.error || !tokenWrite.ok) return null;
+  return `${PUBLIC_DASHBOARD_BASE}/api/board/signoff/magic/${token}?openExternalBrowser=1`;
+}
+
+export type RegenerateFinanceLinkResult =
+  | { ok: true; url: string }
+  | {
+      ok: false;
+      reason: 'recipient_lookup_failed' | 'no_recipient' | 'ambiguous_recipient' | 'token_write_failed';
+      detail?: string;
+    };
+
+/**
+ * 供 /api/board/signoff/[id]/finance-link route 使用：使用者手動按「重新產生
+ * 下載連結」時的完整流程——先找出現在的財務長、清空舊 token（唯一作廢手段，
+ * 見 dal.ts clearDocumentFinanceMagicToken），再核發新的。
+ *
+ * 先清後發，不是先發後清：清除失敗 best-effort（只記 log 不擋），因為新 token
+ * 寫入時 hash 欄位本來就會被整列覆蓋，舊 hash 反正讀不到了；先清是為了讓
+ * 「使用者按下這顆鍵＝舊連結立刻失效」這件事語意上更明確、也更早發生。
+ */
+export async function regenerateFinanceMagicLink(documentId: string): Promise<RegenerateFinanceLinkResult> {
+  const lookup = await findSoleFinanceOfficer();
+  if (!lookup.ok) {
+    console.warn(`[signoff.finance_link.${lookup.reason}]`, { document_id: documentId, detail: lookup.detail });
+    return lookup;
+  }
+
+  const cleared = await clearDocumentFinanceMagicToken(documentId);
+  if (cleared.error) {
+    console.error('[signoff.finance_link.clear_old_failed]', { document_id: documentId, e: cleared.error });
+  }
+
+  const url = await issueFinanceMagicLink(documentId, lookup.account);
+  if (!url) {
+    console.error('[signoff.finance_link.token_write_failed]', { document_id: documentId });
+    return { ok: false, reason: 'token_write_failed' };
+  }
+  return { ok: true, url };
 }

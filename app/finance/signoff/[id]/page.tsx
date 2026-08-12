@@ -126,6 +126,9 @@ export default function SignoffDetailPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   // UI：簽核表 PDF 大框改為可收合，預設收起，不擠壓主流程
   const [pdfOpen, setPdfOpen] = useState(false);
+  // 財務長下載連結不設 TTL、可重複使用（敵對審查修正1定案）；重新產生後把新網址
+  // 就地顯示出來，讓班代 / 發起人可以複製轉發，不必再去挖 LINE 通知歷史訊息。
+  const [financeLinkUrl, setFinanceLinkUrl] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -248,6 +251,19 @@ export default function SignoffDetailPage() {
     const r = await res.json().catch(() => ({}));
     if (!res.ok) { setMsg(writeFailMsg(res.status, r, '重新產生最終 PDF 失敗')); setBusy(false); return; }
     window.location.reload();
+  }
+
+  // 重新產生財務長下載連結：唯一的作廢手段（連結不設 TTL，見 finance-link route
+  // 檔頭）。先作廢舊連結才核發新的，故按下去前明確提示舊連結會立刻失效。
+  async function doRegenerateFinanceLink() {
+    if (!window.confirm('確定重新產生財務長下載連結？舊連結會立刻失效。')) return;
+    setBusy(true);
+    setMsg('');
+    const res = await fetch(`/api/board/signoff/${id}/finance-link`, { method: 'POST' });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) { setMsg(writeFailMsg(res.status, r, '產生連結失敗')); setBusy(false); return; }
+    setFinanceLinkUrl(r.url);
+    setBusy(false);
   }
 
   async function doVoid() {
@@ -581,10 +597,23 @@ export default function SignoffDetailPage() {
                 {busy ? '處理中…' : '⟳ 重新產生最終 PDF'}
               </button>
             )}
+            {d.doc.status === 'approved' && (
+              <button onClick={doRegenerateFinanceLink} disabled={busy} style={{ minHeight: 40, fontSize: 13.5, color: WINE, background: 'none', border: '1px solid #D9CDB8', borderRadius: 8, padding: '8px 14px', cursor: busy ? 'default' : 'pointer' }}>
+                {busy ? '處理中…' : '⟳ 重新產生財務長下載連結'}
+              </button>
+            )}
             {d.can_delete && (
               <button onClick={doDelete} disabled={busy} style={{ minHeight: 40, fontSize: 13.5, color: '#fff', background: '#b00', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: busy ? 'default' : 'pointer' }}>刪除</button>
             )}
           </div>
+        )}
+
+        {/* 重新產生財務長下載連結的結果：就地顯示新網址，供班代 / 發起人複製轉發 */}
+        {!isPublic && financeLinkUrl && (
+          <p style={{ marginTop: 10, fontSize: 13, color: INK, background: '#F6F0E4', border: '1px solid #E8DFD0', borderRadius: 8, padding: '10px 12px', wordBreak: 'break-all', lineHeight: 1.7 }}>
+            新的財務長下載連結（舊連結已失效）：<br />
+            <a href={financeLinkUrl} target="_blank" rel="noreferrer" style={{ color: WINE, fontWeight: 600 }}>{financeLinkUrl}</a>
+          </p>
         )}
 
         {/* 頁面層訊息（sheet 關閉時；催簽 / 作廢等回饋） */}

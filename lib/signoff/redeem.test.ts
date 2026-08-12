@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest';
-import { canRedeemAssignment, canRedeemFinanceDocument } from './redeem';
+import {
+  canRedeemAssignment,
+  canRedeemFinanceDocument,
+  isFinanceMagicTokenExpired,
+  isFinanceMagicAccountStillValid,
+} from './redeem';
 import type { AssignmentStatus, SignoffStatus } from './dal';
 
 /**
@@ -60,5 +65,80 @@ describe('canRedeemFinanceDocument', () => {
     for (const d of DOC) {
       expect(canRedeemFinanceDocument(d)).toBe(d === 'approved');
     }
+  });
+});
+
+/**
+ * 敵對審查修正1定案（2026-08-13）：財務長下載連結不設 TTL、可重複使用，
+ * finance_magic_token_expires_at 一律寫 NULL——null 視為「永不過期」，
+ * 跟 assignment 版「缺到期時間視同無效」刻意不同語意。
+ */
+describe('isFinanceMagicTokenExpired', () => {
+  test('null（不設 TTL）永不過期', () => {
+    expect(isFinanceMagicTokenExpired(null)).toBe(false);
+  });
+
+  test('未來時間未過期', () => {
+    const future = new Date(Date.now() + 60_000).toISOString();
+    expect(isFinanceMagicTokenExpired(future)).toBe(false);
+  });
+
+  test('過去時間已過期（若未來改回有期限，這條路徑仍要能正確擋掉）', () => {
+    const past = new Date(Date.now() - 60_000).toISOString();
+    expect(isFinanceMagicTokenExpired(past)).toBe(true);
+  });
+});
+
+/**
+ * 敵對審查修正1定案：連結永久有效時，唯一防線是「核發對象帳號現在仍是財務長，
+ * 且 session_version 與核發當下的快照一致」——職務輪替 / 密碼重設會 bump
+ * session_version，逼舊連結失效，不留永久後門。
+ */
+describe('isFinanceMagicAccountStillValid', () => {
+  test('home_dept_id=finance + session_version 一致 → 有效', () => {
+    expect(
+      isFinanceMagicAccountStillValid({
+        homeDeptId: 'finance',
+        issuedSessionVersion: 3,
+        currentSessionVersion: 3,
+      }),
+    ).toBe(true);
+  });
+
+  test('session_version 不一致（密碼重設 / 職務輪替後）→ 一律失效', () => {
+    expect(
+      isFinanceMagicAccountStillValid({
+        homeDeptId: 'finance',
+        issuedSessionVersion: 3,
+        currentSessionVersion: 4,
+      }),
+    ).toBe(false);
+    expect(
+      isFinanceMagicAccountStillValid({
+        homeDeptId: 'finance',
+        issuedSessionVersion: 4,
+        currentSessionVersion: 3,
+      }),
+    ).toBe(false);
+  });
+
+  test('帳號已不是財務長（home_dept_id 改變）→ 即使 session_version 一致也失效', () => {
+    expect(
+      isFinanceMagicAccountStillValid({
+        homeDeptId: 'activity',
+        issuedSessionVersion: 3,
+        currentSessionVersion: 3,
+      }),
+    ).toBe(false);
+  });
+
+  test('issuedSessionVersion 為 null（修正1上線前核發、無快照的舊資料）→ 無法驗證，一律拒絕', () => {
+    expect(
+      isFinanceMagicAccountStillValid({
+        homeDeptId: 'finance',
+        issuedSessionVersion: null,
+        currentSessionVersion: 1,
+      }),
+    ).toBe(false);
   });
 });
