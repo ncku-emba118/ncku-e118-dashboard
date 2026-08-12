@@ -21,6 +21,7 @@ import {
   uploadObject,
   clearAssignmentMagicToken,
   upsertStoredSignature,
+  recordFinalizeFailure,
 } from '@/lib/signoff/dal';
 import { composeAndStoreFinal } from '@/lib/signoff/finalize';
 import { notifyApprovalCompleted } from '@/lib/board/signoff_notify';
@@ -140,6 +141,12 @@ export async function POST(
       const fin = await composeAndStoreFinal(access.bundle.doc);
       if (!fin.ok) {
         console.error('[signoff.sign.finalize_failed]', { traceId, e: fin.error });
+        // 留痕（0025）：讓 /finance/signoff 列表頁能標示「已核准但 PDF 未就緒」，
+        // best-effort、失敗只多記一行 log，不影響已完成的簽署。
+        const trace = await recordFinalizeFailure(id, fin.error ?? '未知錯誤');
+        if (trace.error) {
+          console.error('[signoff.sign.record_finalize_failure_failed]', { traceId, e: trace.error });
+        }
       } else {
         // 請款單真的生出來了才通知財務長；上面 !fin.ok 分支（合成失敗）不發通知。
         try {

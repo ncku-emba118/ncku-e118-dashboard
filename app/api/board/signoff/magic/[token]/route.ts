@@ -18,8 +18,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import crypto from 'node:crypto';
 import { signSession, COOKIE_NAME } from '@/lib/auth/jwt';
 import { MAGIC_TOKEN_RE, MAGIC_TOKEN_TTL_MS } from '@/lib/signoff/constants';
-import { getAssignmentByMagicTokenHash } from '@/lib/signoff/dal';
-import { canRedeemAssignment } from '@/lib/signoff/redeem';
+import { getAssignmentByMagicTokenHash, getDocumentByFinanceMagicTokenHash } from '@/lib/signoff/dal';
+import { canRedeemAssignment, canRedeemFinanceDocument } from '@/lib/signoff/redeem';
 
 /**
  * magic 換發的 session 有效期＝連結有效期（14 天）。
@@ -56,30 +56,52 @@ export async function GET(
   // ① 格式白名單：任何非 64-hex 一律早退，不觸 DB（規格 §4「非法格式早退」）
   if (!MAGIC_TOKEN_RE.test(token)) return redirectToLogin(req);
 
-  // ② 以 sha256 反查（庫內只存 hash）
+  // ② 以 sha256 反查（庫內只存 hash）。先試指派層級 token（幹部簽核用），
+  //    查無才試文件層級 token（0025，財務長完成通知用——不要求持有者是指派人）。
+  //    兩者共用同一格式（64-hex）與同一支端點，只是掛的資料表不同。
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-  const { data, error } = await getAssignmentByMagicTokenHash(tokenHash);
-  if (error || !data) return redirectToLogin(req);
+  const assignmentLookup = await getAssignmentByMagicTokenHash(tokenHash);
+  if (assignmentLookup.error) return redirectToLogin(req);
 
-  // ③ 驗未過期（缺到期時間視同無效）
-  if (!data.expiresAt || new Date(data.expiresAt).getTime() < Date.now()) {
-    return redirectToLogin(req);
-  }
+  let documentId: string;
+  let account: { id: string; role: 'super' | 'dept'; home_dept_id: string | null; session_version: number };
 
-  // ④ 換發前驗「單據狀態可否簽核」（Codex #1）：唯有指派仍 pending 且單仍 routing 才放行。
-  //    已簽 / 已退回 / 已核准 / 已作廢的舊連結一律失效（即使 token 尚未過期）。
-  if (!canRedeemAssignment(data.assignmentStatus, data.docStatus)) {
-    return redirectToLogin(req);
+  if (assignmentLookup.data) {
+    const data = assignmentLookup.data;
+    // ③ 驗未過期（缺到期時間視同無效）
+    if (!data.expiresAt || new Date(data.expiresAt).getTime() < Date.now()) {
+      return redirectToLogin(req);
+    }
+    // ④ 換發前驗「單據狀態可否簽核」（Codex #1）：唯有指派仍 pending 且單仍 routing 才放行。
+    //    已簽 / 已退回 / 已核准 / 已作廢的舊連結一律失效（即使 token 尚未過期）。
+    if (!canRedeemAssignment(data.assignmentStatus, data.docStatus)) {
+      return redirectToLogin(req);
+    }
+    documentId = data.documentId;
+    account = data.account;
+  } else {
+    const financeLookup = await getDocumentByFinanceMagicTokenHash(tokenHash);
+    if (financeLookup.error || !financeLookup.data) return redirectToLogin(req);
+    const data = financeLookup.data;
+    if (!data.expiresAt || new Date(data.expiresAt).getTime() < Date.now()) {
+      return redirectToLogin(req);
+    }
+    // 財務長版換發門檻：文件仍 approved 才放行（唯讀存取，見 redeem.ts 註解）。
+    if (!canRedeemFinanceDocument(data.docStatus)) {
+      return redirectToLogin(req);
+    }
+    documentId = data.documentId;
+    account = data.account;
   }
 
   // ⑤ 簽發正式 session（比照 login route:247-280，含 session_version）
   let cookieValue: string;
   try {
     cookieValue = await signSession({
-      sub: data.account.id,
-      role: data.account.role,
-      home_dept_id: data.account.home_dept_id,
-      session_version: data.account.session_version,
+      sub: account.id,
+      role: account.role,
+      home_dept_id: account.home_dept_id,
+      session_version: account.session_version,
     }, MAGIC_SESSION_TTL_SECONDS);
   } catch (e) {
     console.error('[signoff.magic.sign_failed]', { e: (e as Error).message });
@@ -87,7 +109,7 @@ export async function GET(
   }
 
   const res = NextResponse.redirect(
-    new URL(`/finance/signoff/${data.documentId}`, req.url),
+    new URL(`/finance/signoff/${documentId}`, req.url),
   );
   res.headers.set('Cache-Control', 'no-store');
   // Codex #7：一次性 token 在 URL 上，換發成功導向明細頁時明確斷開 Referer，
