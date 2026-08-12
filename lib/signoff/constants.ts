@@ -95,3 +95,24 @@ export const objectPaths = {
 export const MAGIC_TOKEN_RE = /^[a-f0-9]{64}$/;
 // magic token 有效期上限：14 天（規格 §4，實際取 min(now+14d, 單據期限)）
 export const MAGIC_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+
+/**
+ * 財務長完成通知（0025）文件層級 magic token 的連結有效期。
+ *
+ * 獨立於上面 assignment 版的 MAGIC_TOKEN_TTL_MS 命名，即使目前數值同為 14 天——
+ * 「連結可否重複使用」這個設計目前仍在拍板中（敵對審查修正1 暫緩），拆成具名
+ * 常數方便日後單獨調整（例如改成一次性後可能連帶縮短此值），不必牽動 assignment
+ * 那條完全獨立的通知流程。
+ */
+export const FINANCE_MAGIC_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+
+/**
+ * 財務長 magic 連結換發出的 session TTL（敵對審查修正2）。
+ *
+ * 與上面「連結本身可用多久」（FINANCE_MAGIC_TOKEN_TTL_MS）是兩件事：這裡是
+ * 「換發出的帳號 session 能活多久」。財務長這條磁力連結換發的是唯讀 session
+ * （見 lib/auth/jwt.ts 的 magic_scope claim + lib/signoff/access.ts 的收斂判斷），
+ * 即使連結外流，session 也在 30 分鐘後失效——刻意遠短於 assignment 版磁力連結
+ * 換發的完整權限 session（14 天，未變動）。
+ */
+export const FINANCE_MAGIC_SESSION_TTL_SECONDS = 30 * 60;

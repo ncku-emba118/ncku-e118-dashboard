@@ -12,6 +12,7 @@ import { rateLimit } from '@/lib/signoff/rate-limit';
 import { requireSignoffAccess } from '@/lib/signoff/access';
 import { composeAndStoreFinal } from '@/lib/signoff/finalize';
 import { recordFinalizeFailure } from '@/lib/signoff/dal';
+import { notifyApprovalCompleted } from '@/lib/board/signoff_notify';
 
 const UUID_RE =
   /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
@@ -52,5 +53,19 @@ export async function POST(
     }
     return jsonResp({ error: '最終 PDF 合成失敗，請稍後再試' }, 503, traceId);
   }
+
+  // 敵對審查修正3：這支端點在上面第 39-44 行已經用「動作前 final_pdf_object_path
+  // 是否為 null」擋掉了重複補救（已有 final PDF 時 idempotent 直接回 regenerated:false，
+  // 不會走到這裡）——走到這裡即代表「這次是首度補上 final PDF」，語意與 sign route
+  // 成功分支一致，故同樣要通知財務長（best-effort，失敗只 log，不影響本次 API 回應）。
+  try {
+    const notify = await notifyApprovalCompleted(id);
+    if (!notify.ok) {
+      console.warn('[signoff.finalize.notify_completed_failed]', { traceId, reason: notify.reason, detail: notify.detail });
+    }
+  } catch (e) {
+    console.error('[signoff.finalize.notify_completed_threw]', { traceId, e: (e as Error).message });
+  }
+
   return jsonResp({ ok: true, regenerated: true }, 200, traceId);
 }
