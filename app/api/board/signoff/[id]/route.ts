@@ -140,9 +140,13 @@ export async function GET(
           supplements,
           my_pending_assignment_id: myPending?.id ?? null,
           has_stored_signature: hasStored, // 有預存簽名 → 前端顯示「同意並蓋預存簽名」主鍵（§1-6）
-          can_delete: session.role === 'super', // 班代/副班代/秘書可刪除
+          // 財務長 magic 連結是唯讀 scope：這三個寫入類權限一律回 false。
+          // 真正的攔截在 middleware / readSession()（第一、二層），這裡是避免
+          // 財務長帳號剛好是 super 時，前端渲染出點了必定 401 的誤導按鈕。
+          can_delete: !session.magic_scope && session.role === 'super', // 班代/副班代/秘書可刪除
           // 撤銷退回：限已退回狀態，且操作者是 super 或當初按下退回的那個人
           can_undo_reject:
+            !session.magic_scope &&
             doc.status === 'rejected' &&
             (session.role === 'super' ||
               assignments.some(
@@ -150,6 +154,7 @@ export async function GET(
               )),
           // 補充權限：申請人本人或 super；且限 routing / approved
           can_supplement:
+            !session.magic_scope &&
             (session.role === 'super' || doc.created_by === session.sub) &&
             (doc.status === 'routing' || doc.status === 'approved'),
         },
