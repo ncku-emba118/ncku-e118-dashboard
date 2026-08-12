@@ -10,6 +10,7 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE_NAME, verifySession } from './lib/auth/jwt';
+import { isMagicScopeAllowed } from './lib/auth/magic-allowlist';
 
 /**
  * 白名單：這些 path 不需登入即可訪問（所有 method）。
@@ -58,8 +59,40 @@ const GET_PUBLIC_PATTERNS: RegExp[] = [
   /^\/api\/board\/signoff\/magic\/[a-f0-9]{64}$/,                       // GET magic 換發 session
 ];
 
+/**
+ * 只有這些前綴原本就需要登入（沿用 P0-1 起的既有行為）。matcher 為了讓下面
+ * 的 magic_scope 收斂管得到 /finance /budget /staff（見檔頭 §），額外把這三
+ * 條加進 matcher，但它們原本「免登入可看」的行為不可變——所以「要不要求
+ * 登入」這件事仍只看這個前綴清單，不是看 matcher 有沒有命中。
+ */
+const REQUIRES_LOGIN_PREFIXES = ['/board/admin', '/api/board'];
+
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+  const session = token ? await verifySession(token) : null;
+
+  // ── 第一層：magic_scope deny-by-default（財務長唯讀連結安全強化）──
+  // 只要 session 帶 magic_scope，不管 path 是不是 /board /api/board 這些原本
+  // 就管制的範圍，一律先過這個 allowlist；沒命中就當「找不到」擋掉，完全
+  // 不落到下面沿用舊行為的分支（否則 /finance /staff /budget 這些「原本免
+  // 登入可看」的路徑會被誤判成「已登入放行」）。
+  // 第二層防線在 lib/auth/session.ts::readSession()（即使有路徑繞過這支
+  // middleware，例如 RSC / server action，也不會把 magic session 誤當完整
+  // 帳號 session）；第三層在 lib/signoff/access.ts::requireSignoffAccess。
+  if (session?.magic_scope) {
+    if (!isMagicScopeAllowed(request.method, path, session.magic_scope.document_id)) {
+      return magicScopeDeny(path);
+    }
+    return NextResponse.next();
+  }
+
+  // ── 以下沿用既有邏輯（P0-1 / Codex #2 / Round-3），行為與加上面那層之前
+  // 完全一致：只有 REQUIRES_LOGIN_PREFIXES 這兩個前綴才會走到「沒 token /
+  // 沒 session 就 reject」的判斷。──
+  if (!REQUIRES_LOGIN_PREFIXES.some((prefix) => path.startsWith(prefix))) {
+    return NextResponse.next();
+  }
 
   if (PUBLIC_API_PATHS.has(path)) {
     return NextResponse.next();
@@ -76,12 +109,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get(COOKIE_NAME)?.value;
-  if (!token) {
-    return reject(request, path);
-  }
-
-  const session = await verifySession(token);
   if (!session) {
     return reject(request, path);
   }
@@ -101,6 +128,33 @@ function reject(request: NextRequest, originalPath: string) {
   return NextResponse.redirect(url);
 }
 
+/**
+ * magic_scope 收斂被拒絕的統一出口。比照 lib/signoff/access.ts 的既有慣例
+ * （權限不足一律回 404，不用 403/401 跟「不存在」區分開來，避免帶著有效
+ * session 的人拿這個當 oracle 探測其他文件是否存在）。API 與 page 請求都
+ * 回 404、都不带 Set-Cookie／不额外洩漏訊號；不像一般未登入那樣 redirect
+ * 去 /board/login——那樣反而會多洩漏一個「你其實是有效 session、只是被
+ * 這條規則擋下」的訊號差異。
+ */
+function magicScopeDeny(originalPath: string) {
+  const res = originalPath.startsWith('/api/')
+    ? NextResponse.json({ error: '找不到該簽核文件' }, { status: 404 })
+    : new NextResponse('Not Found', { status: 404 });
+  res.headers.set('Cache-Control', 'no-store');
+  return res;
+}
+
 export const config = {
-  matcher: ['/board/admin/:path*', '/api/board/:path*'],
+  matcher: [
+    '/board/admin/:path*',
+    '/api/board/:path*',
+    // 這三條原本不在 matcher 裡（頁面本身免登入可看，見各頁檔頭註解），
+    // 純粹是為了讓上面的 magic_scope 收斂管得到——app/staff/page.tsx、
+    // app/budget/settlement/[slug]/page.tsx 都直接呼叫 readSession()，
+    // 若不擴大 matcher，帶 magic_scope 的 session 打這些路徑時 middleware
+    // 根本不會執行，只能靠 readSession() 那層防線（見檔頭 §2）。
+    '/finance/:path*',
+    '/budget/:path*',
+    '/staff/:path*',
+  ],
 };

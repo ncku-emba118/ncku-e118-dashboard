@@ -25,14 +25,50 @@ export type Session = SessionPayload & {
   username: string;
 };
 
+export type ReadSessionOptions = {
+  /**
+   * 明確 opt-in：這個呼叫端知道、且會自己正確處理 magic_scope（財務長唯讀
+   * 連結）session，可以拿到它。預設 false。
+   *
+   * 這是「敵對審查判定不可上線」之後補上的第二層防線（見
+   * lib/auth/magic-allowlist.ts 檔頭）：原本任何沒呼叫
+   * lib/signoff/access.ts::requireSignoffAccess 的 route/page，只要呼叫了
+   * readSession()，就會把磁力連結換出的 session 當成該財務長帳號的完整
+   * 正常 session（因為 role/home_dept_id 都是從 DB 撈真實帳號資料回來
+   * 的）——income route、signoff 列表/accounts/delete、upload-url、
+   * /staff、/budget/settlement/[slug] 都是這樣被繞過的。
+   *
+   * 修正後：預設情況下，只要 JWT payload 帶 magic_scope，readSession()
+   * 直接回 null（當成「未登入」），完全不查 DB、不把帳號資料吐出去。只有
+   * 明確傳 `{ allowMagicScope: true }` 的呼叫端才拿得到——目前唯一合法的
+   * 呼叫端是 app/api/board/signoff/[id]/route.ts（財務長頁面殼掛載時打的
+   * 那支 API），拿到之後仍要過 requireSignoffAccess（第三層）才真的放行
+   * 動作。structural coverage test（lib/auth/magic-scope-coverage.test.ts）
+   * 會枚舉所有呼叫 readSession() 的地方，新增 `allowMagicScope: true` 必須
+   * 是有意識的動作。
+   *
+   * ⚠ 無 magic_scope 的 session（密碼登入 / assignment magic link）完全不
+   * 受這個參數影響——這個分支只在 payload 真的帶 magic_scope 時才會進去，
+   * 相容性鐵律零 regression。
+   */
+  allowMagicScope?: boolean;
+};
+
 /** Return null if not authenticated / session invalid / session_version mismatch */
-export async function readSession(): Promise<Session | null> {
+export async function readSession(
+  options: ReadSessionOptions = {},
+): Promise<Session | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
 
   const sessionFromToken = await verifySession(token);
   if (!sessionFromToken) return null;
+
+  // 第二層 deny-by-default：見上面 ReadSessionOptions.allowMagicScope 檔頭。
+  if (sessionFromToken.magic_scope && !options.allowMagicScope) {
+    return null;
+  }
 
   const supabase = getServerClient();
   const { data: account, error } = await supabase

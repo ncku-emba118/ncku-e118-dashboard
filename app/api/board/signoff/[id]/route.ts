@@ -22,7 +22,12 @@ export async function GET(
   const { id } = await params;
   if (!UUID_RE.test(id)) return jsonResp({ error: '無效的 ID' }, 400, traceId);
 
-  const session = await readSession();
+  // ⚠ 財務長唯讀連結（magic_scope）目前唯一合法的落地點：見
+  // lib/auth/magic-allowlist.ts 檔頭 + lib/auth/session.ts::ReadSessionOptions。
+  // 下面 requireSignoffAccess(session, 'view', id) 才是真正的第三層放行判斷
+  // （只放行 document_id 相符的 view）；這裡只是宣告「這支 route 知道怎麼
+  // 正確處理 magic session」。
+  const session = await readSession({ allowMagicScope: true });
 
   // ① 登入且有內部 view 權限 → 回完整原件（doc meta + 指派 + 短效 signed URL）。
   if (session) {
