@@ -57,6 +57,9 @@ export type SignoffDocumentRow = {
   status: SignoffStatus;
   final_pdf_object_path: string | null;
   final_pdf_sha256: string | null;
+  /** 最近一次 composeAndStoreFinal 失敗的時間／錯誤摘要（0025）；成功後由 setFinalPdf 清空 */
+  finalize_failed_at?: string | null;
+  finalize_last_error?: string | null;
   supersedes_document_id: string | null;
   due_at: string | null;
   created_at: string;
@@ -361,7 +364,9 @@ export async function listCreatedBy(accountId: string) {
   const supabase = getServerClient();
   return supabase
     .from('signoff_documents')
-    .select('id, title, amount, currency, status, created_at, due_at')
+    // final_pdf_object_path（0025）：讓列表頁能標示「已核准但 PDF 未就緒」
+    // （status==='approved' && final_pdf_object_path===null）。
+    .select('id, title, amount, currency, status, created_at, due_at, final_pdf_object_path')
     .eq('created_by', accountId)
     .order('created_at', { ascending: false })
     .limit(100);
@@ -731,7 +736,32 @@ export async function setFinalPdf(
   const supabase = getServerClient();
   const { error } = await supabase
     .from('signoff_documents')
-    .update({ final_pdf_object_path: finalPath, final_pdf_sha256: finalSha256 })
+    // 合成成功 → 順便清掉上次失敗留下的痕跡（0025），避免重生成功後列表頁還標紅。
+    .update({
+      final_pdf_object_path: finalPath,
+      final_pdf_sha256: finalSha256,
+      finalize_failed_at: null,
+      finalize_last_error: null,
+    })
+    .eq('id', documentId);
+  return { error: error?.message ?? null };
+}
+
+/**
+ * 合成最終 PDF 失敗時留痕（0025）：best-effort、失敗只 console.error，不拋出、
+ * 不影響呼叫端已完成的簽署 / 已回應的請求。error 字串截斷避免超長訊息塞爆欄位。
+ */
+export async function recordFinalizeFailure(
+  documentId: string,
+  errorMessage: string,
+): Promise<{ error: string | null }> {
+  const supabase = getServerClient();
+  const { error } = await supabase
+    .from('signoff_documents')
+    .update({
+      finalize_failed_at: new Date().toISOString(),
+      finalize_last_error: errorMessage.slice(0, 2000),
+    })
     .eq('id', documentId);
   return { error: error?.message ?? null };
 }
@@ -1061,6 +1091,92 @@ export async function getAssignmentByMagicTokenHash(
       assignmentStatus: raw.status,
       docStatus: raw.signoff_documents.status,
       expiresAt: raw.magic_token_expires_at,
+      account: raw.accounts,
+    },
+    error: null,
+  };
+}
+
+// ── 財務長完成通知用：文件層級 magic token（0025）──────────
+//
+// 為什麼獨立於上面 signoff_assignments 那組：財務長是 notifyApprovalCompleted
+// 依 listAccounts() 篩 home_dept_id==='finance' 找出的通知對象，不代表他在這張
+// 文件上有 signoff_assignments 列（一般經費簽核不見得指派財務長會簽），
+// 上面那組 setAssignmentMagicToken 的三鍵 FK（assignment_id, document_id,
+// signer_account_id）在這種情境下沒有列可寫。改在 signoff_documents 開同構的
+// token 欄位，產生方式、TTL、換發端點三者都與 assignment 版一致，只是掛的表
+// 不同——/api/board/signoff/magic/[token] 這一個既有端點兩種 token 都認。
+
+/** 全員簽畢通知財務長時，為該文件寫入一次性 magic token（只存 sha256）。
+ *  不要求財務長是這張文件的指派人；單一有效，重發即覆蓋。 */
+export async function setDocumentFinanceMagicToken(args: {
+  documentId: string;
+  accountId: string;
+  tokenHash: string;
+  expiresAt: string;
+}): Promise<{ ok: boolean; error: string | null }> {
+  const supabase = getServerClient();
+  const { error, count } = await supabase
+    .from('signoff_documents')
+    .update(
+      {
+        finance_magic_token_hash: args.tokenHash,
+        finance_magic_token_account_id: args.accountId,
+        finance_magic_token_expires_at: args.expiresAt,
+      },
+      { count: 'exact' },
+    )
+    .eq('id', args.documentId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: (count ?? 0) === 1, error: null };
+}
+
+/** magic 端點擴充查詢：以 token 的 sha256 反查文件層級 token，join 核發對象帳號
+ *  取簽發 session 所需欄位。不像 assignment 版有「pending 才可換發」的門檻——
+ *  財務長換發只是免登入檢視，讀 doc 現況即可，不代表任何寫入動作。 */
+export type FinanceMagicRedeemRow = {
+  documentId: string;
+  docStatus: SignoffStatus;
+  expiresAt: string | null;
+  account: {
+    id: string;
+    role: 'super' | 'dept';
+    home_dept_id: string | null;
+    session_version: number;
+  };
+};
+
+export async function getDocumentByFinanceMagicTokenHash(
+  tokenHash: string,
+): Promise<{ data: FinanceMagicRedeemRow | null; error: string | null }> {
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from('signoff_documents')
+    .select(
+      'id, status, finance_magic_token_expires_at, accounts:finance_magic_token_account_id(id, role, home_dept_id, session_version)',
+    )
+    .eq('finance_magic_token_hash', tokenHash)
+    .maybeSingle();
+  if (error) return { data: null, error: error.message };
+  if (!data) return { data: null, error: null };
+
+  const raw = data as unknown as {
+    id: string;
+    status: SignoffStatus;
+    finance_magic_token_expires_at: string | null;
+    accounts: {
+      id: string;
+      role: 'super' | 'dept';
+      home_dept_id: string | null;
+      session_version: number;
+    } | null;
+  };
+  if (!raw.accounts) return { data: null, error: null };
+  return {
+    data: {
+      documentId: raw.id,
+      docStatus: raw.status,
+      expiresAt: raw.finance_magic_token_expires_at,
       account: raw.accounts,
     },
     error: null,

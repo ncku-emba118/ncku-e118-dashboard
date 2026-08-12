@@ -15,3 +15,15 @@ export function canRedeemAssignment(
 ): boolean {
   return assignmentStatus === 'pending' && docStatus === 'routing';
 }
+
+/**
+ * 財務長完成通知的文件層級 magic token（0025）可否換發 session。
+ *
+ * 跟 canRedeemAssignment 不同：這裡不是「還沒處理的待辦」，而是「已完成事實的
+ * 唯讀存取」，所以沒有 assignment 狀態可比對，只看文件本身還是不是 approved——
+ * 之後若被作廢（voided），先前發出的 doc_url 連結應隨之失效，不留舊連結繼續
+ * 洩漏已作廢文件內容。
+ */
+export function canRedeemFinanceDocument(docStatus: SignoffStatus): boolean {
+  return docStatus === 'approved';
+}

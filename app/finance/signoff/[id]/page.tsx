@@ -237,6 +237,19 @@ export default function SignoffDetailPage() {
     setMsg(r.pending?.length ? `尚未簽核：${r.pending.join('、')}` : '全部已簽核');
   }
 
+  // 補救：合成最終 PDF best-effort 失敗（實測約 25-33%）時沒有任何畫面提示，
+  // 已核准的單會卡在「final_pdf_object_path 為 null」；這顆按鈕呼叫既有
+  // idempotent 補救端點重新合成。權限沿用 finalize route 的 'nudge' scope
+  // （super 或發起人），比照催簽 / 作廢：前端不額外設角色門檻，交給後端擋。
+  async function doFinalize() {
+    setBusy(true);
+    setMsg('');
+    const res = await fetch(`/api/board/signoff/${id}/finalize`, { method: 'POST' });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) { setMsg(writeFailMsg(res.status, r, '重新產生最終 PDF 失敗')); setBusy(false); return; }
+    window.location.reload();
+  }
+
   async function doVoid() {
     if (!window.confirm('確定作廢這份簽核？此動作會保留紀錄但文件不再可簽。')) return;
     setBusy(true);
@@ -415,6 +428,18 @@ export default function SignoffDetailPage() {
           );
         })()}
 
+        {/* 已核准但最終 PDF 未就緒（0025）：合成 best-effort 失敗時的補救提示，
+            擺在正常狀態卡下方，讓發起人 / super 一進來就看得到，不必特地去按催簽才發現。 */}
+        {!isPublic && d.doc.status === 'approved' && !d.urls?.final && (
+          <div style={{ marginTop: 14, padding: '14px 16px', background: '#FFF8E7', border: '1px solid #E8D9A8', borderLeft: '5px solid #C9852E', borderRadius: 8 }}>
+            <div style={{ fontWeight: 700, color: '#7a5c00', marginBottom: 5, fontSize: 15 }}>已核准，但最終 PDF 尚未產生</div>
+            <div style={{ fontSize: 13.5, color: '#4A413A', lineHeight: 1.8 }}>
+              簽核已全部完成，但含簽名的最終 PDF 合成當時失敗了（不影響簽核結果，簽名紀錄都在）。
+              請按下方「重新產生最終 PDF」補救，通常一次就會成功。
+            </div>
+          </div>
+        )}
+
         {/* 頂部快捷列：補充入口 */}
         {!isPublic && d.can_supplement && (
           <div style={{
@@ -551,6 +576,11 @@ export default function SignoffDetailPage() {
           <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button onClick={doNudge} style={{ minHeight: 40, fontSize: 13.5, color: WINE, background: 'none', border: '1px solid #D9CDB8', borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }}>催簽 / 看誰沒簽</button>
             <button onClick={doVoid} style={{ minHeight: 40, fontSize: 13.5, color: MUTE, background: 'none', border: `1px solid ${LINE}`, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }}>作廢（限班代）</button>
+            {d.doc.status === 'approved' && !d.urls?.final && (
+              <button onClick={doFinalize} disabled={busy} style={{ minHeight: 40, fontSize: 13.5, color: '#7a5c00', background: '#FFF8E7', border: '1px solid #E8D9A8', borderRadius: 8, padding: '8px 14px', cursor: busy ? 'default' : 'pointer', fontWeight: 600 }}>
+                {busy ? '處理中…' : '⟳ 重新產生最終 PDF'}
+              </button>
+            )}
             {d.can_delete && (
               <button onClick={doDelete} disabled={busy} style={{ minHeight: 40, fontSize: 13.5, color: '#fff', background: '#b00', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: busy ? 'default' : 'pointer' }}>刪除</button>
             )}

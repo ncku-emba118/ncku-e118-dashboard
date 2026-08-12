@@ -21,6 +21,7 @@ import {
   getDocumentForNotify,
   listAccounts,
   setAssignmentMagicToken,
+  setDocumentFinanceMagicToken,
 } from '../signoff/dal';
 import { ACTIVITIES } from '../budget/data';
 
@@ -207,12 +208,17 @@ export async function notifyApprovalRequested(
 //
 // payload 契約比照 approval_requested：
 //   { type:"approval_completed", secret,
-//     doc:{ id, serial, title, amount, dept, settlement_url },
+//     doc:{ id, serial, title, amount, dept, settlement_url, doc_url },
 //     target:{ account_id } }
 // settlement_url：文件帶 settlement_no 且能在 lib/budget/data.ts 的 ACTIVITIES 查到
 // 對應 slug 時才給值（指向免登入公開的結算單頁，財務長可直接下載請款單）；沒帶
-// settlement_no、或帶了但查無對應 slug（寧可降級也不給壞連結），一律給 null——
-// 語意退化成「單據已完成簽核」，由 bot 端依 null/非 null 決定卡片文案與是否附按鈕。
+// settlement_no、或帶了但查無對應 slug（寧可降級也不給壞連結），一律給 null。
+// doc_url（0025 新增）：一律有值，帶財務長專屬一次性 magic token，指向
+// /finance/signoff/[id]（免登入即可看到完整原件與最終 PDF 下載連結，比對照組
+// notifyApprovalRequested 給每位待簽幹部的 magic_url 同一套機制）——
+// settlement_url 只在「掛在活動結算單」時才有，doc_url 補上「一般簽核單也要有
+// 可點連結」這個缺口。bot 端沒有 settlement_url 時應改用 doc_url 當「查看/下載」
+// 按鈕的目標，而不是像之前一樣直接不附按鈕。
 // ============================================================
 export type ApprovalCompletedNotifyResult =
   | { ok: true; status: number }
@@ -291,6 +297,30 @@ export async function notifyApprovalCompleted(
     }
   }
 
+  // doc_url：財務長專屬一次性 magic token（0025），比照 notifyApprovalRequested
+  // 給待簽幹部的 magic_url 同一套產生方式（256-bit 隨機、庫內只存 sha256、
+  // TTL=14 天），只是掛在 signoff_documents（財務長不一定是這張文件的指派人，
+  // 見 dal.ts setDocumentFinanceMagicToken 檔頭說明）。寫入失敗就不給連結
+  // （寧可 doc_url 為 null、由 bot 端退化成純文字通知，也不給壞連結）。
+  let docUrl: string | null = null;
+  const financeToken = crypto.randomBytes(32).toString('hex');
+  const financeTokenHash = crypto.createHash('sha256').update(financeToken).digest('hex');
+  const financeExpiresAt = new Date(Date.now() + MAGIC_TOKEN_TTL_MS).toISOString();
+  const tokenWrite = await setDocumentFinanceMagicToken({
+    documentId,
+    accountId: financeAccountId,
+    tokenHash: financeTokenHash,
+    expiresAt: financeExpiresAt,
+  });
+  if (tokenWrite.error || !tokenWrite.ok) {
+    console.error('[signoff.notify_completed.doc_url_token_write_failed]', {
+      document_id: documentId,
+      e: tokenWrite.error,
+    });
+  } else {
+    docUrl = `${PUBLIC_DASHBOARD_BASE}/api/board/signoff/magic/${financeToken}?openExternalBrowser=1`;
+  }
+
   const payload = {
     type: 'approval_completed' as const,
     secret,
@@ -302,6 +332,7 @@ export async function notifyApprovalCompleted(
       amount: data.doc.amount, // 原始數字字串；千分位由 bot 端格式化
       dept: deptInfo(data.doc.owner_dept_id).name,
       settlement_url: settlementUrl,
+      doc_url: docUrl,
     },
     target: { account_id: financeAccountId },
   };

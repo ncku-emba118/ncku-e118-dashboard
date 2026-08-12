@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { canRedeemAssignment } from './redeem';
+import { canRedeemAssignment, canRedeemFinanceDocument } from './redeem';
 import type { AssignmentStatus, SignoffStatus } from './dal';
 
 /**
@@ -37,6 +37,28 @@ describe('canRedeemAssignment', () => {
         const expected = a === 'pending' && d === 'routing';
         expect(canRedeemAssignment(a, d)).toBe(expected);
       }
+    }
+  });
+});
+
+/**
+ * 財務長完成通知的文件層級 magic token（0025）：只在文件仍 approved 時可換發，
+ * 作廢/退回/仍簽核中都必須失效（唯讀存取，沒有 assignment 狀態可比對）。
+ */
+describe('canRedeemFinanceDocument', () => {
+  test('唯一放行：approved', () => {
+    expect(canRedeemFinanceDocument('approved')).toBe(true);
+  });
+
+  test('routing / rejected / voided 一律失效', () => {
+    expect(canRedeemFinanceDocument('routing')).toBe(false);
+    expect(canRedeemFinanceDocument('rejected')).toBe(false);
+    expect(canRedeemFinanceDocument('voided')).toBe(false);
+  });
+
+  test('全矩陣：僅 approved 為 true', () => {
+    for (const d of DOC) {
+      expect(canRedeemFinanceDocument(d)).toBe(d === 'approved');
     }
   });
 });

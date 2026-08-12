@@ -28,6 +28,9 @@ type CreatedRow = {
   currency: string;
   status: string;
   created_at: string;
+  // 0025：final_pdf_object_path===null 且 status==='approved' → 合成最終 PDF
+  // best-effort 失敗、卡在「已核准但 PDF 未就緒」。
+  final_pdf_object_path: string | null;
 };
 type HistoryRow = {
   role_label: string;
@@ -141,6 +144,8 @@ export default function SignoffInboxPage() {
                 .sort((a, b) => Number(b.status === 'rejected') - Number(a.status === 'rejected'))
                 .map((d) => {
                   const rejected = d.status === 'rejected';
+                  // 0025：已核准但最終 PDF 未就緒（合成 best-effort 失敗）。
+                  const pdfMissing = d.status === 'approved' && !d.final_pdf_object_path;
                   return (
                     <a
                       key={d.id}
@@ -148,7 +153,9 @@ export default function SignoffInboxPage() {
                       style={
                         rejected
                           ? { ...cardStyle, borderColor: '#e0b4b4', borderLeft: '4px solid #b00', background: '#FDF3F3' }
-                          : cardStyle
+                          : pdfMissing
+                            ? { ...cardStyle, borderColor: '#E8D9A8', borderLeft: '4px solid #C9852E', background: '#FFFBF0' }
+                            : cardStyle
                       }
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
@@ -156,13 +163,21 @@ export default function SignoffInboxPage() {
                         {rejected && (
                           <span style={{ fontSize: 11.5, fontWeight: 600, color: '#b00', flexShrink: 0 }}>需要處理</span>
                         )}
+                        {!rejected && pdfMissing && (
+                          <span style={{ fontSize: 11.5, fontWeight: 600, color: '#7a5c00', flexShrink: 0 }}>PDF 未就緒</span>
+                        )}
                       </div>
-                      <div style={{ fontSize: 13, color: rejected ? '#b00' : MUTE, marginTop: 4 }}>
+                      <div style={{ fontSize: 13, color: rejected ? '#b00' : pdfMissing ? '#7a5c00' : MUTE, marginTop: 4 }}>
                         {DOC_STATUS[d.status] ?? d.status} · {money(d.amount, d.currency)}
                       </div>
                       {rejected && (
                         <div style={{ fontSize: 11.5, color: '#8A7F73', marginTop: 4, lineHeight: 1.6 }}>
                           已被退回，簽核已停止。點進去看退回原因；要重跑須請班代作廢後重開。
+                        </div>
+                      )}
+                      {!rejected && pdfMissing && (
+                        <div style={{ fontSize: 11.5, color: '#8A7F73', marginTop: 4, lineHeight: 1.6 }}>
+                          簽核已完成，但含簽名的最終 PDF 合成失敗。點進去按「重新產生最終 PDF」補救。
                         </div>
                       )}
                     </a>

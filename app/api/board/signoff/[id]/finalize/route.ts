@@ -11,6 +11,7 @@ import { jsonResp, isSameOrigin } from '@/lib/signoff/http';
 import { rateLimit } from '@/lib/signoff/rate-limit';
 import { requireSignoffAccess } from '@/lib/signoff/access';
 import { composeAndStoreFinal } from '@/lib/signoff/finalize';
+import { recordFinalizeFailure } from '@/lib/signoff/dal';
 
 const UUID_RE =
   /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
@@ -45,6 +46,10 @@ export async function POST(
   const fin = await composeAndStoreFinal(doc);
   if (!fin.ok) {
     console.error('[signoff.finalize.retry_failed]', { traceId, e: fin.error });
+    const trace = await recordFinalizeFailure(id, fin.error ?? '未知錯誤');
+    if (trace.error) {
+      console.error('[signoff.finalize.record_finalize_failure_failed]', { traceId, e: trace.error });
+    }
     return jsonResp({ error: '最終 PDF 合成失敗，請稍後再試' }, 503, traceId);
   }
   return jsonResp({ ok: true, regenerated: true }, 200, traceId);
