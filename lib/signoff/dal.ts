@@ -9,6 +9,7 @@ import 'server-only';
 import { getServerClient } from '../supabase/server';
 import { SIGNOFF_BUCKET, SIGNED_READ_URL_TTL_S, MAX_SUPPLEMENTS_PER_DOC } from './constants';
 import { retryResult, isTransientStorageError } from './retry';
+import type { PaymentAccount } from './payment-account';
 
 export type SignoffStatus = 'routing' | 'approved' | 'rejected' | 'voided';
 export type AssignmentStatus = 'pending' | 'signed' | 'rejected';
@@ -62,6 +63,8 @@ export type SignoffDocumentRow = {
   finalize_last_error?: string | null;
   supersedes_document_id: string | null;
   due_at: string | null;
+  /** 收款帳號（0027，選填）；null＝未填。不可出現在 getPublicApprovedSummary 等公開分支。 */
+  payment_account: PaymentAccount | null;
   created_at: string;
   updated_at: string;
 };
@@ -392,6 +395,8 @@ export type CreateDocPayload = {
   due_at?: string | null;
   /** 對應的結算單編號（0022），如 E118-S-2026-001；非結算單相關的一般經費簽核留空 */
   settlement_no?: string | null;
+  /** 收款帳號（0027，選填）；null＝未填，由呼叫端 sanitizePaymentAccount 過。 */
+  payment_account?: PaymentAccount | null;
 };
 
 export type CreateAssignment = {

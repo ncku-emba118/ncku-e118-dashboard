@@ -31,7 +31,8 @@ import {
 import { computeSlotLayout } from '@/lib/signoff/layout';
 import { computeAssignmentManifestSha256 } from '@/lib/signoff/manifest';
 import { generateSignoffSheet } from '@/lib/signoff/pdf';
-import { notifyApprovalRequested } from '@/lib/board/signoff_notify';
+import { sanitizePaymentAccount } from '@/lib/signoff/payment-account';
+import { notifyApprovalRequested, findSoleFinanceOfficer } from '@/lib/board/signoff_notify';
 import {
   createSignoffDocument,
   downloadObject,
@@ -43,6 +44,9 @@ import {
   type CreateAssignment,
   type AttachmentMeta,
 } from '@/lib/signoff/dal';
+
+/** 財務長在指派清單裡沒有自帶角色名稱時的預設顯示字（0027：財務長強制最後一關）。 */
+const DEFAULT_FINANCE_ROLE_LABEL = '財務長核准';
 
 const DEPT_IDS = ALL_DEPTS.map((d) => d.id) as readonly string[];
 
@@ -87,6 +91,18 @@ const createSchema = z.object({
     )
     .min(MIN_ASSIGNEES)
     .max(MAX_ASSIGNEES),
+  // 收款帳號（0027，選填）：四欄分開送，後端統一 sanitize（見 lib/signoff/payment-account.ts）。
+  // 這裡只做「型別是物件、欄位是字串」的粗檢查，真正的長度/格式驗證與「全空視為未填」
+  // 都交給 sanitizePaymentAccount，不在 zod 這層重複一套規則。
+  payment_account: z
+    .object({
+      bank: z.string().max(200).optional(),
+      branch: z.string().max(200).optional(),
+      account_name: z.string().max(200).optional(),
+      account_number: z.string().max(200).optional(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export async function GET() {
@@ -163,12 +179,59 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // 收款帳號（0027，選填）：sanitize（trim/長度/帳號格式）；四欄全空視為未填，不是錯誤。
+  const paymentAccountRes = sanitizePaymentAccount(input.payment_account ?? null);
+  if (!paymentAccountRes.ok) {
+    return jsonResp({ error: paymentAccountRes.error }, 400, traceId);
+  }
+  const paymentAccount = paymentAccountRes.value;
+
   // owner_dept：dept 用自己部門；super（班代/副班代）預設 secretary
   const ownerDept = input.owner_dept_id ?? session.home_dept_id ?? 'secretary';
 
-  // 指派人去重 + 驗證存在
-  const ids = [...new Set(input.assignees.map((a) => a.account_id))];
-  if (ids.length !== input.assignees.length) {
+  // ── 財務長強制為必選簽核人、且排在最後一關（0027 拍板）─────────────────
+  // 判定方式沿用既有 findSoleFinanceOfficer（home_dept_id==='finance'），
+  // 不另發明一套。這裡是「建單」而非「完成通知」，查無 / 查到多筆一律明確
+  // 擋下（回可讀錯誤），不像 notifyApprovalCompleted 那樣 fail-soft 靜默略過
+  // ——理由：通知只是錦上添花（漏了頂多沒收到卡片，單據本身沒問題）；但建單
+  // 若真的靜默漏掉財務長，會產生一張「財務長從未被指派、永遠不會有人核准付款」
+  // 的單，且事後不可能回頭補（assignment 不可事後新增，見 0007 migration
+  // signoff_assignment_guard trigger），必須在建單當下就擋。
+  const financeLookup = await findSoleFinanceOfficer();
+  if (!financeLookup.ok) {
+    if (financeLookup.reason === 'recipient_lookup_failed') {
+      console.error('[signoff.create.finance_lookup_failed]', { traceId, e: financeLookup.detail });
+      return jsonResp({ error: '系統暫時無法驗證財務長帳號，請稍後再試' }, 503, traceId);
+    }
+    if (financeLookup.reason === 'no_recipient') {
+      return jsonResp({ error: '目前系統中查無財務長帳號，請先請系統管理員設定財務長後再建立簽核單' }, 400, traceId);
+    }
+    // ambiguous_recipient：多筆 home_dept_id==='finance' 帳號，無法唯一判定 —
+    // 寧可擋下也不亂猜其中一個（猜錯＝請款單會送去給不對的人）。
+    return jsonResp({ error: '系統中偵測到多位財務長帳號設定，請聯絡系統管理員釐清後再建立簽核單' }, 400, traceId);
+  }
+  const financeAccount = financeLookup.account;
+
+  // 合併：從使用者送來的名單移除財務長（不論有沒有帶、帶在哪個位置、帶什麼角色名），
+  // 一律以「排在最後一關」重新插入 —— 前端已強制勾選+禁止取消，這裡是唯一權威判斷，
+  // 不可只信前端送來的順序/是否存在。財務長若自帶角色名稱則保留（前端預填也會送），
+  // 否則退回預設「財務長核准」。
+  const submittedFinance = input.assignees.find((a) => a.account_id === financeAccount.id);
+  const otherAssignees = input.assignees.filter((a) => a.account_id !== financeAccount.id);
+  const financeRoleLabel = submittedFinance?.role_label.trim() || DEFAULT_FINANCE_ROLE_LABEL;
+  const finalAssignees = [...otherAssignees, { account_id: financeAccount.id, role_label: financeRoleLabel }];
+
+  if (finalAssignees.length > MAX_ASSIGNEES) {
+    return jsonResp(
+      { error: `指派人數超過上限（含財務長最多 ${MAX_ASSIGNEES} 位）` },
+      400,
+      traceId,
+    );
+  }
+
+  // 指派人去重 + 驗證存在（此時 finalAssignees 已含財務長且去重過財務長本身）
+  const ids = [...new Set(finalAssignees.map((a) => a.account_id))];
+  if (ids.length !== finalAssignees.length) {
     return jsonResp({ error: '同一人不可重複指派' }, 400, traceId);
   }
   const accountsRes = await getAccountsByIds(ids);
@@ -200,9 +263,10 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // slot 排版 + 組指派（含座標）
-  const slots = computeSlotLayout(input.assignees.length);
-  const assignments: CreateAssignment[] = input.assignees.map((a, i) => ({
+  // slot 排版 + 組指派（含座標）—— finalAssignees 已把財務長排在最後一個索引，
+  // slot 順序即簽核順序展示位置，財務長因此自然落在最後一格。
+  const slots = computeSlotLayout(finalAssignees.length);
+  const assignments: CreateAssignment[] = finalAssignees.map((a, i) => ({
     signer_account_id: a.account_id,
     role_label: a.role_label,
     sequence_order: null,
@@ -224,7 +288,8 @@ export async function POST(req: NextRequest) {
     purpose: input.purpose ?? null,
     applicant: input.applicant ?? null,
     dateLabel,
-    slots: input.assignees.map((a, i) => ({
+    paymentAccount: paymentAccount,
+    slots: finalAssignees.map((a, i) => ({
       role_label: a.role_label,
       signer_name: nameById.get(a.account_id) ?? '',
       slot_page: slots[i].slot_page,
@@ -273,6 +338,7 @@ export async function POST(req: NextRequest) {
       assignment_manifest_sha256: manifest,
       flow_type: 'parallel',
       settlement_no: input.settlement_no ?? null,
+      payment_account: paymentAccount,
     },
     assignments,
     audit: {

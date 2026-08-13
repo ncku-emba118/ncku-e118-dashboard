@@ -47,6 +47,7 @@ export async function composeAndStoreFinal(
     purpose: doc.purpose,
     applicant: doc.applicant,
     dateLabel: tpeDate(doc.created_at),
+    paymentAccount: doc.payment_account,
     slots: sigs.data.map((s) => ({
       role_label: s.role_label,
       signer_name: s.signer_username ?? '',

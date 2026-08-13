@@ -36,11 +36,15 @@ export const MAX_ASSIGNEES = 9; // 9 位幹部上限
 export const MIN_ASSIGNEES = 1;
 
 // 附件（發票/明細...）
-export const MAX_ATTACHMENTS = 10;
+// 10 份原始憑證 + 1 份收款帳號證明（0027，選填，label='收款帳號證明'，同一個
+// sources 陣列送出）——維持一個上限常數，不為收款帳號另開獨立配額。
+export const MAX_ATTACHMENTS = 11;
 export const MIN_ATTACHMENTS = 1;
 
 // 附件類型標籤（下拉，供統計與辨識；caption 補充細節）
-export const ATTACHMENT_LABELS = ['報價單', '請款單', '發票', '收據', '結算單', '其他'] as const;
+// '收款帳號證明'（0027）：收款帳號區塊上傳的存摺封面／轉帳截圖沿用同一套
+// attachments 陣列 + upload-url，只用這個 label 區分用途，不另開欄位/路徑。
+export const ATTACHMENT_LABELS = ['報價單', '請款單', '發票', '收據', '結算單', '收款帳號證明', '其他'] as const;
 export type AttachmentLabel = (typeof ATTACHMENT_LABELS)[number];
 export const MAX_ATTACHMENT_CAPTION = 200;
 

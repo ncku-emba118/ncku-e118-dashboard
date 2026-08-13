@@ -129,6 +129,11 @@ export async function GET(
             created_at: doc.created_at,
             due_at: doc.due_at,
             final_pdf_sha256: doc.final_pdf_sha256,
+            // 收款帳號（0027）：只在「① 登入且有內部 view 權限」這條分支回傳——
+            // 財務長金融帳號資訊，絕不可落到下面「② 公開摘要」分支（未登入 / 無權限
+            // 一律 404，getPublicApprovedSummary 的 select 白名單本就不含此欄，這裡
+            // 再次確認絕不手動補上去）。
+            payment_account: doc.payment_account ?? null,
           },
           assignments: assignments.map((a) => ({
             id: a.id,

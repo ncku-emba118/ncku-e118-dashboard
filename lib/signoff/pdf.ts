@@ -55,6 +55,16 @@ export type SheetSlot = {
   slot_h: number;
 };
 
+/** 收款帳號（0027）。畫 PDF 用的最小形狀，故意跟 lib/signoff/payment-account.ts
+ *  的 PaymentAccount 型別分開定義，避免 pdf.ts（純函式、無 DB 依賴）反過來
+ *  依賴那支模組——欄位剛好同名同義，呼叫端直接把 doc.payment_account 傳進來即可。 */
+export type SheetPaymentAccount = {
+  bank: string | null;
+  branch: string | null;
+  account_name: string | null;
+  account_number: string | null;
+};
+
 export type SheetInput = {
   title: string;
   amount: string | null;
@@ -64,6 +74,8 @@ export type SheetInput = {
   dateLabel: string;
   slots: SheetSlot[];
   legalNote?: string;
+  /** 收款帳號（0027，選填）；財務長要看這個決定付款要匯去哪。 */
+  paymentAccount?: SheetPaymentAccount | null;
 };
 
 const DEFAULT_LEGAL_NOTE = '本簽核適用班級內部事務，不作為對外法律文件用途。';
@@ -90,6 +102,20 @@ function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[
   }
   if (input.purpose) {
     p0.drawText(`用途：${input.purpose}`, { x: 50, y: my, size: 11, font, color: INK });
+    my -= 18;
+  }
+
+  // 收款帳號（0027）：財務長要看這一行決定付款要匯去哪，故用 WINE 強調色、
+  // 緊接在 meta/用途下方，不擠進簽核欄位框裡。四欄都空時整塊不畫。
+  const pay = input.paymentAccount;
+  if (pay && (pay.bank || pay.branch || pay.account_name || pay.account_number)) {
+    const parts: string[] = [];
+    if (pay.bank) parts.push(`銀行：${pay.bank}`);
+    if (pay.branch) parts.push(`分行：${pay.branch}`);
+    if (pay.account_name) parts.push(`戶名：${pay.account_name}`);
+    if (pay.account_number) parts.push(`帳號：${pay.account_number}`);
+    p0.drawText(`收款帳號　${parts.join('　')}`, { x: 50, y: my, size: 11, font, color: WINE });
+    my -= 18;
   }
 
   // 簽核欄位框
