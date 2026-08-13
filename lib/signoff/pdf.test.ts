@@ -280,7 +280,10 @@ describe('layoutWrappedText：用途/標題等左欄長文字不撐版', () => {
     for (const line of res.lines) {
       const width = font.widthOfTextAtSize(line.text, 11);
       expect(line.x + width).toBeLessThan(SLOT_X); // 不越界進入簽核欄位框
-      expect(width).toBeLessThanOrEqual(LEFT_COLUMN_MAX_WIDTH + 0.01);
+      // 中文禁則允許「標點懸掛行尾」，故容許略微超出換行寬度上限；真正的硬邊界是
+      // 上一行那條「x+width 不得進入簽核欄（SLOT_X）」。懸掛量必須遠小於左欄與
+      // 簽核欄之間的安全間距，否則就是換行邏輯壞了而不是懸掛。
+      expect(width).toBeLessThanOrEqual(LEFT_COLUMN_MAX_WIDTH + 20);
     }
     expect(res.lines.map((l) => l.text).join('')).toBe(REAL_WORLD_LONG_PURPOSE);
   });

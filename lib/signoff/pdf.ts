@@ -123,6 +123,14 @@ const PAYMENT_LINE_HEIGHT = BODY_LINE_HEIGHT;
 const PAYMENT_FONT_SIZE = BODY_FONT_SIZE;
 
 /** 依 font.widthOfTextAtSize 做字元級換行（CJK 沒有空白可斷詞，逐字元累加最穩）。 */
+/**
+ * 中文排版禁則：不得出現在行首的字元（句讀、收尾括號、後引號等）。
+ * 換行時若下一個字屬於這一組，讓它懸掛在行尾而不是推到下一行。
+ */
+const NO_LINE_START = new Set(
+  Array.from('，。、；：！？）」』》〕】〉”’%,.;:!?)]}…·─'),
+);
+
 export function wrapTextToWidth(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const chars = Array.from(text); // Array.from 依 code point 迭代，不切斷 surrogate pair
   const lines: string[] = [];
@@ -130,6 +138,14 @@ export function wrapTextToWidth(text: string, font: PDFFont, size: number, maxWi
   for (const ch of chars) {
     const candidate = cur + ch;
     if (cur.length > 0 && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+      // 中文排版禁則：標點不可落在行首。寬度超了但這個字是「不能起行」的標點時，
+      // 讓它懸掛在行尾（允許略微超出 maxWidth——標點窄，且左欄與簽名格之間本來
+      // 就留有間距），而不是硬推到下一行變成「，故補開本單…」那種行首標點。
+      if (NO_LINE_START.has(ch)) {
+        lines.push(candidate);
+        cur = '';
+        continue;
+      }
       lines.push(cur);
       cur = ch;
     } else {
