@@ -321,6 +321,29 @@ export default function SignoffDetailPage() {
         /iP(hone|ad|od)/.test(navigator.userAgent) ||
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       if (isIOS) {
+        // 優先走 Web Share（iOS 15+）並且**只帶 files、不帶 url**：分享選單送出去的
+        // 就是 PDF 檔案本身，不會夾帶任何網址（使用者 2026-08-13 指定：只要檔案）。
+        // 不可加 url 欄位——一旦帶了，iOS 會把連結一起送出，收到的人拿到的是
+        // 一條 30 分鐘後就失效的 signed URL。
+        try {
+          const fileRes = await fetch(url);
+          if (fileRes.ok) {
+            const blob = await fileRes.blob();
+            const file = new File([blob], filename, { type: 'application/pdf' });
+            const nav = navigator as Navigator & {
+              canShare?: (d: { files: File[] }) => boolean;
+              share?: (d: { files: File[] }) => Promise<void>;
+            };
+            if (nav.canShare?.({ files: [file] }) && nav.share) {
+              await nav.share({ files: [file] });
+              return;
+            }
+          }
+        } catch (e) {
+          // 使用者自己按取消（AbortError）不算失敗，不要再導頁打擾他
+          if ((e as Error).name === 'AbortError') return;
+        }
+        // 不支援 Web Share files（舊版 iOS）或抓檔失敗 → 走 Safari 原生下載。
         window.location.href = url;
         return;
       }
