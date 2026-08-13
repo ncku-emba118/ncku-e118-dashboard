@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Breadcrumb from '@/components/Breadcrumb';
 import { ATTACHMENT_LABELS } from '@/lib/signoff/constants';
 import { normalizeImageOrientation } from '@/lib/signoff/normalize-image';
+import { normalizeAmountInput } from '@/lib/signoff/amount';
 
 const WINE = '#8B1F2F';
 const CREAM = '#FAF7F2';
@@ -17,14 +18,6 @@ const label: React.CSSProperties = { display: 'block', fontSize: 13, color: MUTE
 const input: React.CSSProperties = {
   width: '100%', padding: '9px 10px', border: '1px solid #D9CDB8', borderRadius: 4, fontSize: 15, boxSizing: 'border-box', background: '#fff', color: INK,
 };
-
-/** 金額正規化：全形數字→半形、去掉千分位逗號與空白。使用者習慣打「14,400」。 */
-function normalizeAmount(v: string): string {
-  return v
-    .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
-    .replace(/[．]/g, '.')
-    .replace(/[,，\s]/g, '');
-}
 
 export default function SignoffNewPage() {
   const [accounts, setAccounts] = useState<Pick[]>([]);
@@ -134,7 +127,7 @@ export default function SignoffNewPage() {
           client_request_id: crypto.randomUUID(),
           title: title.trim(),
           // 千分位逗號 / 全形數字先在前端就正規化（後端也會再做一次，兩邊都不擋人）
-          amount: normalizeAmount(amount) || null,
+          amount: normalizeAmountInput(amount) ?? (amount.trim() || null),
           currency,
           purpose: purpose.trim() || null,
           applicant: applicant.trim() || null,

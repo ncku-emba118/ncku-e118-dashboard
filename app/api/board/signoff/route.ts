@@ -50,6 +50,8 @@ const DEFAULT_FINANCE_ROLE_LABEL = '財務長核准';
 
 const DEPT_IDS = ALL_DEPTS.map((d) => d.id) as readonly string[];
 
+import { normalizeAmountInput, MAX_AMOUNT } from '@/lib/signoff/amount';
+
 const createSchema = z.object({
   client_request_id: z.string().uuid(),
   title: z.string().min(1).max(120),
@@ -58,14 +60,14 @@ const createSchema = z.object({
   // （2026-08-13 使用者實際踩到）。全形→半形、去掉逗號/空白後才做嚴格檢查。
   amount: z
     .string()
-    .transform((v) =>
-      v
-        .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
-        .replace(/[．]/g, '.')
-        .replace(/[,，\s]/g, ''),
+    .transform((v) => normalizeAmountInput(v))
+    .refine((v) => v !== null, '金額只能是數字，例如 14400 或 14,400.00')
+    .refine((v) => parseFloat(v!) > 0, '金額必須大於 0')
+    .refine(
+      (v) => parseFloat(v!) <= MAX_AMOUNT,
+      `金額超過上限（最多 ${MAX_AMOUNT.toLocaleString('en-US')}）`,
     )
-    .refine((v) => /^\d+(\.\d{1,2})?$/.test(v), '金額只能是數字，例如 14400 或 14400.00')
-    .refine((v) => parseFloat(v) > 0, '金額必須大於 0')
+    .transform((v) => v!)
     .nullable()
     .optional(),
   currency: z.string().min(1).max(8).default('TWD'),
@@ -368,7 +370,12 @@ export async function POST(req: NextRequest) {
       assignment_manifest_sha256: manifest,
       flow_type: 'parallel',
       settlement_no: input.settlement_no ?? null,
-      payment_account: paymentAccount,
+      // ⚠ 未填收款帳號時必須「整個 key 不要出現」，不可送 payment_account: null。
+      // p_doc->'payment_account' 對「缺 key」回 SQL NULL（通過 CHECK），對
+      // 「JSON null」回 jsonb 'null'（jsonb_typeof='null' ≠ 'object'，且不是
+      // SQL NULL）→ 違反 0027 的 CHECK，整張建單失敗。2026-08-13 敵對審查抓到，
+      // 當時已上線，凡是沒填收款帳號的建單全部會 503。
+      ...(paymentAccount ? { payment_account: paymentAccount } : {}),
     },
     assignments,
     audit: {

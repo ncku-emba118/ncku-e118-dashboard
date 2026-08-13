@@ -222,7 +222,10 @@ describe('POST /api/board/signoff — 收款帳號 sanitize', () => {
     const sheetArgs = mocks.generateSignoffSheet.mock.calls[0][0];
     expect(sheetArgs.paymentAccount).toBeNull();
     const createArgs = mocks.createSignoffDocument.mock.calls[0][0];
-    expect(createArgs.doc.payment_account).toBeNull();
+    // ⚠ 未填時必須「整個 key 不出現」，不可送 null：p_doc->'payment_account'
+    // 對缺 key 回 SQL NULL（通過 0027 的 CHECK），對 JSON null 回 jsonb 'null'
+    // → CHECK 失敗、整張建單 503。這條斷言就是在鎖住這件事，不要改回 toBeNull()。
+    expect('payment_account' in createArgs.doc).toBe(false);
   });
 
   test('四欄全空字串 → 視為未填，建單成功、payment_account 為 null', async () => {
@@ -231,7 +234,10 @@ describe('POST /api/board/signoff — 收款帳號 sanitize', () => {
     );
     expect(res.status).toBe(201);
     const createArgs = mocks.createSignoffDocument.mock.calls[0][0];
-    expect(createArgs.doc.payment_account).toBeNull();
+    // ⚠ 未填時必須「整個 key 不出現」，不可送 null：p_doc->'payment_account'
+    // 對缺 key 回 SQL NULL（通過 0027 的 CHECK），對 JSON null 回 jsonb 'null'
+    // → CHECK 失敗、整張建單 503。這條斷言就是在鎖住這件事，不要改回 toBeNull()。
+    expect('payment_account' in createArgs.doc).toBe(false);
   });
 
   test('合法收款帳號 → sanitize 後帶入 PDF 與建單 payload', async () => {

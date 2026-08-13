@@ -82,28 +82,33 @@ describe('hasPaymentAccountContent', () => {
   });
 });
 
-// ── 金額正規化（2026-08-13：使用者打「14,400」被擋，逗號應被接受）──
-describe('建單金額正規化', () => {
-  const normalize = (v: string) =>
-    v
-      .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
-      .replace(/[．]/g, '.')
-      .replace(/[,，\s]/g, '');
-  const valid = (v: string) => /^\d+(\.\d{1,2})?$/.test(normalize(v));
+// ── 金額解析（共用 production parser，不自己重寫一份）──
+import { normalizeAmountInput, MAX_AMOUNT } from './amount';
 
-  test('千分位逗號（半形/全形）可接受', () => {
-    expect(normalize('14,400')).toBe('14400');
-    expect(normalize('14，400')).toBe('14400');
-    expect(valid('14,400')).toBe(true);
+describe('建單金額解析', () => {
+  test('純數字與嚴格千分位可接受', () => {
+    expect(normalizeAmountInput('14400')).toBe('14400');
+    expect(normalizeAmountInput('14,400')).toBe('14400');
+    expect(normalizeAmountInput('1,234,567.89')).toBe('1234567.89');
+    expect(normalizeAmountInput(' 14,400 ')).toBe('14400');
   });
-  test('全形數字與全形小數點可接受', () => {
-    expect(normalize('１４４００．５０')).toBe('14400.50');
-    expect(valid('１４４００．５０')).toBe(true);
+  test('全形數字與全形逗號/小數點可接受', () => {
+    expect(normalizeAmountInput('１４，４００')).toBe('14400');
+    expect(normalizeAmountInput('１４４００．５０')).toBe('14400.50');
   });
-  test('夾雜空白可接受', () => {
-    expect(valid(' 14 400 ')).toBe(true);
+  test('歧義輸入一律拒絕，不可靜默變成別的金額', () => {
+    for (const v of ['1,2', '12,34,56', '1 2', '1,23', '1,2345', ',123', '123,']) {
+      expect(normalizeAmountInput(v)).toBeNull();
+    }
   });
-  test('仍然擋掉真正無效的輸入', () => {
-    for (const v of ['abc', '14.400.00', '1,4a0', '']) expect(valid(v)).toBe(false);
+  test('非數字與多重小數點拒絕', () => {
+    for (const v of ['abc', '14.400.00', '1,4a0', '', '.5', '1.234']) {
+      expect(normalizeAmountInput(v)).toBeNull();
+    }
+  });
+  test('超出 NUMERIC(12,2) 範圍的值可被上限判斷攔下', () => {
+    const v = normalizeAmountInput('999999999999999999999999999999');
+    expect(v).not.toBeNull();
+    expect(parseFloat(v!) > MAX_AMOUNT).toBe(true);
   });
 });
