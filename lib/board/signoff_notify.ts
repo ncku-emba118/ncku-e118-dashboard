@@ -379,12 +379,18 @@ export async function notifyApprovalCompleted(
 // 「找出唯一財務長」與「寫入 token」，抽出來避免邏輯漂移。
 // ============================================================
 
-type FinanceOfficerLookupResult =
+export type FinanceOfficerLookupResult =
   | { ok: true; account: AccountLite }
   | { ok: false; reason: 'recipient_lookup_failed' | 'no_recipient' | 'ambiguous_recipient'; detail?: string };
 
-/** 找出「現在」唯一的財務長帳號；查無 / 查到多筆一律 fail-soft，不硬猜。 */
-async function findSoleFinanceOfficer(): Promise<FinanceOfficerLookupResult> {
+/**
+ * 找出「現在」唯一的財務長帳號；查無 / 查到多筆一律 fail-soft，不硬猜。
+ *
+ * export：0027（財務長強制簽核人）建單 route 沿用同一套判定，不另發明一套
+ * 「誰是財務長」邏輯——兩處語意不同（這裡查無/多筆是「不通知」fail-soft，
+ * 建單那邊查無/多筆是「擋下建立」明確錯誤），但「怎麼找到財務長」本身共用。
+ */
+export async function findSoleFinanceOfficer(): Promise<FinanceOfficerLookupResult> {
   const accountsRes = await listAccounts();
   if (accountsRes.error || !accountsRes.data) {
     return { ok: false, reason: 'recipient_lookup_failed', detail: accountsRes.error ?? 'listAccounts failed' };
