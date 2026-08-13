@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Breadcrumb from '@/components/Breadcrumb';
 import { ATTACHMENT_LABELS } from '@/lib/signoff/constants';
+import { attachmentCountError } from '@/lib/signoff/attachment-limit';
 import { normalizeImageOrientation } from '@/lib/signoff/normalize-image';
 import { normalizeAmountInput } from '@/lib/signoff/amount';
 
@@ -76,6 +77,12 @@ export default function SignoffNewPage() {
     if (files.length === 0) return setMsg('請至少上傳一個憑證（發票/明細，可多檔）');
     if (picks.length === 0) return setMsg('請至少指派一位簽核人');
     if (picks.some((p) => !p.role.trim())) return setMsg('每位簽核人都要填角色（如 審核/核准）');
+    // 附件總數（一般憑證 + 收款帳號證明）必須在上傳前就擋下，不能等全部上傳
+    // 完成才靠後端 zod .max(MAX_ATTACHMENTS) 擋——否則使用者選了 12 份、
+    // 全部 PUT 成功後建單 POST 才被拒，留下一批孤兒檔（2026-08-13 敵對審查：
+    // 選 11 份一般附件 + 1 份帳號證明＝12 份，全部上傳完才發現超量）。
+    const attachmentErr = attachmentCountError(files.length, !!paymentProofFile);
+    if (attachmentErr) return setMsg(attachmentErr);
 
     setBusy(true);
     try {
