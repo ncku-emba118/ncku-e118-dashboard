@@ -8,8 +8,11 @@ import {
   generateSignoffSheet,
   composeFinalPdf,
   wrapTextToWidth,
+  layoutWrappedText,
   layoutPaymentAccountBlock,
   PAYMENT_MAX_WIDTH,
+  LEFT_COLUMN_MAX_WIDTH,
+  MIN_CONTENT_Y,
 } from './pdf';
 import { computeSlotLayout, SLOT_X } from './layout';
 
@@ -257,5 +260,127 @@ describe('generateSignoffSheet：極端長收款帳號仍能正常產生 PDF', (
     });
     expect(isPdf(bytes)).toBe(true);
     expect(await pageCount(bytes)).toBe(1);
+  });
+});
+
+// ── 用途欄位長內容不撐版/穿過簽名格（2026-08-14，正式站實例）───────────────
+// 正式站文件「聖誕晚宴總召預支－財務長補核」的最終 PDF：用途欄位單行繪製、
+// 直接畫出 A4 右邊界並穿過右側簽名格。這裡用真實踩到的那段文字（非人造極端
+// 字串）驗證 layoutWrappedText 換行後不再有這個問題，另外也用更誇張的極端
+// 字串驗證截斷機制在真的放不下時不會硬畫出邊界外或蓋住頁尾聲明。
+const REAL_WORLD_LONG_PURPOSE =
+  '用途：本案已於 2026-08-12 由秘書、副班代、班代完成三簽並支付。因當時簽核流程尚未納入財務長，故補開本單，僅供財務長事後補核留存紀錄，金額與原始憑證一致，不再另行請款。';
+
+describe('layoutWrappedText：用途/標題等左欄長文字不撐版', () => {
+  test('真實踩過的用途文字（偏長但非極端）→ 換行後每行寬度都在 LEFT_COLUMN_MAX_WIDTH 內，且不需要截斷', async () => {
+    const font = await embedRealFont();
+    const res = layoutWrappedText(REAL_WORLD_LONG_PURPOSE, font, 11, 50, 720, LEFT_COLUMN_MAX_WIDTH, 15, MIN_CONTENT_Y);
+    expect(res.lines.length).toBeGreaterThan(1); // 確實換行了，不是單行畫出邊界
+    expect(res.truncated).toBe(false); // 這段長度在正常表單版面裡放得下，不該被截斷
+    for (const line of res.lines) {
+      const width = font.widthOfTextAtSize(line.text, 11);
+      expect(line.x + width).toBeLessThan(SLOT_X); // 不越界進入簽核欄位框
+      expect(width).toBeLessThanOrEqual(LEFT_COLUMN_MAX_WIDTH + 0.01);
+    }
+    expect(res.lines.map((l) => l.text).join('')).toBe(REAL_WORLD_LONG_PURPOSE);
+  });
+
+  test('極端長字串（真的放不下）→ 觸發截斷，最後一行是刪節提示，且不畫過 minY', async () => {
+    const font = await embedRealFont();
+    const extreme = '用途：' + '極長內容測試'.repeat(200);
+    const startY = 100; // 故意給很小的可用高度，逼出截斷路徑
+    const res = layoutWrappedText(extreme, font, 11, 50, startY, LEFT_COLUMN_MAX_WIDTH, 15, MIN_CONTENT_Y);
+    expect(res.truncated).toBe(true);
+    expect(res.lines.at(-1)?.text).toMatch(/已截斷/);
+    for (const line of res.lines) {
+      expect(line.y).toBeGreaterThanOrEqual(MIN_CONTENT_Y - 15); // 允許最後一行落在 minY 附近但不離譜地更低
+      const width = font.widthOfTextAtSize(line.text, 11);
+      expect(line.x + width).toBeLessThan(SLOT_X);
+    }
+    expect(res.nextY).toBeLessThanOrEqual(startY);
+  });
+
+  test('minY 已經超過 startY（完全沒空間）→ 不 throw，回傳空陣列或只有截斷提示', async () => {
+    const font = await embedRealFont();
+    const res = layoutWrappedText('隨便一段文字', font, 11, 50, 40, LEFT_COLUMN_MAX_WIDTH, 15, MIN_CONTENT_Y);
+    expect(res.lines.length).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('generateSignoffSheet：真實案例（長用途 + 長收款帳號 + 多簽核人）整頁無重疊', () => {
+  test('用途穿過簽名格的正式站案例重現後，改版面應該不再重疊；用幾何座標交叉比對每一行文字都避開所有簽核框與頁尾聲明', async () => {
+    const font = await embedRealFont();
+    const slots = sheetSlots(9); // 多簽核人，逼出換頁與較擠的版面
+    const sheetInput = {
+      title: '聖誕晚宴總召預支－財務長補核',
+      amount: '18500.00',
+      currency: 'TWD',
+      purpose: REAL_WORLD_LONG_PURPOSE.replace(/^用途：/, ''),
+      applicant: '活動長',
+      dateLabel: '2026-08-12',
+      slots,
+      paymentAccount: {
+        bank: '第一銀行007',
+        branch: '南台南分行',
+        account_name: '陳亭穎',
+        account_number: '630-68-121067',
+      },
+    };
+
+    // 用跟 drawSheet 相同的排版邏輯，直接算出每個左欄區塊的行清單（不依賴解析
+    // PDF 內容流），跟 slots 與頁尾聲明座標做幾何交叉比對。
+    let my = 762;
+    const titleRes = layoutWrappedText(sheetInput.title, font, 14, 50, my, LEFT_COLUMN_MAX_WIDTH, 18, MIN_CONTENT_Y);
+    my = titleRes.nextY - 6;
+
+    const bodyFields = [
+      `申請人：${sheetInput.applicant}`,
+      `金額：${sheetInput.currency} ${sheetInput.amount}`,
+      `日期：${sheetInput.dateLabel}`,
+      `用途：${sheetInput.purpose}`,
+    ];
+    const bodyLines: { text: string; x: number; y: number }[] = [];
+    for (const field of bodyFields) {
+      if (my < MIN_CONTENT_Y) break;
+      const res = layoutWrappedText(field, font, 11, 50, my, LEFT_COLUMN_MAX_WIDTH, 15, MIN_CONTENT_Y);
+      bodyLines.push(...res.lines);
+      my = res.nextY;
+      if (res.truncated) break;
+    }
+
+    const payRes = layoutPaymentAccountBlock(sheetInput.paymentAccount, font, my, MIN_CONTENT_Y);
+
+    const allLeftColumnLines = [
+      ...titleRes.lines.map((l) => ({ ...l, size: 14 })),
+      ...bodyLines.map((l) => ({ ...l, size: 11 })),
+      ...payRes.lines.map((l) => ({ ...l, size: 11 })),
+    ];
+    expect(allLeftColumnLines.length).toBeGreaterThan(0);
+
+    // 頁尾聲明矩形（僅第一頁；legalNote 固定畫在 x=50,y=36,size 8）
+    const legalNoteText = '本簽核適用班級內部事務，不作為對外法律文件用途。';
+    const legalNoteWidth = font.widthOfTextAtSize(legalNoteText, 8);
+    const legalRect = { x0: 50, x1: 50 + legalNoteWidth, y0: 36, y1: 36 + 10 };
+
+    const page1Slots = slots.filter((s) => s.slot_page === 1);
+    for (const line of allLeftColumnLines) {
+      const width = font.widthOfTextAtSize(line.text, line.size);
+      const rect = { x0: line.x, x1: line.x + width, y0: line.y, y1: line.y + 18 };
+
+      // 不與任一簽核框（第一頁）重疊
+      for (const s of page1Slots) {
+        const overlapsX = rect.x1 > s.slot_x && rect.x0 < s.slot_x + s.slot_w;
+        const overlapsY = rect.y1 > s.slot_y && rect.y0 < s.slot_y + s.slot_h;
+        expect(overlapsX && overlapsY).toBe(false);
+      }
+      // 不與頁尾聲明重疊
+      const overlapsLegalX = rect.x1 > legalRect.x0 && rect.x0 < legalRect.x1;
+      const overlapsLegalY = rect.y1 > legalRect.y0 && rect.y0 < legalRect.y1;
+      expect(overlapsLegalX && overlapsLegalY).toBe(false);
+    }
+
+    // 端到端也要能正常產生 PDF，不 throw
+    const bytes = await generateSignoffSheet(sheetInput);
+    expect(isPdf(bytes)).toBe(true);
   });
 });
