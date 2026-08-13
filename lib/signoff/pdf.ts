@@ -141,7 +141,11 @@ export function wrapTextToWidth(text: string, font: PDFFont, size: number, maxWi
       // 中文排版禁則：標點不可落在行首。寬度超了但這個字是「不能起行」的標點時，
       // 讓它懸掛在行尾（允許略微超出 maxWidth——標點窄，且左欄與簽名格之間本來
       // 就留有間距），而不是硬推到下一行變成「，故補開本單…」那種行首標點。
-      if (NO_LINE_START.has(ch)) {
+      // 只允許「一個字元」的懸掛，且懸掛後仍不得超過硬上限（maxWidth + 安全間距）。
+      // 否則連續標點（「，，，」）會一路懸掛下去、行寬無上限地長；只有標點的字串
+      // 也會每行都以標點起行。超過硬上限就退回一般斷行——幾何安全優先於排版美觀。
+      const hardMax = maxWidth + LEFT_MARGIN_BEFORE_SLOT_COL;
+      if (NO_LINE_START.has(ch) && font.widthOfTextAtSize(candidate, size) <= hardMax) {
         lines.push(candidate);
         cur = '';
         continue;
@@ -228,17 +232,23 @@ export function layoutPaymentAccountBlock(
 
   const lines: PaymentAccountLine[] = [];
   let y = startY;
-  if (y >= minY) {
-    lines.push({ text: '收款帳號', x: LEFT_X, y });
-    y -= PAYMENT_LINE_HEIGHT;
-  }
+  const headingY = y;
+  let drewAnyField = false;
+  if (y >= minY) y -= PAYMENT_LINE_HEIGHT; // 先預留標題那一行，實際是否畫由下方決定
   for (const field of fields) {
     if (y < minY) break; // 空間已經用完，不再處理剩餘欄位（上一輪已補刪節提示）
     const res = layoutWrappedText(field, font, PAYMENT_FONT_SIZE, PAYMENT_VALUE_INDENT_X, y, PAYMENT_MAX_WIDTH, PAYMENT_LINE_HEIGHT, minY);
     lines.push(...res.lines);
+    if (res.lines.length > 0) drewAnyField = true;
     y = res.nextY;
     if (res.truncated) break; // 這一欄已經截斷，後面的欄位必然也放不下
   }
+  // ⚠ 一個值都畫不下時，連「收款帳號」標題都不要畫（2026-08-14 敵對審查）：
+  // 只留一個孤零零的標題會讓人以為「這張單沒填收款帳號」，而事實是資料存在、
+  // 只是被版面吃掉——這種靜默失真比空白更危險，財務長會照著錯誤前提付款。
+  // 回空陣列，讓 drawSheet 的硬保證把它變成大聲的錯誤。
+  if (!drewAnyField) return { lines: [], nextY: startY };
+  lines.unshift({ text: '收款帳號', x: LEFT_X, y: headingY });
   return { lines, nextY: y };
 }
 
@@ -266,14 +276,19 @@ function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[
   // 刪節提示，不會硬擠出超出邊界或蓋住簽核框/頁尾聲明的文字（見上方常數區
   // 註解：2026-08-14 正式站「聖誕晚宴總召預支－財務長補核」用途欄位穿過簽名
   // 格即此類問題，原本只有收款帳號有換行，這裡把 helper 抽出來全部套用）。
-  const bodyFields: string[] = [];
-  if (input.applicant) bodyFields.push(`申請人：${input.applicant}`);
-  if (input.amount) bodyFields.push(`金額：${input.currency} ${input.amount}`);
-  bodyFields.push(`日期：${input.dateLabel}`);
-  if (input.purpose) bodyFields.push(`用途：${input.purpose}`);
+  // ⚠ 繪製順序＝優先權順序（2026-08-14 敵對審查 High）：用途上限 2000 字，
+  //   原本排在收款帳號前面，長用途會把高度吃光，導致 layoutPaymentAccountBlock
+  //   回空陣列 → **收款帳號整段不畫、且畫面上毫無提示**。財務長是照那組帳號
+  //   匯款的，靜默消失比截斷嚴重得多。因此把「申請人/金額/日期/收款帳號」這些
+  //   短且關鍵的欄位排在前面先佔位，用途改成最後畫、只用剩下的空間——用途是
+  //   描述性文字，截斷有刪節提示、可接受。
+  const criticalFields: string[] = [];
+  if (input.applicant) criticalFields.push(`申請人：${input.applicant}`);
+  if (input.amount) criticalFields.push(`金額：${input.currency} ${input.amount}`);
+  criticalFields.push(`日期：${input.dateLabel}`);
 
-  for (const field of bodyFields) {
-    if (my < MIN_CONTENT_Y) break; // 空間已用完，剩餘欄位（含用途）整段跳過
+  for (const field of criticalFields) {
+    if (my < MIN_CONTENT_Y) break;
     const res = layoutWrappedText(field, font, BODY_FONT_SIZE, LEFT_X, my, LEFT_COLUMN_MAX_WIDTH, BODY_LINE_HEIGHT, MIN_CONTENT_Y);
     for (const line of res.lines) {
       p0.drawText(line.text, { x: line.x, y: line.y, size: BODY_FONT_SIZE, font, color: INK });
@@ -288,11 +303,41 @@ function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[
   // 換行寬度固定收在簽核欄位框（右欄）左側，兩者天生不同 x 範圍，不論這塊
   // 畫多少行都不會蓋到簽核框；同時吃 MIN_CONTENT_Y 下限不會蓋過頁尾聲明
   // （見 layoutPaymentAccountBlock 註解）。
+  const hasPaymentAccount = Boolean(
+    input.paymentAccount &&
+      (input.paymentAccount.bank ||
+        input.paymentAccount.branch ||
+        input.paymentAccount.account_name ||
+        input.paymentAccount.account_number),
+  );
   const { lines: payLines, nextY } = layoutPaymentAccountBlock(input.paymentAccount, font, my, MIN_CONTENT_Y);
   for (const line of payLines) {
     p0.drawText(line.text, { x: line.x, y: line.y, size: PAYMENT_FONT_SIZE, font, color: WINE });
   }
   my = nextY;
+
+  // 硬保證：有填帳號就一定要完整畫出帳號那一行，否則寧可讓產生 PDF 直接失敗，
+  // 也不要交出一份「看起來正常、實際少了付款資訊」的簽核表（敵對審查 High）。
+  // 走到這裡代表版面配置已經有 bug（關鍵欄位排在用途前面本就該留得住位置），
+  // 讓它大聲壞掉才會被發現。
+  if (hasPaymentAccount && input.paymentAccount?.account_number) {
+    const drawn = payLines.map((l) => l.text).join('');
+    if (!drawn.includes(input.paymentAccount.account_number)) {
+      throw new Error(
+        'generateSignoffSheet: 收款帳號未能完整畫入簽核表（版面空間不足），拒絕產生不完整的 PDF',
+      );
+    }
+  }
+
+  // 用途：最後畫，只用剩下的空間（見上方繪製順序說明）。長內容截斷會附刪節提示，
+  // 使用者看得出「這裡還有內容」，不像收款帳號消失那樣無聲無息。
+  if (input.purpose && my >= MIN_CONTENT_Y) {
+    const res = layoutWrappedText(`用途：${input.purpose}`, font, BODY_FONT_SIZE, LEFT_X, my, LEFT_COLUMN_MAX_WIDTH, BODY_LINE_HEIGHT, MIN_CONTENT_Y);
+    for (const line of res.lines) {
+      p0.drawText(line.text, { x: line.x, y: line.y, size: BODY_FONT_SIZE, font, color: INK });
+    }
+    my = res.nextY;
+  }
 
   // 簽核欄位框
   for (const s of input.slots) {

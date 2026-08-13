@@ -24,6 +24,28 @@ const FORBIDDEN_CHARS_RE = /[\\/:*?"<>|]/g;
 // eslint-disable-next-line no-control-regex
 const UNSAFE_UNICODE_RE = /[\p{Cc}\p{Cf}]/gu;
 const MAX_TITLE_LEN = 80;
+/**
+ * 檔案系統單一名稱普遍上限 255 bytes（ext4/APFS/NTFS 皆是這個量級）。80 個
+ * code point 看起來安全，但 80 個 emoji ＝ 320+ bytes，下載會被瀏覽器或檔案
+ * 系統截斷、改名甚至失敗（2026-08-14 敵對審查）。故除了字數上限，另外用
+ * UTF-8 byte 預算再收一次，且要扣掉副檔名本身佔的 bytes。
+ */
+const MAX_FILENAME_BYTES = 255;
+
+/** 依 UTF-8 byte 預算截斷，不切斷任何 code point。 */
+function truncateToBytes(s: string, budget: number): string {
+  const enc = new TextEncoder();
+  if (enc.encode(s).length <= budget) return s;
+  let out = '';
+  let used = 0;
+  for (const ch of s) {
+    const n = enc.encode(ch).length;
+    if (used + n > budget) break;
+    out += ch;
+    used += n;
+  }
+  return out;
+}
 
 /**
  * 下載檔名＝單據標題本身（使用者 2026-08-13 指定：「下載名稱要跟上傳完標題一樣」），
@@ -37,7 +59,10 @@ export function signoffDownloadFilename(title: string | null | undefined): strin
     .trim();
   // 依 code point 截斷（Array.from 依 code point 迭代，不切斷 surrogate
   // pair），而不是直接 slice（UTF-16 code unit，會把 emoji 從中間切開）。
-  const truncated = Array.from(cleaned).slice(0, MAX_TITLE_LEN).join('').trim();
+  const byCodePoint = Array.from(cleaned).slice(0, MAX_TITLE_LEN).join('').trim();
+  // 再套一層 UTF-8 byte 預算（扣掉 '.pdf' 佔的 4 bytes），避免 80 個 emoji
+  // 這種「字數合格但 bytes 爆表」的檔名被檔案系統截斷/改名/拒絕。
+  const truncated = truncateToBytes(byCodePoint, MAX_FILENAME_BYTES - '.pdf'.length).trim();
   const safeTitle = truncated.length > 0 ? truncated : '簽核單';
   return `${safeTitle}.pdf`;
 }

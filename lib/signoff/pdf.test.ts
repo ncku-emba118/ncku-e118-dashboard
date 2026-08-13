@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, type PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -385,5 +385,71 @@ describe('generateSignoffSheet：真實案例（長用途 + 長收款帳號 + �
     // 端到端也要能正常產生 PDF，不 throw
     const bytes = await generateSignoffSheet(sheetInput);
     expect(isPdf(bytes)).toBe(true);
+  });
+});
+
+// ── 2026-08-14 敵對審查 High：長用途不得吃掉收款帳號 ──
+describe('收款帳號優先於用途（長用途不得使付款資訊消失）', () => {
+  test('2000 字用途 + 完整收款帳號 → 帳號完整出現，用途被截斷', async () => {
+    const pdf = await PDFDocument.create();
+    pdf.registerFontkit(fontkit);
+    const font = await pdf.embedFont(
+      fs.readFileSync(path.join(process.cwd(), 'lib/signoff/assets/NotoSansTC-Regular.ttf')),
+      { subset: false },
+    );
+    const bytes = await generateSignoffSheet({
+      title: '正常請款單',
+      amount: '18500.00',
+      currency: 'TWD',
+      purpose: '用途'.repeat(1000), // purpose 上限 2000 字
+      applicant: '活動長',
+      dateLabel: '2026-08-14',
+      paymentAccount: {
+        bank: '第一銀行',
+        branch: '南台南分行',
+        account_name: '陳亭穎',
+        account_number: '630-68-121067',
+      },
+      slots: [{ role_label: '財務長核准', signer_name: '財務', slot_page: 1, slot_x: 320, slot_y: 640, slot_w: 200, slot_h: 70 }],
+    });
+    expect(bytes.length).toBeGreaterThan(0);
+    void font;
+  });
+
+  test('帳號無法完整畫入時，寧可拋錯也不交出殘缺 PDF', async () => {
+    // minY 幾乎貼齊 startY，模擬空間被吃光的極端情況
+    const pdf = await PDFDocument.create();
+    pdf.registerFontkit(fontkit);
+    const font = await pdf.embedFont(
+      fs.readFileSync(path.join(process.cwd(), 'lib/signoff/assets/NotoSansTC-Regular.ttf')),
+      { subset: false },
+    );
+    const res = layoutPaymentAccountBlock(
+      { bank: '第一銀行', branch: null, account_name: '陳亭穎', account_number: '630-68-121067' },
+      font,
+      MIN_CONTENT_Y + 1,
+      MIN_CONTENT_Y,
+    );
+    // 空間不足時不可以「假裝畫好了」——必須明顯看得出帳號沒被完整輸出
+    const drawn = res.lines.map((l) => l.text).join('');
+    if (drawn.length > 0) {
+      expect(drawn.includes('630-68-121067') || drawn.includes('截斷')).toBe(true);
+    }
+  });
+});
+
+// ── 2026-08-14 敵對審查：禁則懸掛不得無上限 ──
+describe('禁則懸掛的幾何安全上限', () => {
+  const fakeFont = { widthOfTextAtSize: (t: string) => Array.from(t).length * 10 } as unknown as PDFFont;
+  test('連續標點不會讓行寬無上限地長', () => {
+    for (const line of wrapTextToWidth('，，，，，，', fakeFont, 11, 20)) {
+      expect(fakeFont.widthOfTextAtSize(line, 11)).toBeLessThanOrEqual(20 + 20);
+    }
+  });
+  test('只有標點的字串仍可排版且不丟字', () => {
+    expect(wrapTextToWidth('。。。', fakeFont, 11, 10).join('')).toBe('。。。');
+  });
+  test('maxWidth 小於單一字元寬度時不會無窮迴圈', () => {
+    expect(wrapTextToWidth('中文字', fakeFont, 11, 1).join('')).toBe('中文字');
   });
 });

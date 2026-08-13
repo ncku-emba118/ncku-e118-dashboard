@@ -82,3 +82,15 @@ describe('signoffDownloadFilename', () => {
     expect(signoffDownloadFilename('‎‏‪‬')).toBe('簽核單.pdf');
   });
 });
+
+// ── 2026-08-14 敵對審查：byte 預算與連續標點 ──
+describe('檔名 byte 上限', () => {
+  test('80 個 emoji 也不得超過 255 bytes', () => {
+    const name = signoffDownloadFilename('😀'.repeat(80));
+    expect(Buffer.byteLength(name, 'utf8')).toBeLessThanOrEqual(255);
+    expect(name.endsWith('.pdf')).toBe(true);
+  });
+  test('一般中文標題不受 byte 預算影響', () => {
+    expect(signoffDownloadFilename('聖誕晚宴總召預支')).toBe('聖誕晚宴總召預支.pdf');
+  });
+});
