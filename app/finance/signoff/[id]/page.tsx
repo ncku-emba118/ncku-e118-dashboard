@@ -34,6 +34,13 @@ type Detail = {
     purpose: string | null; applicant?: string | null; status: string;
     created_at: string; completed_at?: string | null; owner_dept_id?: string;
     final_pdf_sha256?: string | null;
+    // 收款帳號（0027）：只有登入且有 view 權限時 API 才會帶（公開摘要分支不含此欄）。
+    payment_account?: {
+      bank: string | null;
+      branch: string | null;
+      account_name: string | null;
+      account_number: string | null;
+    } | null;
   };
   assignments: Assignment[];
   urls?: { sheet: string | null; final: string | null; final_download?: string | null; final_filename?: string | null };
@@ -543,6 +550,37 @@ export default function SignoffDetailPage() {
                 <AttachmentGrid items={attaches} />
               </div>
             </section>
+
+            {/* 收款帳號（0027）：財務長付款要看這區。有填分欄文字或有上傳帳號照片
+                （label='收款帳號證明'，沿用既有附件機制）才顯示；兩者都沒有就整塊不畫，
+                不留一個空殼區塊。 */}
+            {(() => {
+              const pa = d.doc.payment_account;
+              const hasText = !!(pa && (pa.bank || pa.branch || pa.account_name || pa.account_number));
+              const proofPhotos = attaches.filter((a) => a.label === '收款帳號證明');
+              if (!hasText && proofPhotos.length === 0) return null;
+              return (
+                <section style={{ marginTop: 24 }}>
+                  <h2 style={sectionH2}>收款帳號</h2>
+                  <div style={{ marginTop: 12, padding: 14, background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10 }}>
+                    {hasText && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '8px 14px', fontSize: 15 }}>
+                        {pa?.bank && <><span style={{ color: MUTE, fontSize: 13 }}>銀行</span><span>{pa.bank}</span></>}
+                        {pa?.branch && <><span style={{ color: MUTE, fontSize: 13 }}>分行</span><span>{pa.branch}</span></>}
+                        {pa?.account_name && <><span style={{ color: MUTE, fontSize: 13 }}>戶名</span><span>{pa.account_name}</span></>}
+                        {pa?.account_number && <><span style={{ color: MUTE, fontSize: 13 }}>帳號</span><span style={{ fontWeight: 700, color: WINE }}>{pa.account_number}</span></>}
+                      </div>
+                    )}
+                    {proofPhotos.length > 0 && (
+                      <div style={{ marginTop: hasText ? 14 : 0 }}>
+                        <div style={{ fontSize: 13, color: MUTE, marginBottom: 8 }}>帳號證明照片</div>
+                        <AttachmentGrid items={proofPhotos} />
+                      </div>
+                    )}
+                  </div>
+                </section>
+              );
+            })()}
 
             {/* 簽核表 PDF：改為可收合，預設收起，不再用 420px 大白框擠壓主流程 */}
             {(d.urls?.final || d.urls?.sheet) && (
