@@ -11,7 +11,7 @@ const INK = '#1A1612';
 const MUTE = '#8A7F73';
 
 type Account = { id: string; username: string; role: string; home_dept_id: string | null };
-type Pick = { id: string; username: string; selected: boolean; role: string };
+type Pick = { id: string; username: string; selected: boolean; role: string; isFinance: boolean };
 
 const label: React.CSSProperties = { display: 'block', fontSize: 13, color: MUTE, marginTop: 14, marginBottom: 4 };
 const input: React.CSSProperties = {
@@ -32,6 +32,12 @@ export default function SignoffNewPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [needLogin, setNeedLogin] = useState(false);
+  // 收款帳號（0027）：選填，預設展開（有些單據不需匯款，使用者可以直接不填）。
+  const [paymentBank, setPaymentBank] = useState('');
+  const [paymentBranch, setPaymentBranch] = useState('');
+  const [paymentAccountName, setPaymentAccountName] = useState('');
+  const [paymentAccountNumber, setPaymentAccountNumber] = useState('');
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -40,14 +46,21 @@ export default function SignoffNewPage() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setAccounts(
-          (data.accounts as Account[]).map((a) => ({ id: a.id, username: a.username, selected: false, role: '審核' })),
+          (data.accounts as Account[]).map((a) => {
+            const isFinance = a.home_dept_id === 'finance';
+            // 財務長一律自動成為簽核人、且不可取消（後端 route 會強制補上/重排到最後
+            // 一關，這裡預先勾選只是讓畫面跟後端行為一致，真正權威判斷在後端）。
+            return { id: a.id, username: a.username, selected: isFinance, role: isFinance ? '財務長核准' : '審核', isFinance };
+          }),
         );
       }
     })();
   }, []);
 
+  const financeCount = accounts.filter((a) => a.isFinance).length;
+
   function toggle(id: string) {
-    setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, selected: !a.selected } : a)));
+    setAccounts((prev) => prev.map((a) => (a.id === id && !a.isFinance ? { ...a, selected: !a.selected } : a)));
   }
   function setRole(id: string, role: string) {
     setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, role } : a)));
@@ -63,33 +76,47 @@ export default function SignoffNewPage() {
 
     setBusy(true);
     try {
-      // 1. 逐檔上傳到 Storage，收集 sources
-      const sources: { object_path: string; mime: string; name: string; label?: string; caption?: string }[] = [];
-      for (const [fi, f0] of files.entries()) {
+      type Source = { object_path: string; mime: string; name: string; label?: string; caption?: string };
+      // 沿用既有附件上傳機制（/api/board/signoff/upload-url）逐檔上傳，回傳
+      // 一個 source 物件；收款帳號照片與一般憑證共用這支函式，只差在 label。
+      async function uploadOne(file0: File, extra: { label?: string; caption?: string } = {}): Promise<Source> {
         // 影像先正規化 EXIF 方向，否則合成的最終 PDF 會倒向
-        const f = await normalizeImageOrientation(f0);
+        const f = await normalizeImageOrientation(file0);
         const upRes = await fetch('/api/board/signoff/upload-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mime: f.type, size: f.size }),
         });
         const up = await upRes.json().catch(() => ({}));
-        if (!upRes.ok) { setMsg(`「${f.name}」${up.error || '取得上傳網址失敗'}`); setBusy(false); return; }
+        if (!upRes.ok) throw new Error(`「${f.name}」${up.error || '取得上傳網址失敗'}`);
         const put = await fetch(up.signed_url, {
           method: 'PUT',
           headers: { 'Content-Type': f.type, 'x-upsert': 'false' },
           body: f,
         });
-        if (!put.ok) { setMsg(`「${f0.name}」上傳失敗（HTTP ${put.status}）`); setBusy(false); return; }
-        const m = meta[fi];
-        sources.push({
+        if (!put.ok) throw new Error(`「${file0.name}」上傳失敗（HTTP ${put.status}）`);
+        return {
           object_path: up.object_path,
           mime: up.mime,
           name: f.name,
-          ...(m?.label ? { label: m.label } : {}),
-          ...(m?.caption?.trim() ? { caption: m.caption.trim() } : {}),
-        });
+          ...(extra.label ? { label: extra.label } : {}),
+          ...(extra.caption?.trim() ? { caption: extra.caption.trim() } : {}),
+        };
       }
+
+      // 1. 逐檔上傳到 Storage，收集 sources
+      const sources: Source[] = [];
+      for (const [fi, f0] of files.entries()) {
+        sources.push(await uploadOne(f0, meta[fi]));
+      }
+      // 1b. 收款帳號證明照片（0027，選填）：同一支 upload-url + 同一個 sources
+      // 陣列送出，只用 label='收款帳號證明' 區分用途，不另開儲存路徑。
+      if (paymentProofFile) {
+        sources.push(await uploadOne(paymentProofFile, { label: '收款帳號證明' }));
+      }
+
+      const paymentAccountFilled =
+        paymentBank.trim() || paymentBranch.trim() || paymentAccountName.trim() || paymentAccountNumber.trim();
 
       // 2. 建立簽核
       const createRes = await fetch('/api/board/signoff', {
@@ -105,6 +132,14 @@ export default function SignoffNewPage() {
           category: category || null,
           sources,
           assignees: picks.map((p) => ({ account_id: p.id, role_label: p.role.trim() })),
+          payment_account: paymentAccountFilled
+            ? {
+                bank: paymentBank.trim() || undefined,
+                branch: paymentBranch.trim() || undefined,
+                account_name: paymentAccountName.trim() || undefined,
+                account_number: paymentAccountNumber.trim() || undefined,
+              }
+            : null,
         }),
       });
       const created = await createRes.json().catch(() => ({}));
@@ -199,11 +234,11 @@ export default function SignoffNewPage() {
           </div>
         ))}
 
-        <label style={label}>指派簽核人 *（勾選 + 填角色）</label>
+        <label style={label}>指派簽核人 *（勾選 + 填角色；財務長一律必選、排在最後一關）</label>
         <div style={{ border: '1px solid #E5DCCB', borderRadius: 4, background: '#fff' }}>
           {accounts.map((a) => (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid #F0E9DC' }}>
-              <input type="checkbox" checked={a.selected} onChange={() => toggle(a.id)} />
+            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid #F0E9DC', background: a.isFinance ? '#FBF6EA' : undefined }}>
+              <input type="checkbox" checked={a.selected} disabled={a.isFinance} onChange={() => toggle(a.id)} />
               <span style={{ width: 90 }}>{a.username}</span>
               <input
                 style={{ ...input, width: 140, padding: '5px 8px', fontSize: 13 }}
@@ -212,8 +247,51 @@ export default function SignoffNewPage() {
                 onChange={(e) => setRole(a.id, e.target.value)}
                 placeholder="角色"
               />
+              {a.isFinance && (
+                <span style={{ fontSize: 11.5, color: WINE, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  必選．財務長最後核准
+                </span>
+              )}
             </div>
           ))}
+        </div>
+        {financeCount === 0 && (
+          <p style={{ fontSize: 12.5, color: '#b00', marginTop: 6, lineHeight: 1.7 }}>
+            ⚠ 目前系統查無財務長帳號（home_dept_id=finance），建立簽核單時會被系統擋下，請先請系統管理員設定財務長。
+          </p>
+        )}
+        {financeCount > 1 && (
+          <p style={{ fontSize: 12.5, color: '#b00', marginTop: 6, lineHeight: 1.7 }}>
+            ⚠ 偵測到多位財務長帳號設定（{financeCount} 位），建立簽核單時會被系統擋下，請先聯絡系統管理員釐清。
+          </p>
+        )}
+
+        <label style={label}>收款帳號（選填，讓財務長知道要匯去哪；有些單據不需匯款可留空）</label>
+        <div style={{ border: '1px solid #E5DCCB', borderRadius: 4, background: '#fff', padding: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <input style={input} value={paymentBank} onChange={(e) => setPaymentBank(e.target.value)} placeholder="銀行（例：台灣銀行）" />
+            <input style={input} value={paymentBranch} onChange={(e) => setPaymentBranch(e.target.value)} placeholder="分行（例：成功分行）" />
+            <input style={input} value={paymentAccountName} onChange={(e) => setPaymentAccountName(e.target.value)} placeholder="戶名" />
+            <input
+              style={input}
+              value={paymentAccountNumber}
+              onChange={(e) => setPaymentAccountNumber(e.target.value)}
+              placeholder="帳號（純數字，可用 - 分段）"
+              inputMode="numeric"
+            />
+          </div>
+          <label style={{ ...label, marginTop: 12 }}>或上傳存摺封面／轉帳畫面截圖（選填，兩者可併存）</label>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,application/pdf"
+            onChange={(e) => setPaymentProofFile(e.target.files?.[0] ?? null)}
+            style={{ ...input, padding: 8 }}
+          />
+          {paymentProofFile && (
+            <div style={{ fontSize: 12.5, color: MUTE, marginTop: 6, wordBreak: 'break-all' }}>
+              已選擇：{paymentProofFile.name}（{(paymentProofFile.size / 1024 / 1024).toFixed(2)} MB）
+            </div>
+          )}
         </div>
 
         {msg && <p style={{ color: '#b00', marginTop: 14 }}>{msg}</p>}

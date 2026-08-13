@@ -10,6 +10,7 @@ import { hashIp } from '@/lib/ip-hash';
 import { jsonResp } from '@/lib/signoff/http';
 import { requireSignoffAccess } from '@/lib/signoff/access';
 import { createSignedReadUrl, getPublicApprovedSummary, hasStoredSignature, listSupplements, recordAudit } from '@/lib/signoff/dal';
+import { signoffDownloadFilename } from '@/lib/signoff/filename';
 
 const UUID_RE =
   /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
@@ -35,10 +36,21 @@ export async function GET(
     if (access.ok) {
       const { doc, assignments } = access.bundle;
 
-      const [sheetUrl, finalUrl] = await Promise.all([
+      // final_download：另外帶 download 選項產生的 signed URL（表頭多出
+      // content-disposition: attachment），專供「⬇ 下載最終 PDF」按鈕使用；
+      // 內嵌預覽 iframe 繼續用不帶 download 的 finalUrl，兩者各司其職——
+      // 若共用同一顆帶 download 的 URL，展開預覽會變成觸發下載（page.tsx 519-523）。
+      const [sheetUrl, finalUrl, finalDownloadUrl] = await Promise.all([
         createSignedReadUrl(doc.signoff_sheet_object_path),
         doc.final_pdf_object_path
           ? createSignedReadUrl(doc.final_pdf_object_path)
+          : Promise.resolve({ url: null, error: null }),
+        doc.final_pdf_object_path
+          ? createSignedReadUrl(
+              doc.final_pdf_object_path,
+              undefined,
+              signoffDownloadFilename(doc.title),
+            )
           : Promise.resolve({ url: null, error: null }),
       ]);
       const attachmentUrls = await Promise.all(
@@ -117,6 +129,11 @@ export async function GET(
             created_at: doc.created_at,
             due_at: doc.due_at,
             final_pdf_sha256: doc.final_pdf_sha256,
+            // 收款帳號（0027）：只在「① 登入且有內部 view 權限」這條分支回傳——
+            // 財務長金融帳號資訊，絕不可落到下面「② 公開摘要」分支（未登入 / 無權限
+            // 一律 404，getPublicApprovedSummary 的 select 白名單本就不含此欄，這裡
+            // 再次確認絕不手動補上去）。
+            payment_account: doc.payment_account ?? null,
           },
           assignments: assignments.map((a) => ({
             id: a.id,
@@ -135,6 +152,11 @@ export async function GET(
           urls: {
             sheet: sheetUrl.url,
             final: finalUrl.url,
+            final_download: finalDownloadUrl.url,
+            // 前端 blob 下載時用它當 a.download，檔名完全不經 header 編碼，
+            // 避免部分瀏覽器拿 content-disposition 的 percent-encoded 值當檔名
+            // （使用者 2026-08-13 回報「下載檔名是亂碼」的直接成因）。
+            final_filename: doc.final_pdf_object_path ? signoffDownloadFilename(doc.title) : null,
           },
           attachments: attachmentUrls,
           supplements,

@@ -11,6 +11,15 @@
  *   composeFinalPdf **重建**簽核表（不載入已存的 sheet bytes），全程只嵌一次字型 → 最終 ~5MB。
  *   v2 縮小：離線把字型 pyftsubset 到常用字（subset:false 嵌小字型）。
  *
+ * ⚠ 字型格式必須是 TrueType 輪廓（.ttf / glyf），不可用 CFF 輪廓的 .otf（實測 2026-08-13）：
+ *   原本用 NotoSansTC-Regular.otf（OTTO/CFF），pdf-lib 會嵌成 CIDFontType0 + FontFile3
+ *   /OpenType，poppler 一路噴 "Mismatch between font type and embedded font file"，
+ *   寬鬆的 reader（瀏覽器 pdf.js、macOS CoreGraphics）容錯過去照樣顯示，嚴格的 reader
+ *   則整份中文變亂碼——使用者 2026-08-13 回報「PDF 電腦打開是亂碼」即此。
+ *   改用離線 cu2qu 轉出的 TrueType 輪廓版後嵌成 CID TrueType（FontFile2），警告消失、
+ *   相容性最廣，且 PDF 反而小約 17%（實測同一頁 4.76MB → 3.96MB）。
+ *   ⚠ 換字型檔前務必先確認 sfnt 版本是 0x00010000（有 glyf 表、無 CFF 表），不要直接換回 .otf。
+ *
  * 純（吃 bytes 回 bytes），可在 node/vitest 直接測，不需 DB。
  *
  * ⚠ Netlify 部署：font 由 fs 讀取，需在 next.config 的 outputFileTracingIncludes
@@ -27,7 +36,7 @@ const MUTE = rgb(0.54, 0.5, 0.45);
 const WINE = rgb(0.545, 0.122, 0.184); // #8B1F2F
 const BOX = rgb(0.7, 0.66, 0.6);
 
-const FONT_PATH = path.join(process.cwd(), 'lib/signoff/assets/NotoSansTC-Regular.otf');
+const FONT_PATH = path.join(process.cwd(), 'lib/signoff/assets/NotoSansTC-Regular.ttf');
 let fontCache: Buffer | null = null;
 function loadFontBytes(): Buffer {
   if (!fontCache) fontCache = fs.readFileSync(FONT_PATH);
@@ -46,6 +55,16 @@ export type SheetSlot = {
   slot_h: number;
 };
 
+/** 收款帳號（0027）。畫 PDF 用的最小形狀，故意跟 lib/signoff/payment-account.ts
+ *  的 PaymentAccount 型別分開定義，避免 pdf.ts（純函式、無 DB 依賴）反過來
+ *  依賴那支模組——欄位剛好同名同義，呼叫端直接把 doc.payment_account 傳進來即可。 */
+export type SheetPaymentAccount = {
+  bank: string | null;
+  branch: string | null;
+  account_name: string | null;
+  account_number: string | null;
+};
+
 export type SheetInput = {
   title: string;
   amount: string | null;
@@ -55,6 +74,8 @@ export type SheetInput = {
   dateLabel: string;
   slots: SheetSlot[];
   legalNote?: string;
+  /** 收款帳號（0027，選填）；財務長要看這個決定付款要匯去哪。 */
+  paymentAccount?: SheetPaymentAccount | null;
 };
 
 const DEFAULT_LEGAL_NOTE = '本簽核適用班級內部事務，不作為對外法律文件用途。';
@@ -81,6 +102,20 @@ function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[
   }
   if (input.purpose) {
     p0.drawText(`用途：${input.purpose}`, { x: 50, y: my, size: 11, font, color: INK });
+    my -= 18;
+  }
+
+  // 收款帳號（0027）：財務長要看這一行決定付款要匯去哪，故用 WINE 強調色、
+  // 緊接在 meta/用途下方，不擠進簽核欄位框裡。四欄都空時整塊不畫。
+  const pay = input.paymentAccount;
+  if (pay && (pay.bank || pay.branch || pay.account_name || pay.account_number)) {
+    const parts: string[] = [];
+    if (pay.bank) parts.push(`銀行：${pay.bank}`);
+    if (pay.branch) parts.push(`分行：${pay.branch}`);
+    if (pay.account_name) parts.push(`戶名：${pay.account_name}`);
+    if (pay.account_number) parts.push(`帳號：${pay.account_number}`);
+    p0.drawText(`收款帳號　${parts.join('　')}`, { x: 50, y: my, size: 11, font, color: WINE });
+    my -= 18;
   }
 
   // 簽核欄位框

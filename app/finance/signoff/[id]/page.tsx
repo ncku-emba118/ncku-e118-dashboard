@@ -34,9 +34,16 @@ type Detail = {
     purpose: string | null; applicant?: string | null; status: string;
     created_at: string; completed_at?: string | null; owner_dept_id?: string;
     final_pdf_sha256?: string | null;
+    // 收款帳號（0027）：只有登入且有 view 權限時 API 才會帶（公開摘要分支不含此欄）。
+    payment_account?: {
+      bank: string | null;
+      branch: string | null;
+      account_name: string | null;
+      account_number: string | null;
+    } | null;
   };
   assignments: Assignment[];
-  urls?: { sheet: string | null; final: string | null };
+  urls?: { sheet: string | null; final: string | null; final_download?: string | null; final_filename?: string | null };
   attachments?: ViewAttachment[];
   supplements?: {
     id: string;
@@ -129,6 +136,11 @@ export default function SignoffDetailPage() {
   // 財務長下載連結不設 TTL、可重複使用（敵對審查修正1定案）；重新產生後把新網址
   // 就地顯示出來，讓班代 / 發起人可以複製轉發，不必再去挖 LINE 通知歷史訊息。
   const [financeLinkUrl, setFinanceLinkUrl] = useState<string | null>(null);
+  // 下載最終 PDF：signed URL 有 TTL（見 lib/signoff/constants.ts），頁面可能已停留
+  // 超過有效期，故按下載鍵時不直接用 d.urls.final_download（可能已過期的舊值），
+  // 而是重新打一次既有的 GET /api/board/signoff/[id] 拿最新 URL 再觸發下載。
+  const [downloading, setDownloading] = useState(false);
+  const [downloadErr, setDownloadErr] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -282,6 +294,53 @@ export default function SignoffDetailPage() {
     const r = await res.json().catch(() => ({}));
     if (!res.ok) { setMsg(writeFailMsg(res.status, r, '刪除失敗')); setBusy(false); return; }
     window.location.href = '/finance/signoff';
+  }
+
+  // 下載最終 PDF（含簽名）：重新取一次最新 signed URL（帶 download disposition）
+  // 再觸發下載，避免頁面停留過久後點下載仍拿到已過期的舊 URL（見上方 state 註解）。
+  // 這支只重打既有的 GET /api/board/signoff/[id]，不新增 route（相容性鐵律）。
+  async function doDownloadFinal() {
+    setDownloadErr(null);
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/board/signoff/${id}`);
+      if (res.status === 401) { setDownloadErr(SESSION_EXPIRED_MSG); return; }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setDownloadErr(data.error || '下載連結取得失敗，請重新整理頁面再試'); return; }
+      const url: string | null | undefined = data?.urls?.final_download;
+      if (!url) { setDownloadErr('目前沒有可下載的最終 PDF（可能尚未完成合成）'); return; }
+      const filename: string = data?.urls?.final_filename || '簽核單.pdf';
+
+      // 先抓成 blob 再自己命名：檔名完全由前端決定，不經 content-disposition
+      // 的 RFC 5987 編碼，因此不會出現「%E7%B0%BD…pdf」這種亂碼檔名
+      // （Supabase storage 回 access-control-allow-origin: *，跨網域 fetch 可行）。
+      // 若 blob 途徑失敗（CORS/記憶體/網路），退回直接開帶 attachment 的 signed URL，
+      // 檔名會退化成編碼過的樣子，但至少下載得到，不讓使用者卡死。
+      try {
+        const fileRes = await fetch(url);
+        if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
+        const blob = await fileRes.blob();
+        const objUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 60_000);
+      } catch {
+        const a = document.createElement('a');
+        a.href = url;
+        a.rel = 'noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    } catch (e) {
+      setDownloadErr(`下載失敗：${(e as Error).message}`);
+    } finally {
+      setDownloading(false);
+    }
   }
 
   const breadcrumb = (
@@ -492,6 +551,37 @@ export default function SignoffDetailPage() {
               </div>
             </section>
 
+            {/* 收款帳號（0027）：財務長付款要看這區。有填分欄文字或有上傳帳號照片
+                （label='收款帳號證明'，沿用既有附件機制）才顯示；兩者都沒有就整塊不畫，
+                不留一個空殼區塊。 */}
+            {(() => {
+              const pa = d.doc.payment_account;
+              const hasText = !!(pa && (pa.bank || pa.branch || pa.account_name || pa.account_number));
+              const proofPhotos = attaches.filter((a) => a.label === '收款帳號證明');
+              if (!hasText && proofPhotos.length === 0) return null;
+              return (
+                <section style={{ marginTop: 24 }}>
+                  <h2 style={sectionH2}>收款帳號</h2>
+                  <div style={{ marginTop: 12, padding: 14, background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10 }}>
+                    {hasText && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '8px 14px', fontSize: 15 }}>
+                        {pa?.bank && <><span style={{ color: MUTE, fontSize: 13 }}>銀行</span><span>{pa.bank}</span></>}
+                        {pa?.branch && <><span style={{ color: MUTE, fontSize: 13 }}>分行</span><span>{pa.branch}</span></>}
+                        {pa?.account_name && <><span style={{ color: MUTE, fontSize: 13 }}>戶名</span><span>{pa.account_name}</span></>}
+                        {pa?.account_number && <><span style={{ color: MUTE, fontSize: 13 }}>帳號</span><span style={{ fontWeight: 700, color: WINE }}>{pa.account_number}</span></>}
+                      </div>
+                    )}
+                    {proofPhotos.length > 0 && (
+                      <div style={{ marginTop: hasText ? 14 : 0 }}>
+                        <div style={{ fontSize: 13, color: MUTE, marginBottom: 8 }}>帳號證明照片</div>
+                        <AttachmentGrid items={proofPhotos} />
+                      </div>
+                    )}
+                  </div>
+                </section>
+              );
+            })()}
+
             {/* 簽核表 PDF：改為可收合，預設收起，不再用 420px 大白框擠壓主流程 */}
             {(d.urls?.final || d.urls?.sheet) && (
               <section style={{ marginTop: 18 }}>
@@ -527,7 +617,22 @@ export default function SignoffDetailPage() {
 
             {d.urls?.final && (
               <div style={{ fontSize: 14, marginTop: 12 }}>
-                <a href={d.urls.final} target="_blank" rel="noreferrer" style={{ color: WINE, fontWeight: 600 }}>⬇ 下載最終 PDF（含簽名）</a>
+                <button
+                  type="button"
+                  onClick={doDownloadFinal}
+                  disabled={downloading}
+                  style={{
+                    color: WINE, fontWeight: 600, background: 'none', border: 'none', padding: 0,
+                    font: 'inherit', cursor: downloading ? 'default' : 'pointer', textDecoration: 'underline',
+                  }}
+                >
+                  {downloading ? '準備下載中…' : '⬇ 下載最終 PDF（含簽名）'}
+                </button>
+                {downloadErr && (
+                  <p style={{ marginTop: 8, color: '#b00', background: '#FDECEC', border: '1px solid #e0b4b4', borderRadius: 8, padding: '8px 10px', fontSize: 13, lineHeight: 1.7 }}>
+                    {downloadErr}
+                  </p>
+                )}
               </div>
             )}
           </>

@@ -9,6 +9,7 @@ import 'server-only';
 import { getServerClient } from '../supabase/server';
 import { SIGNOFF_BUCKET, SIGNED_READ_URL_TTL_S, MAX_SUPPLEMENTS_PER_DOC } from './constants';
 import { retryResult, isTransientStorageError } from './retry';
+import type { PaymentAccount } from './payment-account';
 
 export type SignoffStatus = 'routing' | 'approved' | 'rejected' | 'voided';
 export type AssignmentStatus = 'pending' | 'signed' | 'rejected';
@@ -62,6 +63,8 @@ export type SignoffDocumentRow = {
   finalize_last_error?: string | null;
   supersedes_document_id: string | null;
   due_at: string | null;
+  /** 收款帳號（0027，選填）；null＝未填。不可出現在 getPublicApprovedSummary 等公開分支。 */
+  payment_account: PaymentAccount | null;
   created_at: string;
   updated_at: string;
 };
@@ -392,6 +395,8 @@ export type CreateDocPayload = {
   due_at?: string | null;
   /** 對應的結算單編號（0022），如 E118-S-2026-001；非結算單相關的一般經費簽核留空 */
   settlement_no?: string | null;
+  /** 收款帳號（0027，選填）；null＝未填，由呼叫端 sanitizePaymentAccount 過。 */
+  payment_account?: PaymentAccount | null;
 };
 
 export type CreateAssignment = {
@@ -596,14 +601,21 @@ export async function createSignedUploadUrl(
   return { data: { signedUrl: data.signedUrl, token: data.token, path: data.path }, error: null };
 }
 
+/**
+ * @param downloadFilename 帶入時，signed URL 會加上
+ *   `&download=<檔名>`，回應表頭多出 `content-disposition: attachment; ...`，
+ *   強制瀏覽器存檔而非內嵌渲染（fix/signoff-pdf-download 根因1：手機/LINE 內建
+ *   瀏覽器內嵌渲染 5.75MB PDF 常卡在白畫面轉圈）。不帶則行為不變（inline）。
+ */
 export async function createSignedReadUrl(
   path: string,
   expiresIn: number = SIGNED_READ_URL_TTL_S,
+  downloadFilename?: string,
 ): Promise<{ url: string | null; error: string | null }> {
   const supabase = getServerClient();
   const { data, error } = await supabase.storage
     .from(SIGNOFF_BUCKET)
-    .createSignedUrl(path, expiresIn);
+    .createSignedUrl(path, expiresIn, downloadFilename ? { download: downloadFilename } : undefined);
   if (error || !data) return { url: null, error: error?.message ?? 'no signed url' };
   return { url: data.signedUrl, error: null };
 }

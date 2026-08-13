@@ -22,18 +22,29 @@ export const MAX_SIGNATURE_BYTES = 3 * 1024 * 1024; // 3 MiB（與 png.ts 一致
 
 // challenge nonce（防重放，Codex 3-2）
 export const CHALLENGE_TTL_MS = 10 * 60 * 1000; // 10 分鐘
-export const SIGNED_READ_URL_TTL_S = 300; // 短效 read URL 5 分鐘（§9）
+// 短效 read URL（§9）。原為 5 分鐘（300s），2026-08 財務長回報「下載一直卡住」
+// 事故的根因之一：URL 是頁面載入時一次產生，使用者看單看一下、5 分鐘後才點下載
+// 就已過期。拉長到 30 分鐘（1800s），涵蓋「開著單據看附件/PDF 預覽再回頭下載」
+// 這種正常閱讀節奏；預覽 iframe 與下載連結目前共用同一顆 signed URL 產生函式，
+// 沒有另外拆兩個 TTL 常數的必要——真正解掉「頁面停留很久才點下載」的是
+// GET /api/board/signoff/[id] 的「點下載時重新取一次最新 URL」機制（page.tsx），
+// 這裡拉長 TTL 只是降低一般情況下走到那個重新取號路徑的頻率。
+export const SIGNED_READ_URL_TTL_S = 1800;
 
 // 指派人數
 export const MAX_ASSIGNEES = 9; // 9 位幹部上限
 export const MIN_ASSIGNEES = 1;
 
 // 附件（發票/明細...）
-export const MAX_ATTACHMENTS = 10;
+// 10 份原始憑證 + 1 份收款帳號證明（0027，選填，label='收款帳號證明'，同一個
+// sources 陣列送出）——維持一個上限常數，不為收款帳號另開獨立配額。
+export const MAX_ATTACHMENTS = 11;
 export const MIN_ATTACHMENTS = 1;
 
 // 附件類型標籤（下拉，供統計與辨識；caption 補充細節）
-export const ATTACHMENT_LABELS = ['報價單', '請款單', '發票', '收據', '結算單', '其他'] as const;
+// '收款帳號證明'（0027）：收款帳號區塊上傳的存摺封面／轉帳截圖沿用同一套
+// attachments 陣列 + upload-url，只用這個 label 區分用途，不另開欄位/路徑。
+export const ATTACHMENT_LABELS = ['報價單', '請款單', '發票', '收據', '結算單', '收款帳號證明', '其他'] as const;
 export type AttachmentLabel = (typeof ATTACHMENT_LABELS)[number];
 export const MAX_ATTACHMENT_CAPTION = 200;
 
