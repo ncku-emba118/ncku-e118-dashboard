@@ -195,7 +195,8 @@ export default function SignoffNewPage() {
         <select style={input} value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="">— 不分類 —</option>
           <option>班服</option><option>班遊</option><option>餐敘</option>
-          <option>迎新</option><option>班聚</option><option>文具雜支</option><option>其他</option>
+          <option>迎新</option><option>班聚</option><option>活動</option>
+          <option>文具雜支</option><option>其他</option>
         </select>
 
         <label style={label}>憑證 *（發票 / 明細 / 收據，可一次選多個）</label>
