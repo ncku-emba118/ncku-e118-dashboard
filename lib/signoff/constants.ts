@@ -48,6 +48,17 @@ export const ATTACHMENT_LABELS = ['報價單', '請款單', '發票', '收據', 
 export type AttachmentLabel = (typeof ATTACHMENT_LABELS)[number];
 export const MAX_ATTACHMENT_CAPTION = 200;
 
+// 補件表單（components/signoff/SupplementForm.tsx）不提供「收款帳號證明」這個
+// 類型（2026-08-13 敵對審查）：詳情頁的收款帳號區塊只讀建單時的原始
+// attachments，lib/signoff/finalize.ts 合成最終 PDF 也只吃 doc.attachments，
+// 補件是另一個獨立的 supplement 表——就算在補件表單選了這個標籤，照片實際上
+// 不會出現在帳號區或最終 PDF。與其讓使用者誤以為補上了，不如就近不給選。
+// finalize 的合成範圍本身不因此改動；ATTACHMENT_LABELS 仍是完整清單，
+// 給建單表單（app/finance/signoff/new/page.tsx）用。
+export const SUPPLEMENT_ATTACHMENT_LABELS = ATTACHMENT_LABELS.filter(
+  (l): l is Exclude<AttachmentLabel, '收款帳號證明'> => l !== '收款帳號證明',
+);
+
 // 補充資料（0019）：只追加不修改，故不設下限為 1 —— 允許只補說明不附檔
 export const MAX_SUPPLEMENT_ATTACHMENTS = 10;
 export const MAX_SUPPLEMENT_NOTE = 2000;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ATTACHMENT_LABELS, MAX_SUPPLEMENT_ATTACHMENTS } from '@/lib/signoff/constants';
+import { SUPPLEMENT_ATTACHMENT_LABELS, MAX_SUPPLEMENT_ATTACHMENTS } from '@/lib/signoff/constants';
 import { normalizeImageOrientation } from '@/lib/signoff/normalize-image';
 
 /**
@@ -205,6 +205,9 @@ export default function SupplementForm({
       <label style={{ display: 'block', fontSize: 13.5, fontWeight: 600, margin: '14px 0 5px' }}>
         附件（選填，最多 {MAX_SUPPLEMENT_ATTACHMENTS} 個）
       </label>
+      <p style={{ fontSize: 12, color: MUTE, lineHeight: 1.6, margin: '0 0 6px' }}>
+        收款帳號證明請於建單時上傳（財務長看的帳號區塊只讀建單當下的資料，這裡補的照片不會出現在那裡）。
+      </p>
       <input
         type="file"
         multiple
@@ -285,7 +288,7 @@ export default function SupplementForm({
                     style={{ padding: '7px 8px', border: `1px solid ${LINE}`, borderRadius: 4, fontSize: 13 }}
                   >
                     <option value="">類型（選填）</option>
-                    {ATTACHMENT_LABELS.map((l) => (
+                    {SUPPLEMENT_ATTACHMENT_LABELS.map((l) => (
                       <option key={l} value={l}>{l}</option>
                     ))}
                   </select>
