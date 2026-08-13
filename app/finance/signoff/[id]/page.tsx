@@ -311,7 +311,21 @@ export default function SignoffDetailPage() {
       if (!url) { setDownloadErr('目前沒有可下載的最終 PDF（可能尚未完成合成）'); return; }
       const filename: string = data?.urls?.final_filename || '簽核單.pdf';
 
-      // 先抓成 blob 再自己命名：檔名完全由前端決定，不經 content-disposition
+      // iOS（iPhone / iPad）：不可走 blob。blob: URL 在 iOS 不被當成「檔案」而是
+      // 「連結」，點下載會跳出分享選單並把那串內部網址一起帶出去（使用者
+      // 2026-08-13 回報）——那串 URL 對收到的人完全無效，只會造成困惑。
+      // 直接導向帶 content-disposition: attachment 的 signed URL，讓 Safari 走
+      // 原生下載流程存進「檔案」App；檔名由 filename*（RFC 5987）提供，iOS 能
+      // 正確解出中文，不會退化成亂碼。
+      const isIOS =
+        /iP(hone|ad|od)/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS) {
+        window.location.href = url;
+        return;
+      }
+
+      // 桌機：先抓成 blob 再自己命名，檔名完全由前端決定，不經 content-disposition
       // 的 RFC 5987 編碼，因此不會出現「%E7%B0%BD…pdf」這種亂碼檔名
       // （Supabase storage 回 access-control-allow-origin: *，跨網域 fetch 可行）。
       // 若 blob 途徑失敗（CORS/記憶體/網路），退回直接開帶 attachment 的 signed URL，
