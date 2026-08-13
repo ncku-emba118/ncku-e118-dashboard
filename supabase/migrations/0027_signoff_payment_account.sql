@@ -14,6 +14,13 @@
 --
 -- 只加欄位、CREATE OR REPLACE 既有 RPC（signoff_create_document 需要吃新欄位），
 -- 不動既有資料、不動其餘 0007-0026 已上線的欄位 / index / RLS / trigger。
+--
+-- ⚠ 附帶修正（寫這支 migration 時發現，非本次任務範圍但同一顆函式順手修掉）：
+-- 0022 的 CREATE OR REPLACE signoff_create_document 是從 0007 版本重新展開，
+-- 漏帶了 0008 版本才加的 category 欄位 INSERT——也就是說自 0022 上線後，
+-- 每一張新建的簽核單 category 都被靜默存成 NULL（即使 client / route.ts /
+-- dal.ts 全程正確傳遞 category，RPC 的 INSERT 欄位清單裡就是沒有它）。
+-- 這裡一併補回，不留著已知壞的版本繼續複製。
 -- ============================================================
 
 SET LOCAL lock_timeout = '5s';
@@ -49,9 +56,9 @@ BEGIN
   INSERT INTO signoff_documents(
     id,
     title, amount, currency, purpose, applicant, created_by, owner_dept_id,
-    client_request_id, attachments,
+    client_request_id, attachments, category,
     signoff_sheet_object_path, assignment_manifest_sha256, flow_type,
-    supersedes_document_id, due_at, payment_account)
+    supersedes_document_id, due_at, settlement_no, payment_account)
   VALUES (
     COALESCE(NULLIF(p_doc->>'id','')::uuid, gen_random_uuid()),
     p_doc->>'title',
@@ -63,11 +70,13 @@ BEGIN
     p_doc->>'owner_dept_id',
     (p_doc->>'client_request_id')::uuid,
     COALESCE(p_doc->'attachments', '[]'::jsonb),
+    NULLIF(p_doc->>'category',''),
     p_doc->>'signoff_sheet_object_path',
     p_doc->>'assignment_manifest_sha256',
     COALESCE(p_doc->>'flow_type','parallel'),
     NULLIF(p_doc->>'supersedes_document_id','')::uuid,
     NULLIF(p_doc->>'due_at','')::timestamptz,
+    NULLIF(p_doc->>'settlement_no',''),
     p_doc->'payment_account')
   RETURNING id INTO v_id;
 
