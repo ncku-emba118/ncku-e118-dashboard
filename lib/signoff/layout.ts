@@ -15,7 +15,7 @@ export type Slot = {
 export const SLOT_W = 210;
 export const SLOT_H = 64;
 
-const SLOT_X = 320; // 右欄；左側留給角色標籤
+export const SLOT_X = 320; // 右欄；左側留給角色標籤（pdf.ts 收款帳號區塊換行寬度也依此避讓）
 const TOP_Y = 640; // 第一格 y（左下原點）
 const ROW_STEP = 104; // 行距（留意見/時間戳一行的空間，避免與下一格標籤相黏）
 const PER_PAGE = 6;

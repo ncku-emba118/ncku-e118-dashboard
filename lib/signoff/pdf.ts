@@ -29,6 +29,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
+import { SLOT_X } from './layout';
 
 const A4 = { w: 595.28, h: 841.89 };
 const INK = rgb(0.1, 0.09, 0.07);
@@ -80,6 +81,167 @@ export type SheetInput = {
 
 const DEFAULT_LEGAL_NOTE = '本簽核適用班級內部事務，不作為對外法律文件用途。';
 
+// ── 左欄長文字換行（2026-08-14 追加：正式站實例「聖誕晚宴總召預支－財務長
+//    補核」的『用途』欄位一長就整行畫出頁面右邊界並直接穿過簽名格；收款帳號
+//    同樣的問題先前已修，這裡把換行邏輯抽成 drawSheet 共用 helper，套用到
+//    標題／申請人／金額／日期／用途／收款帳號全部左欄文字，不再只修收款
+//    帳號那一區）──
+//
+// 設計：
+//   • 左欄所有文字固定畫在 x=50（或收款帳號值再縮排到 x=60）起，換行寬度收在
+//     簽核欄位框（layout.ts SLOT_X，右欄）左邊留一段安全間距。這樣「不論畫幾
+//     行、畫到多低」在 x 軸上都不可能碰到簽核框——不用去猜簽核框的 y 座標，
+//     兩者天生分屬不同 x 範圍。
+//   • 高度動態：所有欄位共用同一個往下走的游標（drawSheet 內的 my），內容
+//     長就自然往下推。
+//   • 底線：不可畫到蓋住頁尾法律聲明（同一個 x=50 欄，y=36）。截斷策略選
+//     「文字截斷＋顯示刪節提示」而非「另開新頁」——因為簽核欄位的頁碼/座標
+//     （slot_page/slot_x/slot_y）在呼叫端（app/api/board/signoff/route.ts）
+//     用 computeSlotLayout 算好、且已經編進 assignment_manifest_sha256，
+//     drawSheet 這裡如果因為左欄文字太長而多插一頁，會讓簽核框的頁碼跟
+//     manifest hash 對不上；截斷不影響頁面數與簽核框位置，是唯一不動到
+//     已提交契約就能收尾的做法。單據標題本身另有 120 字上限（zod schema），
+//     真正會踩到截斷的幾乎只有用途/收款帳號這類自由長文字。
+const LEFT_X = 50;
+const LEFT_MARGIN_BEFORE_SLOT_COL = 20;
+/** 左欄（未縮排）文字換行寬度上限：留在簽核欄位框（SLOT_X）左側，含安全間距。 */
+export const LEFT_COLUMN_MAX_WIDTH = SLOT_X - LEFT_X - LEFT_MARGIN_BEFORE_SLOT_COL;
+const BODY_LINE_HEIGHT = 15;
+const BODY_FONT_SIZE = 11;
+const TITLE_LINE_HEIGHT = 18;
+const TITLE_FONT_SIZE = 14;
+/** 底線：所有左欄動態文字都不可畫到這個 y 以下，留給頁尾法律聲明（y=36, size 8）安全間距。 */
+export const MIN_CONTENT_Y = 58;
+// 提示文字本身也要留在同一份寬度限制內（否則提示自己撐版），故刻意寫短，
+// 不用完整句子；完整內容請見原始附件/補充說明的引導已經在 UI 文案層面處理。
+const TRUNCATION_NOTICE = '…（內容過長已截斷）';
+
+const PAYMENT_VALUE_INDENT_X = 60;
+/** 收款帳號縮排值那一行的換行寬度上限（比左欄未縮排文字窄一點，起點多縮 10pt）。 */
+export const PAYMENT_MAX_WIDTH = SLOT_X - PAYMENT_VALUE_INDENT_X - LEFT_MARGIN_BEFORE_SLOT_COL;
+const PAYMENT_LINE_HEIGHT = BODY_LINE_HEIGHT;
+const PAYMENT_FONT_SIZE = BODY_FONT_SIZE;
+
+/** 依 font.widthOfTextAtSize 做字元級換行（CJK 沒有空白可斷詞，逐字元累加最穩）。 */
+/**
+ * 中文排版禁則：不得出現在行首的字元（句讀、收尾括號、後引號等）。
+ * 換行時若下一個字屬於這一組，讓它懸掛在行尾而不是推到下一行。
+ */
+const NO_LINE_START = new Set(
+  Array.from('，。、；：！？）」』》〕】〉”’%,.;:!?)]}…·─'),
+);
+
+export function wrapTextToWidth(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+  const chars = Array.from(text); // Array.from 依 code point 迭代，不切斷 surrogate pair
+  const lines: string[] = [];
+  let cur = '';
+  for (const ch of chars) {
+    const candidate = cur + ch;
+    if (cur.length > 0 && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+      // 中文排版禁則：標點不可落在行首。寬度超了但這個字是「不能起行」的標點時，
+      // 讓它懸掛在行尾（允許略微超出 maxWidth——標點窄，且左欄與簽名格之間本來
+      // 就留有間距），而不是硬推到下一行變成「，故補開本單…」那種行首標點。
+      if (NO_LINE_START.has(ch)) {
+        lines.push(candidate);
+        cur = '';
+        continue;
+      }
+      lines.push(cur);
+      cur = ch;
+    } else {
+      cur = candidate;
+    }
+  }
+  if (cur.length > 0) lines.push(cur);
+  return lines.length > 0 ? lines : [''];
+}
+
+export type SheetTextLine = { text: string; x: number; y: number };
+
+/**
+ * 把任意一段文字排成「依寬度換行＋不畫過 minY」的座標清單，回傳畫完後下一個
+ * 可用的 y。純函式，不吃 PDFPage，方便單獨測試斷言座標與截斷行為。
+ *
+ * 空間不夠時的策略：保留最後一行給刪節提示（TRUNCATION_NOTICE），不會讓正文
+ * 最後一行跟提示疊在一起，也不會畫超過 minY。
+ */
+export function layoutWrappedText(
+  text: string,
+  font: PDFFont,
+  size: number,
+  x: number,
+  startY: number,
+  maxWidth: number,
+  lineHeight: number,
+  minY: number,
+): { lines: SheetTextLine[]; nextY: number; truncated: boolean } {
+  if (!text) return { lines: [], nextY: startY, truncated: false };
+  const wrapped = wrapTextToWidth(text, font, size, maxWidth);
+  const availableLines = Math.max(0, Math.floor((startY - minY) / lineHeight) + 1);
+  let truncated = false;
+  let toDraw = wrapped;
+  if (wrapped.length > availableLines) {
+    truncated = true;
+    toDraw = wrapped.slice(0, Math.max(availableLines - 1, 0));
+  }
+  const lines: SheetTextLine[] = [];
+  let y = startY;
+  for (const line of toDraw) {
+    lines.push({ text: line, x, y });
+    y -= lineHeight;
+  }
+  if (truncated) {
+    // 提示文字本身也套一次同樣的寬度限制（[0] 取第一行）——maxWidth 再窄也不會讓
+    // 提示自己撐版，不用假設呼叫端傳進來的寬度一定夠放完整提示句。
+    const noticeLine = wrapTextToWidth(TRUNCATION_NOTICE, font, size, maxWidth)[0] ?? TRUNCATION_NOTICE;
+    lines.push({ text: noticeLine, x, y });
+    y -= lineHeight;
+  }
+  return { lines, nextY: y, truncated };
+}
+
+export type PaymentAccountLine = SheetTextLine;
+
+/**
+ * 把收款帳號四欄排成「每欄各自成行＋依寬度換行」的清單，回傳每行的畫布座標
+ * 與畫完後下一個可用的 y（供呼叫端接續往下畫，是本函式唯一需要外部知道的
+ * 「動態高度」資訊）。純函式，不吃 PDFPage，方便單獨測試斷言座標。
+ *
+ * minY：不可畫過的下限（預設 MIN_CONTENT_Y，見上方常數說明）；一旦這一欄的
+ * 空間被前面的標題/用途等欄位吃光，會直接跳過剩餘欄位並在目前位置補一行
+ * 刪節提示，不會硬擠出超出邊界的文字。
+ */
+export function layoutPaymentAccountBlock(
+  pay: SheetPaymentAccount | null | undefined,
+  font: PDFFont,
+  startY: number,
+  minY: number = MIN_CONTENT_Y,
+): { lines: PaymentAccountLine[]; nextY: number } {
+  if (!pay || !(pay.bank || pay.branch || pay.account_name || pay.account_number)) {
+    return { lines: [], nextY: startY };
+  }
+  const fields: string[] = [];
+  if (pay.bank) fields.push(`銀行：${pay.bank}`);
+  if (pay.branch) fields.push(`分行：${pay.branch}`);
+  if (pay.account_name) fields.push(`戶名：${pay.account_name}`);
+  if (pay.account_number) fields.push(`帳號：${pay.account_number}`);
+
+  const lines: PaymentAccountLine[] = [];
+  let y = startY;
+  if (y >= minY) {
+    lines.push({ text: '收款帳號', x: LEFT_X, y });
+    y -= PAYMENT_LINE_HEIGHT;
+  }
+  for (const field of fields) {
+    if (y < minY) break; // 空間已經用完，不再處理剩餘欄位（上一輪已補刪節提示）
+    const res = layoutWrappedText(field, font, PAYMENT_FONT_SIZE, PAYMENT_VALUE_INDENT_X, y, PAYMENT_MAX_WIDTH, PAYMENT_LINE_HEIGHT, minY);
+    lines.push(...res.lines);
+    y = res.nextY;
+    if (res.truncated) break; // 這一欄已經截斷，後面的欄位必然也放不下
+  }
+  return { lines, nextY: y };
+}
+
 /** 在 pdf 上畫出簽核表（建立頁面 + header + 欄位框 + 法律聲明），回傳頁面陣列。 */
 function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[] {
   const maxPage = input.slots.reduce((m, s) => Math.max(m, s.slot_page), 1);
@@ -89,34 +251,48 @@ function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[
   // header（僅第 1 頁）
   const p0 = pages[0];
   p0.drawText('經費單簽核表', { x: 50, y: 792, size: 22, font, color: WINE });
-  p0.drawText(input.title, { x: 50, y: 762, size: 14, font, color: INK });
 
-  const meta: string[] = [];
-  if (input.applicant) meta.push(`申請人：${input.applicant}`);
-  if (input.amount) meta.push(`金額：${input.currency} ${input.amount}`);
-  meta.push(`日期：${input.dateLabel}`);
-  let my = 738;
-  for (const line of meta) {
-    p0.drawText(line, { x: 50, y: my, size: 11, font, color: INK });
-    my -= 18;
+  // 標題（依寬度換行 + 不畫過 MIN_CONTENT_Y）。schema 已限 120 字上限，這裡
+  // 仍套用同一套 wrap/truncate 機制，避免窄視窗字型下 120 字仍可能單行超寬。
+  let my = 762;
+  const titleRes = layoutWrappedText(input.title, font, TITLE_FONT_SIZE, LEFT_X, my, LEFT_COLUMN_MAX_WIDTH, TITLE_LINE_HEIGHT, MIN_CONTENT_Y);
+  for (const line of titleRes.lines) {
+    p0.drawText(line.text, { x: line.x, y: line.y, size: TITLE_FONT_SIZE, font, color: INK });
   }
-  if (input.purpose) {
-    p0.drawText(`用途：${input.purpose}`, { x: 50, y: my, size: 11, font, color: INK });
-    my -= 18;
+  my = titleRes.nextY - 6; // 標題與下方 meta 之間留一點呼吸空間
+
+  // 申請人／金額／日期／用途：同一套換行＋截斷邏輯，共用同一個往下走的游標
+  // （my），內容長就自然往下推；一旦某一欄位空間被前面吃光就整段跳過並補
+  // 刪節提示，不會硬擠出超出邊界或蓋住簽核框/頁尾聲明的文字（見上方常數區
+  // 註解：2026-08-14 正式站「聖誕晚宴總召預支－財務長補核」用途欄位穿過簽名
+  // 格即此類問題，原本只有收款帳號有換行，這裡把 helper 抽出來全部套用）。
+  const bodyFields: string[] = [];
+  if (input.applicant) bodyFields.push(`申請人：${input.applicant}`);
+  if (input.amount) bodyFields.push(`金額：${input.currency} ${input.amount}`);
+  bodyFields.push(`日期：${input.dateLabel}`);
+  if (input.purpose) bodyFields.push(`用途：${input.purpose}`);
+
+  for (const field of bodyFields) {
+    if (my < MIN_CONTENT_Y) break; // 空間已用完，剩餘欄位（含用途）整段跳過
+    const res = layoutWrappedText(field, font, BODY_FONT_SIZE, LEFT_X, my, LEFT_COLUMN_MAX_WIDTH, BODY_LINE_HEIGHT, MIN_CONTENT_Y);
+    for (const line of res.lines) {
+      p0.drawText(line.text, { x: line.x, y: line.y, size: BODY_FONT_SIZE, font, color: INK });
+    }
+    my = res.nextY;
+    if (res.truncated) break;
   }
 
   // 收款帳號（0027）：財務長要看這一行決定付款要匯去哪，故用 WINE 強調色、
-  // 緊接在 meta/用途下方，不擠進簽核欄位框裡。四欄都空時整塊不畫。
-  const pay = input.paymentAccount;
-  if (pay && (pay.bank || pay.branch || pay.account_name || pay.account_number)) {
-    const parts: string[] = [];
-    if (pay.bank) parts.push(`銀行：${pay.bank}`);
-    if (pay.branch) parts.push(`分行：${pay.branch}`);
-    if (pay.account_name) parts.push(`戶名：${pay.account_name}`);
-    if (pay.account_number) parts.push(`帳號：${pay.account_number}`);
-    p0.drawText(`收款帳號　${parts.join('　')}`, { x: 50, y: my, size: 11, font, color: WINE });
-    my -= 18;
+  // 緊接在 meta/用途下方，不擠進簽核欄位框裡。四欄都空時整塊不畫。每欄各自
+  // 成行＋依寬度換行（layoutPaymentAccountBlock），區塊高度隨內容動態長高，
+  // 換行寬度固定收在簽核欄位框（右欄）左側，兩者天生不同 x 範圍，不論這塊
+  // 畫多少行都不會蓋到簽核框；同時吃 MIN_CONTENT_Y 下限不會蓋過頁尾聲明
+  // （見 layoutPaymentAccountBlock 註解）。
+  const { lines: payLines, nextY } = layoutPaymentAccountBlock(input.paymentAccount, font, my, MIN_CONTENT_Y);
+  for (const line of payLines) {
+    p0.drawText(line.text, { x: line.x, y: line.y, size: PAYMENT_FONT_SIZE, font, color: WINE });
   }
+  my = nextY;
 
   // 簽核欄位框
   for (const s of input.slots) {

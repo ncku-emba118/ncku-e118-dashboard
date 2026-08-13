@@ -7,6 +7,7 @@ import Breadcrumb from '@/components/Breadcrumb';
 import { deptInfo } from '@/lib/depts';
 import AttachmentGrid, { type ViewAttachment } from '@/components/signoff/AttachmentGrid';
 import SupplementForm from '@/components/signoff/SupplementForm';
+import { SESSION_EXPIRED_MSG, resolveDownloadFinalError } from '@/lib/signoff/download-error';
 
 const WINE = '#8B1F2F';
 const WINE_DEEP = '#6B1622';
@@ -102,8 +103,9 @@ const sectionH2: CSSProperties = {
 
 // session 過期後的統一引導文案：刻意不分「找不到單」或「登入過期」（不洩露單據存在性），
 // 一律引導幹部回 LINE 重新點卡片連結（連結內含一次性免登入換發 session）。
-const SESSION_EXPIRED_MSG =
-  '登入已過期。請回到 LINE 訊息，重新點一次簽核卡片的連結後再操作。';
+// 常數定義搬到 lib/signoff/download-error.ts（那支還額外處理下載動作
+// public:true fail-open 的誤導訊息問題），寫入動作（簽核/退回/作廢…）跟下載
+// 動作共用同一句文案，不要各自維護一份。
 
 /**
  * 寫入動作（簽核 / 退回 / 作廢…）失敗訊息：
@@ -304,10 +306,14 @@ export default function SignoffDetailPage() {
     setDownloading(true);
     try {
       const res = await fetch(`/api/board/signoff/${id}`);
-      if (res.status === 401) { setDownloadErr(SESSION_EXPIRED_MSG); return; }
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setDownloadErr(data.error || '下載連結取得失敗，請重新整理頁面再試'); return; }
+      // 判斷順序（含 public:true fail-open 誤導訊息的修正）見
+      // lib/signoff/download-error.ts 的 resolveDownloadFinalError 註解。
+      const blockMsg = resolveDownloadFinalError(res.status, res.ok, data);
+      if (blockMsg) { setDownloadErr(blockMsg); return; }
       const url: string | null | undefined = data?.urls?.final_download;
+      // resolveDownloadFinalError 已保證走到這裡 url 必存在，這行只是給 TS 做
+      // narrowing（型別上仍是 string | null | undefined），理論上不會觸發。
       if (!url) { setDownloadErr('目前沒有可下載的最終 PDF（可能尚未完成合成）'); return; }
       const filename: string = data?.urls?.final_filename || '簽核單.pdf';
 

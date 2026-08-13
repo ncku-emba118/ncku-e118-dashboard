@@ -40,13 +40,25 @@ const ACCOUNT_NUMBER_CHARS_RE = /^[0-9\- ]+$/;
 const MIN_ACCOUNT_DIGITS = 4;
 const MAX_ACCOUNT_DIGITS = 20;
 
+// Unicode 控制字元（Cc，如 \n \t \x00-\x1f）與格式字元（Cf，如 U+200E LRM、
+// U+202E RTL override）。原本只剝 ASCII 控制字元擋不住 Cf——這些字元不換行、
+// 幾乎不可見，卻能讓「收款帳號 PDF」內嵌換行/雙向覆寫，把座落位置或顯示順序
+// 弄亂（2026-08-13 敵對審查）。用 \p{Cc}\p{Cf} 涵蓋全 Unicode 範圍，而不是只
+// 擋 ASCII 那一段。
+// eslint-disable-next-line no-control-regex
+const UNSAFE_UNICODE_RE = /[\p{Cc}\p{Cf}]/gu;
+
+function stripUnsafeUnicode(v: string): string {
+  return v.replace(UNSAFE_UNICODE_RE, '');
+}
+
 export function sanitizePaymentAccount(input: PaymentAccountInput): SanitizePaymentAccountResult {
   if (!input) return { ok: true, value: null };
 
-  const bank = (input.bank ?? '').trim();
-  const branch = (input.branch ?? '').trim();
-  const accountName = (input.account_name ?? '').trim();
-  const accountNumber = (input.account_number ?? '').trim();
+  const bank = stripUnsafeUnicode((input.bank ?? '').trim()).trim();
+  const branch = stripUnsafeUnicode((input.branch ?? '').trim()).trim();
+  const accountName = stripUnsafeUnicode((input.account_name ?? '').trim()).trim();
+  const accountNumber = stripUnsafeUnicode((input.account_number ?? '').trim()).trim();
 
   // 四欄全空 → 視為「沒填這個選填區塊」，不是驗證錯誤。
   if (!bank && !branch && !accountName && !accountNumber) {

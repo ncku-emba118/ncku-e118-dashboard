@@ -67,6 +67,36 @@ describe('sanitizePaymentAccount', () => {
     const r = sanitizePaymentAccount({ account_name: 'A'.repeat(61) });
     expect(r.ok).toBe(false);
   });
+
+  // ── Unicode 控制/格式字元剝除（2026-08-13 敵對審查）───────────────────
+  test('剝除 Unicode 格式字元（Cf，如 RTL override）而不只是 ASCII 控制字元', () => {
+    const r = sanitizePaymentAccount({ bank: '台灣‮銀行' });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value?.bank).toBe('台灣銀行');
+      expect(r.value?.bank).not.toMatch(/\p{Cf}/u);
+    }
+  });
+
+  test('剝除零寬字元（LRM/ZWSP）與內嵌換行', () => {
+    const r = sanitizePaymentAccount({
+      branch: '成功‎分行',
+      account_name: '黃​政傑',
+      account_number: '123\n456\t7890',
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value?.branch).toBe('成功分行');
+      expect(r.value?.account_name).toBe('黃政傑');
+      // 帳號欄仍受 ACCOUNT_NUMBER_CHARS_RE 限制，換行/tab 被剝除後只剩數字，格式驗證照常通過
+      expect(r.value?.account_number).toBe('1234567890');
+    }
+  });
+
+  test('剝除格式字元後若整欄變空白，仍視為未填（不是格式錯誤）', () => {
+    const r = sanitizePaymentAccount({ bank: '‎‏‪‬' });
+    expect(r).toEqual({ ok: true, value: null });
+  });
 });
 
 describe('hasPaymentAccountContent', () => {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Breadcrumb from '@/components/Breadcrumb';
 import { ATTACHMENT_LABELS } from '@/lib/signoff/constants';
+import { attachmentCountError } from '@/lib/signoff/attachment-limit';
 import { normalizeImageOrientation } from '@/lib/signoff/normalize-image';
 import { normalizeAmountInput } from '@/lib/signoff/amount';
 
@@ -49,8 +50,10 @@ export default function SignoffNewPage() {
         setAccounts(
           (data.accounts as Account[]).map((a) => {
             const isFinance = a.home_dept_id === 'finance';
-            // 財務長一律自動成為簽核人、且不可取消（後端 route 會強制補上/重排到最後
-            // 一關，這裡預先勾選只是讓畫面跟後端行為一致，真正權威判斷在後端）。
+            // 財務長一律自動成為簽核人、且不可取消（後端 route 會強制補上，這裡預先
+            // 勾選只是讓畫面跟後端行為一致，真正權威判斷在後端）。系統是 parallel
+            // 簽核、不強制順序，財務長在陣列/PDF 排最後只是版面安排，文案不可暗示
+            // 「最後一關」（2026-08-13 敵對審查：原文案誤導使用者以為有簽核順序）。
             return { id: a.id, username: a.username, selected: isFinance, role: isFinance ? '財務長核准' : '審核', isFinance };
           }),
         );
@@ -74,6 +77,12 @@ export default function SignoffNewPage() {
     if (files.length === 0) return setMsg('請至少上傳一個憑證（發票/明細，可多檔）');
     if (picks.length === 0) return setMsg('請至少指派一位簽核人');
     if (picks.some((p) => !p.role.trim())) return setMsg('每位簽核人都要填角色（如 審核/核准）');
+    // 附件總數（一般憑證 + 收款帳號證明）必須在上傳前就擋下，不能等全部上傳
+    // 完成才靠後端 zod .max(MAX_ATTACHMENTS) 擋——否則使用者選了 12 份、
+    // 全部 PUT 成功後建單 POST 才被拒，留下一批孤兒檔（2026-08-13 敵對審查：
+    // 選 11 份一般附件 + 1 份帳號證明＝12 份，全部上傳完才發現超量）。
+    const attachmentErr = attachmentCountError(files.length, !!paymentProofFile);
+    if (attachmentErr) return setMsg(attachmentErr);
 
     setBusy(true);
     try {
@@ -237,7 +246,7 @@ export default function SignoffNewPage() {
           </div>
         ))}
 
-        <label style={label}>指派簽核人 *（勾選 + 填角色；財務長一律必選、排在最後一關）</label>
+        <label style={label}>指派簽核人 *（勾選 + 填角色；財務長一律必選，簽核人之間無固定順序）</label>
         <div style={{ border: '1px solid #E5DCCB', borderRadius: 4, background: '#fff' }}>
           {accounts.map((a) => (
             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid #F0E9DC', background: a.isFinance ? '#FBF6EA' : undefined }}>
@@ -252,7 +261,7 @@ export default function SignoffNewPage() {
               />
               {a.isFinance && (
                 <span style={{ fontSize: 11.5, color: WINE, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                  必選．財務長最後核准
+                  必選．財務長
                 </span>
               )}
             </div>
