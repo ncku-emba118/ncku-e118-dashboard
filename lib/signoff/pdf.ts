@@ -252,57 +252,97 @@ export function layoutPaymentAccountBlock(
   return { lines, nextY: y };
 }
 
+// ── 版面設計常數（2026-08-14 改版：使用者要求「呈現專業」）──────────────
+// 只有一套字重的 Noto Sans TC，層次全靠「字級 / 顏色 / 留白 / 線條」建立。
+const PAGE_MARGIN = 50;
+const CONTENT_RIGHT = A4.w - PAGE_MARGIN;
+const LABEL_RIGHT_X = 104;   // 標籤右對齊到這條線，值統一從 VALUE_X 起 → 形成對齊的欄
+const VALUE_X = 114;
+const VALUE_MAX_WIDTH = SLOT_X - VALUE_X - LEFT_MARGIN_BEFORE_SLOT_COL;
+const LABEL_SIZE = 9.5;
+const HAIRLINE = rgb(0.88, 0.85, 0.80);
+const PANEL_BG = rgb(0.985, 0.975, 0.960);
+
+/** 右對齊繪字（標籤欄用）。 */
+function drawRightAligned(
+  page: PDFPage, text: string, rightX: number, y: number,
+  size: number, font: PDFFont, color: ReturnType<typeof rgb>,
+) {
+  page.drawText(text, { x: rightX - font.widthOfTextAtSize(text, size), y, size, font, color });
+}
+
+/** 區塊小標＋細分隔線（「用途」「簽核紀錄」這類段落標題）。 */
+function drawSectionLabel(
+  page: PDFPage, text: string, x: number, y: number, width: number, font: PDFFont,
+) {
+  page.drawText(text, { x, y, size: LABEL_SIZE, font, color: MUTE });
+  const labelW = font.widthOfTextAtSize(text, LABEL_SIZE);
+  page.drawLine({
+    start: { x: x + labelW + 8, y: y + 3 },
+    end: { x: x + width, y: y + 3 },
+    thickness: 0.5, color: HAIRLINE,
+  });
+}
+
 /** 在 pdf 上畫出簽核表（建立頁面 + header + 欄位框 + 法律聲明），回傳頁面陣列。 */
 function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[] {
   const maxPage = input.slots.reduce((m, s) => Math.max(m, s.slot_page), 1);
   const pages: PDFPage[] = [];
   for (let i = 0; i < maxPage; i++) pages.push(pdf.addPage([A4.w, A4.h]));
 
-  // header（僅第 1 頁）
   const p0 = pages[0];
-  p0.drawText('經費單簽核表', { x: 50, y: 792, size: 22, font, color: WINE });
 
-  // 標題（依寬度換行 + 不畫過 MIN_CONTENT_Y）。schema 已限 120 字上限，這裡
-  // 仍套用同一套 wrap/truncate 機制，避免窄視窗字型下 120 字仍可能單行超寬。
-  let my = 762;
-  const titleRes = layoutWrappedText(input.title, font, TITLE_FONT_SIZE, LEFT_X, my, LEFT_COLUMN_MAX_WIDTH, TITLE_LINE_HEIGHT, MIN_CONTENT_Y);
+  // ── 頁首：文件類別 + 日期，下方一條強調色分隔線 ──
+  p0.drawText('經費單簽核表', { x: PAGE_MARGIN, y: 790, size: 20, font, color: WINE });
+  drawRightAligned(p0, input.dateLabel, CONTENT_RIGHT, 794, 9.5, font, MUTE);
+  p0.drawLine({
+    start: { x: PAGE_MARGIN, y: 780 }, end: { x: CONTENT_RIGHT, y: 780 },
+    thickness: 1.2, color: WINE,
+  });
+
+  // ── 單據標題 ──
+  let my = 756;
+  const titleRes = layoutWrappedText(input.title, font, TITLE_FONT_SIZE, PAGE_MARGIN, my, LEFT_COLUMN_MAX_WIDTH, TITLE_LINE_HEIGHT, MIN_CONTENT_Y);
   for (const line of titleRes.lines) {
     p0.drawText(line.text, { x: line.x, y: line.y, size: TITLE_FONT_SIZE, font, color: INK });
   }
-  my = titleRes.nextY - 6; // 標題與下方 meta 之間留一點呼吸空間
+  my = titleRes.nextY - 12;
 
-  // 申請人／金額／日期／用途：同一套換行＋截斷邏輯，共用同一個往下走的游標
-  // （my），內容長就自然往下推；一旦某一欄位空間被前面吃光就整段跳過並補
-  // 刪節提示，不會硬擠出超出邊界或蓋住簽核框/頁尾聲明的文字（見上方常數區
-  // 註解：2026-08-14 正式站「聖誕晚宴總召預支－財務長補核」用途欄位穿過簽名
-  // 格即此類問題，原本只有收款帳號有換行，這裡把 helper 抽出來全部套用）。
+  // ── 資訊區：標籤右對齊、值統一起始 x，形成整齊的兩欄 ──
   // ⚠ 繪製順序＝優先權順序（2026-08-14 敵對審查 High）：用途上限 2000 字，
-  //   原本排在收款帳號前面，長用途會把高度吃光，導致 layoutPaymentAccountBlock
-  //   回空陣列 → **收款帳號整段不畫、且畫面上毫無提示**。財務長是照那組帳號
-  //   匯款的，靜默消失比截斷嚴重得多。因此把「申請人/金額/日期/收款帳號」這些
-  //   短且關鍵的欄位排在前面先佔位，用途改成最後畫、只用剩下的空間——用途是
-  //   描述性文字，截斷有刪節提示、可接受。
-  const criticalFields: string[] = [];
-  if (input.applicant) criticalFields.push(`申請人：${input.applicant}`);
-  if (input.amount) criticalFields.push(`金額：${input.currency} ${input.amount}`);
-  criticalFields.push(`日期：${input.dateLabel}`);
+  //   若排在收款帳號前面，長用途會把高度吃光導致收款帳號整段不畫且毫無提示。
+  //   財務長照那組帳號匯款，靜默消失比截斷嚴重得多，故關鍵短欄位一律先佔位。
+  const infoRows: { label: string; value: string; size: number }[] = [];
+  if (input.applicant) infoRows.push({ label: '申請人', value: input.applicant, size: BODY_FONT_SIZE });
 
-  for (const field of criticalFields) {
+  for (const row of infoRows) {
     if (my < MIN_CONTENT_Y) break;
-    const res = layoutWrappedText(field, font, BODY_FONT_SIZE, LEFT_X, my, LEFT_COLUMN_MAX_WIDTH, BODY_LINE_HEIGHT, MIN_CONTENT_Y);
+    const res = layoutWrappedText(row.value, font, row.size, VALUE_X, my, VALUE_MAX_WIDTH, BODY_LINE_HEIGHT, MIN_CONTENT_Y);
+    // 標籤與值的第一行對齊基線；值偏大時標籤微調，視覺上仍在同一行
+    drawRightAligned(p0, row.label, LABEL_RIGHT_X, my + (row.size - BODY_FONT_SIZE) * 0.35, LABEL_SIZE, font, MUTE);
     for (const line of res.lines) {
-      p0.drawText(line.text, { x: line.x, y: line.y, size: BODY_FONT_SIZE, font, color: INK });
+      p0.drawText(line.text, { x: line.x, y: line.y, size: row.size, font, color: INK });
     }
-    my = res.nextY;
+    my = res.nextY - 3;
     if (res.truncated) break;
   }
 
-  // 收款帳號（0027）：財務長要看這一行決定付款要匯去哪，故用 WINE 強調色、
-  // 緊接在 meta/用途下方，不擠進簽核欄位框裡。四欄都空時整塊不畫。每欄各自
-  // 成行＋依寬度換行（layoutPaymentAccountBlock），區塊高度隨內容動態長高，
-  // 換行寬度固定收在簽核欄位框（右欄）左側，兩者天生不同 x 範圍，不論這塊
-  // 畫多少行都不會蓋到簽核框；同時吃 MIN_CONTENT_Y 下限不會蓋過頁尾聲明
-  // （見 layoutPaymentAccountBlock 註解）。
+  // ── 金額：刻意「幣別」與「數字」分成兩次 drawText ──
+  // ⚠ 不要合併成一次畫（例如 `TWD 14400`）：實測 pdf-lib + 這顆非 subset 的 CID
+  //   字型，當一段文字以拉丁字母開頭、後面接數字時，數字會從 PDF 文字層消失
+  //   （畫面看得到，但複製/搜尋/選取都抓不到；'TWD 14400' → 只抽得到 'TWD'，
+  //   '14400' 單獨畫則正常，'金額：TWD 14400' 以中文開頭也正常）。金額是這份
+  //   文件最關鍵的數字，必須可被搜尋與複製，故分開畫繞過這個問題。
+  if (input.amount && my >= MIN_CONTENT_Y) {
+    const AMOUNT_SIZE = 13;
+    drawRightAligned(p0, '金額', LABEL_RIGHT_X, my + 0.7, LABEL_SIZE, font, MUTE);
+    p0.drawText(input.currency, { x: VALUE_X, y: my, size: AMOUNT_SIZE, font, color: MUTE });
+    const curW = font.widthOfTextAtSize(input.currency, AMOUNT_SIZE);
+    p0.drawText(input.amount, { x: VALUE_X + curW + 6, y: my, size: AMOUNT_SIZE, font, color: INK });
+    my -= BODY_LINE_HEIGHT + 3;
+  }
+
+  // ── 收款帳號：獨立的框線面板（財務長的付款依據，要一眼可辨）──
   const hasPaymentAccount = Boolean(
     input.paymentAccount &&
       (input.paymentAccount.bank ||
@@ -310,16 +350,30 @@ function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[
         input.paymentAccount.account_name ||
         input.paymentAccount.account_number),
   );
-  const { lines: payLines, nextY } = layoutPaymentAccountBlock(input.paymentAccount, font, my, MIN_CONTENT_Y);
-  for (const line of payLines) {
-    p0.drawText(line.text, { x: line.x, y: line.y, size: PAYMENT_FONT_SIZE, font, color: WINE });
+  const { lines: payLines, nextY } = layoutPaymentAccountBlock(input.paymentAccount, font, my - 8, MIN_CONTENT_Y);
+  if (payLines.length > 0) {
+    const top = payLines[0].y + PAYMENT_FONT_SIZE + 6;
+    const bottom = nextY + PAYMENT_LINE_HEIGHT - 8;
+    p0.drawRectangle({
+      x: PAGE_MARGIN - 8, y: bottom,
+      width: LEFT_COLUMN_MAX_WIDTH + 16, height: top - bottom,
+      color: PANEL_BG, borderColor: HAIRLINE, borderWidth: 0.8,
+    });
+    for (const line of payLines) {
+      // 首行是「收款帳號」標題（由 layoutPaymentAccountBlock 置於最前），用強調色；
+      // 其餘是值，用一般墨色，避免整塊都是紅字反而失焦。
+      const isHeading = line.text === '收款帳號';
+      p0.drawText(line.text, {
+        x: line.x, y: line.y,
+        size: isHeading ? LABEL_SIZE : PAYMENT_FONT_SIZE,
+        font, color: isHeading ? WINE : INK,
+      });
+    }
+    my = bottom - 16;
   }
-  my = nextY;
 
-  // 硬保證：有填帳號就一定要完整畫出帳號那一行，否則寧可讓產生 PDF 直接失敗，
+  // 硬保證：有填帳號就一定要完整畫出帳號，否則寧可讓產生 PDF 直接失敗，
   // 也不要交出一份「看起來正常、實際少了付款資訊」的簽核表（敵對審查 High）。
-  // 走到這裡代表版面配置已經有 bug（關鍵欄位排在用途前面本就該留得住位置），
-  // 讓它大聲壞掉才會被發現。
   if (hasPaymentAccount && input.paymentAccount?.account_number) {
     const drawn = payLines.map((l) => l.text).join('');
     if (!drawn.includes(input.paymentAccount.account_number)) {
@@ -329,33 +383,48 @@ function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[
     }
   }
 
-  // 用途：最後畫，只用剩下的空間（見上方繪製順序說明）。長內容截斷會附刪節提示，
-  // 使用者看得出「這裡還有內容」，不像收款帳號消失那樣無聲無息。
-  if (input.purpose && my >= MIN_CONTENT_Y) {
-    const res = layoutWrappedText(`用途：${input.purpose}`, font, BODY_FONT_SIZE, LEFT_X, my, LEFT_COLUMN_MAX_WIDTH, BODY_LINE_HEIGHT, MIN_CONTENT_Y);
+  // ── 用途：最後畫，只用剩下的空間；截斷有刪節提示，看得出「還有內容」──
+  if (input.purpose && my >= MIN_CONTENT_Y + BODY_LINE_HEIGHT * 2) {
+    drawSectionLabel(p0, '用途', PAGE_MARGIN, my, LEFT_COLUMN_MAX_WIDTH, font);
+    my -= BODY_LINE_HEIGHT + 2;
+    const res = layoutWrappedText(input.purpose, font, BODY_FONT_SIZE, PAGE_MARGIN, my, LEFT_COLUMN_MAX_WIDTH, BODY_LINE_HEIGHT, MIN_CONTENT_Y);
     for (const line of res.lines) {
       p0.drawText(line.text, { x: line.x, y: line.y, size: BODY_FONT_SIZE, font, color: INK });
     }
     my = res.nextY;
   }
 
-  // 簽核欄位框
+  // ── 簽核區：每頁在最上方的簽名格之上放區塊小標 ──
+  for (let pi = 0; pi < pages.length; pi++) {
+    const pageSlots = input.slots.filter((s) => (s.slot_page - 1) === pi);
+    if (pageSlots.length === 0) continue;
+    const topY = Math.max(...pageSlots.map((s) => s.slot_y + s.slot_h));
+    drawSectionLabel(pages[pi], '簽核紀錄', SLOT_X, topY + 26, CONTENT_RIGHT - SLOT_X, font);
+  }
+
+  // ── 簽核欄位框（座標一律照 input.slots，來自 DB 且已編進 manifest hash，不可更動）──
   for (const s of input.slots) {
     const page = pages[s.slot_page - 1] ?? pages[0];
     page.drawText(`${s.role_label}：${s.signer_name}`, {
-      x: s.slot_x, y: s.slot_y + s.slot_h + 6, size: 11, font, color: INK,
+      x: s.slot_x, y: s.slot_y + s.slot_h + 6, size: 10.5, font, color: INK,
     });
     page.drawRectangle({
       x: s.slot_x, y: s.slot_y, width: s.slot_w, height: s.slot_h,
-      borderColor: BOX, borderWidth: 1,
+      borderColor: BOX, borderWidth: 0.8,
     });
   }
 
-  // 法律聲明（每頁底部）
-  for (const page of pages) {
-    page.drawText(input.legalNote ?? DEFAULT_LEGAL_NOTE, {
-      x: 50, y: 36, size: 8, font, color: MUTE,
+  // ── 頁尾：細線 + 法律聲明 + 頁碼 ──
+  for (let pi = 0; pi < pages.length; pi++) {
+    const page = pages[pi];
+    page.drawLine({
+      start: { x: PAGE_MARGIN, y: 50 }, end: { x: CONTENT_RIGHT, y: 50 },
+      thickness: 0.5, color: HAIRLINE,
     });
+    page.drawText(input.legalNote ?? DEFAULT_LEGAL_NOTE, {
+      x: PAGE_MARGIN, y: 36, size: 8, font, color: MUTE,
+    });
+    drawRightAligned(page, `第 ${pi + 1} 頁，共 ${pages.length} 頁`, CONTENT_RIGHT, 36, 8, font, MUTE);
   }
   return pages;
 }
