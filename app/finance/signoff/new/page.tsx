@@ -18,6 +18,14 @@ const input: React.CSSProperties = {
   width: '100%', padding: '9px 10px', border: '1px solid #D9CDB8', borderRadius: 4, fontSize: 15, boxSizing: 'border-box', background: '#fff', color: INK,
 };
 
+/** 金額正規化：全形數字→半形、去掉千分位逗號與空白。使用者習慣打「14,400」。 */
+function normalizeAmount(v: string): string {
+  return v
+    .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/[．]/g, '.')
+    .replace(/[,，\s]/g, '');
+}
+
 export default function SignoffNewPage() {
   const [accounts, setAccounts] = useState<Pick[]>([]);
   const [title, setTitle] = useState('');
@@ -125,7 +133,8 @@ export default function SignoffNewPage() {
         body: JSON.stringify({
           client_request_id: crypto.randomUUID(),
           title: title.trim(),
-          amount: amount.trim() || null,
+          // 千分位逗號 / 全形數字先在前端就正規化（後端也會再做一次，兩邊都不擋人）
+          amount: normalizeAmount(amount) || null,
           currency,
           purpose: purpose.trim() || null,
           applicant: applicant.trim() || null,

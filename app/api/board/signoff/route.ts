@@ -53,9 +53,18 @@ const DEPT_IDS = ALL_DEPTS.map((d) => d.id) as readonly string[];
 const createSchema = z.object({
   client_request_id: z.string().uuid(),
   title: z.string().min(1).max(120),
+  // 金額：先正規化再驗。使用者習慣打千分位逗號（「14,400」）與全形數字，
+  // 這類輸入在語意上完全明確，不該用「欄位格式錯誤」擋下來讓人自己猜哪裡錯
+  // （2026-08-13 使用者實際踩到）。全形→半形、去掉逗號/空白後才做嚴格檢查。
   amount: z
     .string()
-    .regex(/^\d+(\.\d{1,2})?$/)
+    .transform((v) =>
+      v
+        .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+        .replace(/[．]/g, '.')
+        .replace(/[,，\s]/g, ''),
+    )
+    .refine((v) => /^\d+(\.\d{1,2})?$/.test(v), '金額只能是數字，例如 14400 或 14400.00')
     .refine((v) => parseFloat(v) > 0, '金額必須大於 0')
     .nullable()
     .optional(),
@@ -152,8 +161,29 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
+    // 只回「欄位格式錯誤」等於叫使用者自己猜是哪一欄、錯在哪（2026-08-13 使用者
+    // 實際被卡住）。這裡把 zod 的 fieldErrors 轉成「中文欄位名：原因」的可讀句子，
+    // 前端直接顯示這句就夠了；detail 仍保留給除錯用。
+    const FIELD_LABELS: Record<string, string> = {
+      title: '標題',
+      amount: '金額',
+      currency: '幣別',
+      purpose: '用途',
+      applicant: '申請人',
+      category: '支出分類',
+      sources: '憑證',
+      assignees: '簽核人',
+      payment_account: '收款帳號',
+      settlement_no: '結算單編號',
+      client_request_id: '請求識別碼',
+      owner_dept_id: '部門',
+    };
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const readable = Object.entries(fieldErrors)
+      .map(([k, msgs]) => `${FIELD_LABELS[k] ?? k}：${(msgs ?? []).join('、')}`)
+      .join('；');
     return jsonResp(
-      { error: '欄位格式錯誤', detail: parsed.error.flatten().fieldErrors },
+      { error: readable ? `請修正以下欄位 — ${readable}` : '欄位格式錯誤', detail: fieldErrors },
       400,
       traceId,
     );

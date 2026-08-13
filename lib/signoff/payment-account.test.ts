@@ -81,3 +81,29 @@ describe('hasPaymentAccountContent', () => {
     expect(hasPaymentAccountContent({ bank: '台灣銀行', branch: null, account_name: null, account_number: null })).toBe(true);
   });
 });
+
+// ── 金額正規化（2026-08-13：使用者打「14,400」被擋，逗號應被接受）──
+describe('建單金額正規化', () => {
+  const normalize = (v: string) =>
+    v
+      .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+      .replace(/[．]/g, '.')
+      .replace(/[,，\s]/g, '');
+  const valid = (v: string) => /^\d+(\.\d{1,2})?$/.test(normalize(v));
+
+  test('千分位逗號（半形/全形）可接受', () => {
+    expect(normalize('14,400')).toBe('14400');
+    expect(normalize('14，400')).toBe('14400');
+    expect(valid('14,400')).toBe(true);
+  });
+  test('全形數字與全形小數點可接受', () => {
+    expect(normalize('１４４００．５０')).toBe('14400.50');
+    expect(valid('１４４００．５０')).toBe(true);
+  });
+  test('夾雜空白可接受', () => {
+    expect(valid(' 14 400 ')).toBe(true);
+  });
+  test('仍然擋掉真正無效的輸入', () => {
+    for (const v of ['abc', '14.400.00', '1,4a0', '']) expect(valid(v)).toBe(false);
+  });
+});
