@@ -11,6 +11,15 @@
  *   composeFinalPdf **重建**簽核表（不載入已存的 sheet bytes），全程只嵌一次字型 → 最終 ~5MB。
  *   v2 縮小：離線把字型 pyftsubset 到常用字（subset:false 嵌小字型）。
  *
+ * ⚠ 字型格式必須是 TrueType 輪廓（.ttf / glyf），不可用 CFF 輪廓的 .otf（實測 2026-08-13）：
+ *   原本用 NotoSansTC-Regular.otf（OTTO/CFF），pdf-lib 會嵌成 CIDFontType0 + FontFile3
+ *   /OpenType，poppler 一路噴 "Mismatch between font type and embedded font file"，
+ *   寬鬆的 reader（瀏覽器 pdf.js、macOS CoreGraphics）容錯過去照樣顯示，嚴格的 reader
+ *   則整份中文變亂碼——使用者 2026-08-13 回報「PDF 電腦打開是亂碼」即此。
+ *   改用離線 cu2qu 轉出的 TrueType 輪廓版後嵌成 CID TrueType（FontFile2），警告消失、
+ *   相容性最廣，且 PDF 反而小約 17%（實測同一頁 4.76MB → 3.96MB）。
+ *   ⚠ 換字型檔前務必先確認 sfnt 版本是 0x00010000（有 glyf 表、無 CFF 表），不要直接換回 .otf。
+ *
  * 純（吃 bytes 回 bytes），可在 node/vitest 直接測，不需 DB。
  *
  * ⚠ Netlify 部署：font 由 fs 讀取，需在 next.config 的 outputFileTracingIncludes
@@ -27,7 +36,7 @@ const MUTE = rgb(0.54, 0.5, 0.45);
 const WINE = rgb(0.545, 0.122, 0.184); // #8B1F2F
 const BOX = rgb(0.7, 0.66, 0.6);
 
-const FONT_PATH = path.join(process.cwd(), 'lib/signoff/assets/NotoSansTC-Regular.otf');
+const FONT_PATH = path.join(process.cwd(), 'lib/signoff/assets/NotoSansTC-Regular.ttf');
 let fontCache: Buffer | null = null;
 function loadFontBytes(): Buffer {
   if (!fontCache) fontCache = fs.readFileSync(FONT_PATH);
