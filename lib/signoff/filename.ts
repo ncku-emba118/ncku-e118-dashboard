@@ -7,16 +7,22 @@
  * 編碼，不是 Latin-1 headers.set），真正需要擋的是：
  *   - 路徑分隔符/檔案系統保留字元（反斜線、斜線、冒號、星號、問號、雙引號、
  *     角括號、直線號）—— 避免瀏覽器/OS 存檔時誤判路徑或觸發保留字元錯誤。
- *   - 控制字元（含換行）—— 避免掉進任何後續把檔名塞進 header 字串的路徑。
- *   - 過長標題 —— 部分檔案系統對檔名長度有限制，且 UI 上也不需要那麼長。
+ *   - Unicode 控制字元（Cc）與格式字元（Cf，含換行、零寬字元、RTL override
+ *     等）—— 原本只擋 ASCII 控制字元擋不住 U+202E 這類雙向覆寫字元，可以把
+ *     `請款單‮fdp.exe` 顯示成看起來像 .pdf 實際是 .exe 的檔名，在檔案總管
+ *     裡造成視覺欺騙（2026-08-13 敵對審查）。
+ *   - 過長標題 —— 部分檔案系統對檔名長度有限制，且 UI 上也不需要那麼長；
+ *     截斷改依 code point（grapheme 層級的 Array.from）而非 UTF-16 code
+ *     unit，避免把 emoji 等 surrogate pair 從中間切斷產生殘缺字元。
  *   - 空字串/全部字元都被擋掉 → fallback 成通用檔名，不讓下載變成空檔名。
  */
 
 // 路徑分隔符/檔案系統保留字元： \ / : * ? " < > |
 const FORBIDDEN_CHARS_RE = /[\\/:*?"<>|]/g;
-// 控制字元（含 \n \r \t 等），避免掉進任何後續把檔名塞進 header 字串的路徑
+// Unicode 控制字元（Cc，如 \n \t \x00-\x1f）與格式字元（Cf，如 U+200E LRM、
+// U+202E RTL override）。涵蓋全 Unicode 範圍，不是只擋 ASCII 那一段。
 // eslint-disable-next-line no-control-regex
-const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/g;
+const UNSAFE_UNICODE_RE = /[\p{Cc}\p{Cf}]/gu;
 const MAX_TITLE_LEN = 80;
 
 /**
@@ -25,11 +31,13 @@ const MAX_TITLE_LEN = 80;
  */
 export function signoffDownloadFilename(title: string | null | undefined): string {
   const cleaned = (title ?? '')
-    .replace(CONTROL_CHARS_RE, '')
+    .normalize('NFC') // 正規化組合字元（e.g. 分解的注音/重音符），避免同一顯示字有多種 byte 序列
+    .replace(UNSAFE_UNICODE_RE, '')
     .replace(FORBIDDEN_CHARS_RE, '')
-    .trim()
-    .slice(0, MAX_TITLE_LEN)
     .trim();
-  const safeTitle = cleaned.length > 0 ? cleaned : '簽核單';
+  // 依 code point 截斷（Array.from 依 code point 迭代，不切斷 surrogate
+  // pair），而不是直接 slice（UTF-16 code unit，會把 emoji 從中間切開）。
+  const truncated = Array.from(cleaned).slice(0, MAX_TITLE_LEN).join('').trim();
+  const safeTitle = truncated.length > 0 ? truncated : '簽核單';
   return `${safeTitle}.pdf`;
 }
