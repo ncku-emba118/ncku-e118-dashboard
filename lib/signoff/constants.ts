@@ -22,7 +22,14 @@ export const MAX_SIGNATURE_BYTES = 3 * 1024 * 1024; // 3 MiB（與 png.ts 一致
 
 // challenge nonce（防重放，Codex 3-2）
 export const CHALLENGE_TTL_MS = 10 * 60 * 1000; // 10 分鐘
-export const SIGNED_READ_URL_TTL_S = 300; // 短效 read URL 5 分鐘（§9）
+// 短效 read URL（§9）。原為 5 分鐘（300s），2026-08 財務長回報「下載一直卡住」
+// 事故的根因之一：URL 是頁面載入時一次產生，使用者看單看一下、5 分鐘後才點下載
+// 就已過期。拉長到 30 分鐘（1800s），涵蓋「開著單據看附件/PDF 預覽再回頭下載」
+// 這種正常閱讀節奏；預覽 iframe 與下載連結目前共用同一顆 signed URL 產生函式，
+// 沒有另外拆兩個 TTL 常數的必要——真正解掉「頁面停留很久才點下載」的是
+// GET /api/board/signoff/[id] 的「點下載時重新取一次最新 URL」機制（page.tsx），
+// 這裡拉長 TTL 只是降低一般情況下走到那個重新取號路徑的頻率。
+export const SIGNED_READ_URL_TTL_S = 1800;
 
 // 指派人數
 export const MAX_ASSIGNEES = 9; // 9 位幹部上限

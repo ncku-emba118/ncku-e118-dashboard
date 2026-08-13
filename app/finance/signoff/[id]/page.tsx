@@ -36,7 +36,7 @@ type Detail = {
     final_pdf_sha256?: string | null;
   };
   assignments: Assignment[];
-  urls?: { sheet: string | null; final: string | null };
+  urls?: { sheet: string | null; final: string | null; final_download?: string | null };
   attachments?: ViewAttachment[];
   supplements?: {
     id: string;
@@ -129,6 +129,11 @@ export default function SignoffDetailPage() {
   // 財務長下載連結不設 TTL、可重複使用（敵對審查修正1定案）；重新產生後把新網址
   // 就地顯示出來，讓班代 / 發起人可以複製轉發，不必再去挖 LINE 通知歷史訊息。
   const [financeLinkUrl, setFinanceLinkUrl] = useState<string | null>(null);
+  // 下載最終 PDF：signed URL 有 TTL（見 lib/signoff/constants.ts），頁面可能已停留
+  // 超過有效期，故按下載鍵時不直接用 d.urls.final_download（可能已過期的舊值），
+  // 而是重新打一次既有的 GET /api/board/signoff/[id] 拿最新 URL 再觸發下載。
+  const [downloading, setDownloading] = useState(false);
+  const [downloadErr, setDownloadErr] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -282,6 +287,34 @@ export default function SignoffDetailPage() {
     const r = await res.json().catch(() => ({}));
     if (!res.ok) { setMsg(writeFailMsg(res.status, r, '刪除失敗')); setBusy(false); return; }
     window.location.href = '/finance/signoff';
+  }
+
+  // 下載最終 PDF（含簽名）：重新取一次最新 signed URL（帶 download disposition）
+  // 再觸發下載，避免頁面停留過久後點下載仍拿到已過期的舊 URL（見上方 state 註解）。
+  // 這支只重打既有的 GET /api/board/signoff/[id]，不新增 route（相容性鐵律）。
+  async function doDownloadFinal() {
+    setDownloadErr(null);
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/board/signoff/${id}`);
+      if (res.status === 401) { setDownloadErr(SESSION_EXPIRED_MSG); return; }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setDownloadErr(data.error || '下載連結取得失敗，請重新整理頁面再試'); return; }
+      const url: string | null | undefined = data?.urls?.final_download;
+      if (!url) { setDownloadErr('目前沒有可下載的最終 PDF（可能尚未完成合成）'); return; }
+      // 用暫時的 <a download> 觸發存檔，不開新分頁（signed URL 本身已帶
+      // content-disposition: attachment，瀏覽器會直接存檔而非導頁）。
+      const a = document.createElement('a');
+      a.href = url;
+      a.rel = 'noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      setDownloadErr(`下載失敗：${(e as Error).message}`);
+    } finally {
+      setDownloading(false);
+    }
   }
 
   const breadcrumb = (
@@ -527,7 +560,22 @@ export default function SignoffDetailPage() {
 
             {d.urls?.final && (
               <div style={{ fontSize: 14, marginTop: 12 }}>
-                <a href={d.urls.final} target="_blank" rel="noreferrer" style={{ color: WINE, fontWeight: 600 }}>⬇ 下載最終 PDF（含簽名）</a>
+                <button
+                  type="button"
+                  onClick={doDownloadFinal}
+                  disabled={downloading}
+                  style={{
+                    color: WINE, fontWeight: 600, background: 'none', border: 'none', padding: 0,
+                    font: 'inherit', cursor: downloading ? 'default' : 'pointer', textDecoration: 'underline',
+                  }}
+                >
+                  {downloading ? '準備下載中…' : '⬇ 下載最終 PDF（含簽名）'}
+                </button>
+                {downloadErr && (
+                  <p style={{ marginTop: 8, color: '#b00', background: '#FDECEC', border: '1px solid #e0b4b4', borderRadius: 8, padding: '8px 10px', fontSize: 13, lineHeight: 1.7 }}>
+                    {downloadErr}
+                  </p>
+                )}
               </div>
             )}
           </>

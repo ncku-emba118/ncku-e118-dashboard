@@ -596,14 +596,21 @@ export async function createSignedUploadUrl(
   return { data: { signedUrl: data.signedUrl, token: data.token, path: data.path }, error: null };
 }
 
+/**
+ * @param downloadFilename 帶入時，signed URL 會加上
+ *   `&download=<檔名>`，回應表頭多出 `content-disposition: attachment; ...`，
+ *   強制瀏覽器存檔而非內嵌渲染（fix/signoff-pdf-download 根因1：手機/LINE 內建
+ *   瀏覽器內嵌渲染 5.75MB PDF 常卡在白畫面轉圈）。不帶則行為不變（inline）。
+ */
 export async function createSignedReadUrl(
   path: string,
   expiresIn: number = SIGNED_READ_URL_TTL_S,
+  downloadFilename?: string,
 ): Promise<{ url: string | null; error: string | null }> {
   const supabase = getServerClient();
   const { data, error } = await supabase.storage
     .from(SIGNOFF_BUCKET)
-    .createSignedUrl(path, expiresIn);
+    .createSignedUrl(path, expiresIn, downloadFilename ? { download: downloadFilename } : undefined);
   if (error || !data) return { url: null, error: error?.message ?? 'no signed url' };
   return { url: data.signedUrl, error: null };
 }

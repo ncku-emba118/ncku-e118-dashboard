@@ -10,6 +10,7 @@ import { hashIp } from '@/lib/ip-hash';
 import { jsonResp } from '@/lib/signoff/http';
 import { requireSignoffAccess } from '@/lib/signoff/access';
 import { createSignedReadUrl, getPublicApprovedSummary, hasStoredSignature, listSupplements, recordAudit } from '@/lib/signoff/dal';
+import { signoffDownloadFilename } from '@/lib/signoff/filename';
 
 const UUID_RE =
   /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
@@ -35,10 +36,21 @@ export async function GET(
     if (access.ok) {
       const { doc, assignments } = access.bundle;
 
-      const [sheetUrl, finalUrl] = await Promise.all([
+      // final_download：另外帶 download 選項產生的 signed URL（表頭多出
+      // content-disposition: attachment），專供「⬇ 下載最終 PDF」按鈕使用；
+      // 內嵌預覽 iframe 繼續用不帶 download 的 finalUrl，兩者各司其職——
+      // 若共用同一顆帶 download 的 URL，展開預覽會變成觸發下載（page.tsx 519-523）。
+      const [sheetUrl, finalUrl, finalDownloadUrl] = await Promise.all([
         createSignedReadUrl(doc.signoff_sheet_object_path),
         doc.final_pdf_object_path
           ? createSignedReadUrl(doc.final_pdf_object_path)
+          : Promise.resolve({ url: null, error: null }),
+        doc.final_pdf_object_path
+          ? createSignedReadUrl(
+              doc.final_pdf_object_path,
+              undefined,
+              signoffDownloadFilename(doc.title),
+            )
           : Promise.resolve({ url: null, error: null }),
       ]);
       const attachmentUrls = await Promise.all(
@@ -135,6 +147,7 @@ export async function GET(
           urls: {
             sheet: sheetUrl.url,
             final: finalUrl.url,
+            final_download: finalDownloadUrl.url,
           },
           attachments: attachmentUrls,
           supplements,
