@@ -29,6 +29,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
+import { SLOT_X } from './layout';
 
 const A4 = { w: 595.28, h: 841.89 };
 const INK = rgb(0.1, 0.09, 0.07);
@@ -80,6 +81,74 @@ export type SheetInput = {
 
 const DEFAULT_LEGAL_NOTE = '本簽核適用班級內部事務，不作為對外法律文件用途。';
 
+// ── 收款帳號區塊排版（2026-08-13 敵對審查：長收款帳號原本四欄串成一行、不換
+//    行，長內容會把文字畫到 A4 可用寬度之外，落在簽核欄位框（右欄，見
+//    lib/signoff/layout.ts SLOT_X）上或直接超出頁面）──
+//
+// 設計：收款帳號區塊固定畫在左欄（x=50 起），換行寬度收在 SLOT_X 左邊留一段
+// 安全間距內，讓文字「不論畫幾行、畫到多低」在 x 軸上都不可能碰到右欄的簽核
+// 欄位框——不用去猜簽核框的 y 座標，兩者天生分屬不同 x 範圍。
+const PAYMENT_LEFT_X = 50;
+const PAYMENT_VALUE_INDENT_X = 60;
+const PAYMENT_MARGIN_BEFORE_SLOT_COL = 20;
+/** 換行寬度上限：留在簽核欄位框（SLOT_X）左側，含安全間距。 */
+export const PAYMENT_MAX_WIDTH = SLOT_X - PAYMENT_VALUE_INDENT_X - PAYMENT_MARGIN_BEFORE_SLOT_COL;
+const PAYMENT_LINE_HEIGHT = 15;
+const PAYMENT_FONT_SIZE = 11;
+
+/** 依 font.widthOfTextAtSize 做字元級換行（CJK 沒有空白可斷詞，逐字元累加最穩）。 */
+export function wrapTextToWidth(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+  const chars = Array.from(text); // Array.from 依 code point 迭代，不切斷 surrogate pair
+  const lines: string[] = [];
+  let cur = '';
+  for (const ch of chars) {
+    const candidate = cur + ch;
+    if (cur.length > 0 && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+      lines.push(cur);
+      cur = ch;
+    } else {
+      cur = candidate;
+    }
+  }
+  if (cur.length > 0) lines.push(cur);
+  return lines.length > 0 ? lines : [''];
+}
+
+export type PaymentAccountLine = { text: string; x: number; y: number };
+
+/**
+ * 把收款帳號四欄排成「每欄各自成行＋依寬度換行」的清單，回傳每行的畫布座標
+ * 與畫完後下一個可用的 y（供呼叫端接續往下畫，是本函式唯一需要外部知道的
+ * 「動態高度」資訊）。純函式，不吃 PDFPage，方便單獨測試斷言座標。
+ */
+export function layoutPaymentAccountBlock(
+  pay: SheetPaymentAccount | null | undefined,
+  font: PDFFont,
+  startY: number,
+): { lines: PaymentAccountLine[]; nextY: number } {
+  if (!pay || !(pay.bank || pay.branch || pay.account_name || pay.account_number)) {
+    return { lines: [], nextY: startY };
+  }
+  const fields: string[] = [];
+  if (pay.bank) fields.push(`銀行：${pay.bank}`);
+  if (pay.branch) fields.push(`分行：${pay.branch}`);
+  if (pay.account_name) fields.push(`戶名：${pay.account_name}`);
+  if (pay.account_number) fields.push(`帳號：${pay.account_number}`);
+
+  const lines: PaymentAccountLine[] = [];
+  let y = startY;
+  lines.push({ text: '收款帳號', x: PAYMENT_LEFT_X, y });
+  y -= PAYMENT_LINE_HEIGHT;
+  for (const field of fields) {
+    const wrapped = wrapTextToWidth(field, font, PAYMENT_FONT_SIZE, PAYMENT_MAX_WIDTH);
+    for (const line of wrapped) {
+      lines.push({ text: line, x: PAYMENT_VALUE_INDENT_X, y });
+      y -= PAYMENT_LINE_HEIGHT;
+    }
+  }
+  return { lines, nextY: y };
+}
+
 /** 在 pdf 上畫出簽核表（建立頁面 + header + 欄位框 + 法律聲明），回傳頁面陣列。 */
 function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[] {
   const maxPage = input.slots.reduce((m, s) => Math.max(m, s.slot_page), 1);
@@ -106,17 +175,15 @@ function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[
   }
 
   // 收款帳號（0027）：財務長要看這一行決定付款要匯去哪，故用 WINE 強調色、
-  // 緊接在 meta/用途下方，不擠進簽核欄位框裡。四欄都空時整塊不畫。
-  const pay = input.paymentAccount;
-  if (pay && (pay.bank || pay.branch || pay.account_name || pay.account_number)) {
-    const parts: string[] = [];
-    if (pay.bank) parts.push(`銀行：${pay.bank}`);
-    if (pay.branch) parts.push(`分行：${pay.branch}`);
-    if (pay.account_name) parts.push(`戶名：${pay.account_name}`);
-    if (pay.account_number) parts.push(`帳號：${pay.account_number}`);
-    p0.drawText(`收款帳號　${parts.join('　')}`, { x: 50, y: my, size: 11, font, color: WINE });
-    my -= 18;
+  // 緊接在 meta/用途下方，不擠進簽核欄位框裡。四欄都空時整塊不畫。每欄各自
+  // 成行＋依寬度換行（layoutPaymentAccountBlock），區塊高度隨內容動態長高，
+  // 換行寬度固定收在簽核欄位框（右欄）左側，兩者天生不同 x 範圍，不論這塊
+  // 畫多少行都不會蓋到簽核框（見 layoutPaymentAccountBlock 註解）。
+  const { lines: payLines, nextY } = layoutPaymentAccountBlock(input.paymentAccount, font, my);
+  for (const line of payLines) {
+    p0.drawText(line.text, { x: line.x, y: line.y, size: PAYMENT_FONT_SIZE, font, color: WINE });
   }
+  my = nextY;
 
   // 簽核欄位框
   for (const s of input.slots) {
