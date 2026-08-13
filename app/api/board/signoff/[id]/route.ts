@@ -148,6 +148,10 @@ export async function GET(
             sheet: sheetUrl.url,
             final: finalUrl.url,
             final_download: finalDownloadUrl.url,
+            // 前端 blob 下載時用它當 a.download，檔名完全不經 header 編碼，
+            // 避免部分瀏覽器拿 content-disposition 的 percent-encoded 值當檔名
+            // （使用者 2026-08-13 回報「下載檔名是亂碼」的直接成因）。
+            final_filename: doc.final_pdf_object_path ? signoffDownloadFilename(doc.title) : null,
           },
           attachments: attachmentUrls,
           supplements,

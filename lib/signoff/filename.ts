@@ -19,7 +19,10 @@ const FORBIDDEN_CHARS_RE = /[\\/:*?"<>|]/g;
 const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/g;
 const MAX_TITLE_LEN = 80;
 
-/** 把文件標題轉成「簽核單_<標題>.pdf」這種人看得懂、檔案系統安全的下載檔名。 */
+/**
+ * 下載檔名＝單據標題本身（使用者 2026-08-13 指定：「下載名稱要跟上傳完標題一樣」），
+ * 不加任何前綴。只做檔案系統安全處理與長度限制。
+ */
 export function signoffDownloadFilename(title: string | null | undefined): string {
   const cleaned = (title ?? '')
     .replace(CONTROL_CHARS_RE, '')
@@ -28,5 +31,5 @@ export function signoffDownloadFilename(title: string | null | undefined): strin
     .slice(0, MAX_TITLE_LEN)
     .trim();
   const safeTitle = cleaned.length > 0 ? cleaned : '簽核單';
-  return `簽核單_${safeTitle}.pdf`;
+  return `${safeTitle}.pdf`;
 }

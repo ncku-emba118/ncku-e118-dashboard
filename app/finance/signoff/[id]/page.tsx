@@ -36,7 +36,7 @@ type Detail = {
     final_pdf_sha256?: string | null;
   };
   assignments: Assignment[];
-  urls?: { sheet: string | null; final: string | null; final_download?: string | null };
+  urls?: { sheet: string | null; final: string | null; final_download?: string | null; final_filename?: string | null };
   attachments?: ViewAttachment[];
   supplements?: {
     id: string;
@@ -302,14 +302,33 @@ export default function SignoffDetailPage() {
       if (!res.ok) { setDownloadErr(data.error || '下載連結取得失敗，請重新整理頁面再試'); return; }
       const url: string | null | undefined = data?.urls?.final_download;
       if (!url) { setDownloadErr('目前沒有可下載的最終 PDF（可能尚未完成合成）'); return; }
-      // 用暫時的 <a download> 觸發存檔，不開新分頁（signed URL 本身已帶
-      // content-disposition: attachment，瀏覽器會直接存檔而非導頁）。
-      const a = document.createElement('a');
-      a.href = url;
-      a.rel = 'noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      const filename: string = data?.urls?.final_filename || '簽核單.pdf';
+
+      // 先抓成 blob 再自己命名：檔名完全由前端決定，不經 content-disposition
+      // 的 RFC 5987 編碼，因此不會出現「%E7%B0%BD…pdf」這種亂碼檔名
+      // （Supabase storage 回 access-control-allow-origin: *，跨網域 fetch 可行）。
+      // 若 blob 途徑失敗（CORS/記憶體/網路），退回直接開帶 attachment 的 signed URL，
+      // 檔名會退化成編碼過的樣子，但至少下載得到，不讓使用者卡死。
+      try {
+        const fileRes = await fetch(url);
+        if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
+        const blob = await fileRes.blob();
+        const objUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 60_000);
+      } catch {
+        const a = document.createElement('a');
+        a.href = url;
+        a.rel = 'noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
     } catch (e) {
       setDownloadErr(`下載失敗：${(e as Error).message}`);
     } finally {
