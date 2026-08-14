@@ -143,6 +143,8 @@ export default function SignoffDetailPage() {
   // 而是重新打一次既有的 GET /api/board/signoff/[id] 拿最新 URL 再觸發下載。
   const [downloading, setDownloading] = useState(false);
   const [downloadErr, setDownloadErr] = useState<string | null>(null);
+  // iOS：備妥待分享的 PDF（share() 必須在使用者手勢有效期內呼叫，見 doDownloadFinal）
+  const [shareFile, setShareFile] = useState<File | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -303,6 +305,7 @@ export default function SignoffDetailPage() {
   // 這支只重打既有的 GET /api/board/signoff/[id]，不新增 route（相容性鐵律）。
   async function doDownloadFinal() {
     setDownloadErr(null);
+    setShareFile(null);
     setDownloading(true);
     try {
       const res = await fetch(`/api/board/signoff/${id}`);
@@ -327,27 +330,29 @@ export default function SignoffDetailPage() {
         /iP(hone|ad|od)/.test(navigator.userAgent) ||
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       if (isIOS) {
-        // 優先走 Web Share（iOS 15+）並且**只帶 files、不帶 url**：分享選單送出去的
-        // 就是 PDF 檔案本身，不會夾帶任何網址（使用者 2026-08-13 指定：只要檔案）。
-        // 不可加 url 欄位——一旦帶了，iOS 會把連結一起送出，收到的人拿到的是
-        // 一條 30 分鐘後就失效的 signed URL。
+        // iOS：先把檔案準備好，再讓使用者按第二下才叫出分享選單。
+        //
+        // ⚠ 不可以「按一下 → fetch 10MB → 直接 share()」（2026-08-14 使用者回報
+        //   「按下載沒辦法分享到 LINE」的成因）：iOS 要求 navigator.share() 必須在
+        //   使用者手勢後的短暫有效期內呼叫，先抓完 10MB 早就超時，share() 會丟
+        //   NotAllowedError，程式只好退回純下載——使用者看到的就是「檔案是下載了，
+        //   但沒有分享選項」。改成備妥 blob 後顯示「分享」鍵，按下去 share() 立即
+        //   執行、完全在手勢有效期內。
+        //
+        // 只帶 files、不帶 url：分享出去的就是 PDF 本身，不會夾帶 30 分鐘後失效的
+        // signed URL（使用者 2026-08-13 指定：只要檔案）。
         try {
           const fileRes = await fetch(url);
-          if (fileRes.ok) {
-            const blob = await fileRes.blob();
-            const file = new File([blob], filename, { type: 'application/pdf' });
-            const nav = navigator as Navigator & {
-              canShare?: (d: { files: File[] }) => boolean;
-              share?: (d: { files: File[] }) => Promise<void>;
-            };
-            if (nav.canShare?.({ files: [file] }) && nav.share) {
-              await nav.share({ files: [file] });
-              return;
-            }
+          if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
+          const blob = await fileRes.blob();
+          const file = new File([blob], filename, { type: 'application/pdf' });
+          const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+          if (nav.canShare?.({ files: [file] })) {
+            setShareFile(file);   // 顯示「分享」鍵；實際 share() 在該鍵的 onClick 直接執行
+            return;
           }
-        } catch (e) {
-          // 使用者自己按取消（AbortError）不算失敗，不要再導頁打擾他
-          if ((e as Error).name === 'AbortError') return;
+        } catch {
+          // 抓檔失敗 → 落到下方原生下載，至少拿得到檔案
         }
         // 不支援 Web Share files（舊版 iOS）或抓檔失敗 → 走 Safari 原生下載。
         window.location.href = url;
@@ -671,6 +676,36 @@ export default function SignoffDetailPage() {
                 >
                   {downloading ? '準備下載中…' : '⬇ 下載最終 PDF（含簽名）'}
                 </button>
+                {shareFile && (
+                  <div style={{ marginTop: 10 }}>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        // ⚠ 這裡必須「直接」呼叫 share()，前面不可以再 await 任何東西——
+                        // iOS 只在使用者手勢的短暫有效期內允許開啟分享選單，中間插入
+                        // 網路請求就會失效（正是 2026-08-14 回報「分享不到 LINE」的成因）。
+                        try {
+                          await (navigator as Navigator & { share?: (d: { files: File[] }) => Promise<void> })
+                            .share?.({ files: [shareFile] });
+                        } catch (e) {
+                          if ((e as Error).name !== 'AbortError') {
+                            setDownloadErr('分享失敗，請改用下方「儲存到檔案」再從檔案 App 分享');
+                          }
+                        }
+                      }}
+                      style={{
+                        background: WINE, color: '#fff', border: 'none', borderRadius: 8,
+                        padding: '10px 16px', fontSize: 14.5, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      📤 分享 PDF（可直接傳到 LINE）
+                    </button>
+                    <p style={{ marginTop: 6, fontSize: 12.5, color: MUTE, lineHeight: 1.6 }}>
+                      檔案已準備好（{(shareFile.size / 1048576).toFixed(1)} MB）。按上面這顆會跳出分享選單，
+                      送出去的是 PDF 檔案本身，不會夾帶任何網址。
+                    </p>
+                  </div>
+                )}
                 {downloadErr && (
                   <p style={{ marginTop: 8, color: '#b00', background: '#FDECEC', border: '1px solid #e0b4b4', borderRadius: 8, padding: '8px 10px', fontSize: 13, lineHeight: 1.7 }}>
                     {downloadErr}
