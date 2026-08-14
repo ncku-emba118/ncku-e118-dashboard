@@ -26,6 +26,8 @@ type Assignment = {
   status: string;
   reject_reason?: string | null;
   acted_at?: string | null;
+  /** 簽名格所在頁；用來算「簽核表本身佔幾頁」（轉圖分享時只轉這幾頁）。 */
+  slot_page?: number | null;
 };
 type Detail = {
   // 訪客（免登入）模式：API 回 public:true 的公開摘要（無 urls / attachments / 簽名框）
@@ -146,6 +148,9 @@ export default function SignoffDetailPage() {
   // iOS：備妥待分享的 PDF（share() 必須在使用者手勢有效期內呼叫，見 doDownloadFinal）
   const [shareFile, setShareFile] = useState<File | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  // LINE 不收 PDF 檔、只收圖片，故另外備一份「簽核表頁轉成的 PNG」供分享到 LINE
+  const [shareImages, setShareImages] = useState<File[] | null>(null);
+  const [shareNote, setShareNote] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -307,6 +312,8 @@ export default function SignoffDetailPage() {
   async function doDownloadFinal() {
     setDownloadErr(null);
     setShareFile(null);
+    setShareImages(null);
+    setShareNote(null);
     setDownloading(true);
     try {
       const res = await fetch(`/api/board/signoff/${id}`);
@@ -350,6 +357,27 @@ export default function SignoffDetailPage() {
           const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
           if (nav.canShare?.({ files: [file] })) {
             setShareFile(file);   // 顯示「分享」鍵；實際 share() 在該鍵的 onClick 直接執行
+
+            // 一併把簽核表頁轉成 PNG：LINE 不接受 PDF 檔，只有圖片能一鍵丟進對話。
+            // 在這個「準備」階段就轉好，按鍵時才能立刻 share()（iOS 手勢有效期限制）。
+            // 只轉簽核表本身那幾頁，後面夾帶的憑證附件不轉，避免又慢又洗版。
+            try {
+              const sheetPages = Math.max(
+                1,
+                ...(d?.assignments ?? []).map((a) => a.slot_page ?? 1),
+              );
+              const { renderSheetPagesToPng } = await import('@/lib/signoff/pdf-to-image');
+              const imgs = await renderSheetPagesToPng(
+                blob, sheetPages, filename.replace(/\.pdf$/i, ''),
+              );
+              if (imgs.length > 0 && nav.canShare?.({ files: imgs })) setShareImages(imgs);
+            } catch (imgErr) {
+              // 轉圖失敗不影響「分享 PDF」與下載，但**不可以靜默**：否則使用者只會
+              // 看到「分享到 LINE 的按鈕沒出現」而無從得知原因（今天一整輪修的就是
+              // 這種無聲失敗）。留下可讀訊息 + console 供事後追。
+              console.error('[signoff.share.render_image_failed]', imgErr);
+              setShareNote('簽核單轉圖片失敗，這次只能分享 PDF 或存檔；如果常發生請告知工程端。');
+            }
             return;
           }
         } catch {
@@ -725,6 +753,39 @@ export default function SignoffDetailPage() {
                     <p style={{ marginTop: 4, fontSize: 12.5, color: GREEN, fontWeight: 600 }}>已複製連結</p>
                   )}
                 </div>
+                {shareNote && (
+                  <p style={{ marginTop: 8, fontSize: 12.5, color: '#7A5C00', background: '#FBF3D9', border: '1px solid #E8D9A8', borderRadius: 8, padding: '8px 10px', lineHeight: 1.6 }}>
+                    {shareNote}
+                  </p>
+                )}
+                {shareImages && shareImages.length > 0 && (
+                  <div style={{ marginTop: 10 }}>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        // 直接 share()，前面不可再 await（iOS 手勢有效期，見 doDownloadFinal）
+                        try {
+                          await (navigator as Navigator & { share?: (d: { files: File[] }) => Promise<void> })
+                            .share?.({ files: shareImages });
+                        } catch (e) {
+                          if ((e as Error).name !== 'AbortError') {
+                            setDownloadErr('分享失敗，請改用「儲存到檔案」後從 LINE 的「＋ → 檔案」傳送');
+                          }
+                        }
+                      }}
+                      style={{
+                        background: '#06C755', color: '#fff', border: 'none', borderRadius: 8,
+                        padding: '10px 16px', fontSize: 14.5, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      💬 分享到 LINE（簽核單圖片{shareImages.length > 1 ? `，${shareImages.length} 頁` : ''}）
+                    </button>
+                    <p style={{ marginTop: 6, fontSize: 12.5, color: MUTE, lineHeight: 1.6 }}>
+                      LINE 不接受直接傳 PDF，所以這裡把簽核單轉成圖片，對方在對話裡直接看得到內容。
+                      需要 PDF 原檔請用下面那顆分享，或存到檔案後從 LINE 的「＋ → 檔案」傳送。
+                    </p>
+                  </div>
+                )}
                 {shareFile && (
                   <div style={{ marginTop: 10 }}>
                     <button
