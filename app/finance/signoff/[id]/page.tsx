@@ -145,6 +145,7 @@ export default function SignoffDetailPage() {
   const [downloadErr, setDownloadErr] = useState<string | null>(null);
   // iOS：備妥待分享的 PDF（share() 必須在使用者手勢有效期內呼叫，見 doDownloadFinal）
   const [shareFile, setShareFile] = useState<File | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -676,6 +677,54 @@ export default function SignoffDetailPage() {
                 >
                   {downloading ? '準備下載中…' : '⬇ 下載最終 PDF（含簽名）'}
                 </button>
+                {/* 分享連結：LINE 的分享功能不接受 PDF 檔案（只收連結/文字/圖片），
+                    所以「分享檔案」那條路在 LINE 上不會出現 LINE 這個選項（2026-08-14
+                    使用者實測）。要傳到 LINE 就得傳連結，故兩種並存、各自標示清楚。
+                    ⚠ 這裡刻意分享「單據頁網址」而不是財務長的免登入連結：後者等同一把
+                    鑰匙，隨手分享到群組等於把該單的檢視權發出去；而且我們只存雜湊、
+                    要拿到明文得重新核發，會連帶把財務長手上那條踩掉。需要免登入連結
+                    請走下方「重新產生財務長下載連結」，那是有意識的動作。 */}
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const shareUrl = window.location.href;
+                      const nav = navigator as Navigator & {
+                        share?: (d: { title?: string; url: string }) => Promise<void>;
+                      };
+                      try {
+                        if (nav.share) {
+                          await nav.share({ title: d.doc.title, url: shareUrl });
+                        } else {
+                          await navigator.clipboard.writeText(shareUrl);
+                          setDownloadErr(null);
+                          setLinkCopied(true);
+                        }
+                      } catch (e) {
+                        if ((e as Error).name === 'AbortError') return;
+                        try {
+                          await navigator.clipboard.writeText(shareUrl);
+                          setLinkCopied(true);
+                        } catch {
+                          setDownloadErr('無法分享連結，請手動複製網址列');
+                        }
+                      }
+                    }}
+                    style={{
+                      background: 'none', color: WINE, border: `1px solid ${WINE}`, borderRadius: 8,
+                      padding: '9px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    🔗 分享連結（可傳到 LINE）
+                  </button>
+                  <p style={{ marginTop: 6, fontSize: 12.5, color: MUTE, lineHeight: 1.6 }}>
+                    傳的是這張單的網址。LINE 不接受直接傳 PDF 檔，要傳檔案本身請先「儲存到檔案」，
+                    再從 LINE 對話框的「＋ → 檔案」挑出來傳。收到連結的人需要幹部帳號登入才看得到原件。
+                  </p>
+                  {linkCopied && (
+                    <p style={{ marginTop: 4, fontSize: 12.5, color: GREEN, fontWeight: 600 }}>已複製連結</p>
+                  )}
+                </div>
                 {shareFile && (
                   <div style={{ marginTop: 10 }}>
                     <button
