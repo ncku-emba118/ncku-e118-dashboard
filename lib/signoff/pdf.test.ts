@@ -152,6 +152,102 @@ async function embedRealFont() {
   return pdf.embedFont(bytes, { subset: false });
 }
 
+/**
+ * 迴歸測試：金額從 DB 讀回來是 number，不是 string。
+ *
+ * signoff_documents.amount 在 DB 是 NUMERIC(12,2)，Supabase 讀回來是 JS number。
+ * 但 SheetInput.amount 原本宣告成 `string | null`（dal.ts 的 SignoffDocumentRow
+ * 也是），TypeScript 因此對這條路徑完全失明，錯誤只在執行當下由 pdf-lib 丟出來：
+ *   TypeError: `text` must be of type `string`, but was actually of type `number`
+ *
+ * 2026-08-14 commit 14463dd 把金額從樣板字串（`${amount}` 會自動轉字串、永遠安全）
+ * 改成直接 drawText(input.amount) 後，凡是「從 DB 讀回資料重建簽核表」的路徑
+ * （= 全簽完要合成最終 PDF）就 100% 失敗；8/22 的班聯費單即因此卡住。
+ * 修法：SheetInput.amount 型別改誠實（string | number | null）＋ 畫之前 String()。
+ *
+ * 本檔其餘測試一律餵字串字面量，所以當時 352 個測試全綠也抓不到這個洞 ——
+ * 這一組刻意用 number 重現真實 runtime 型別，改動金額繪製邏輯時不要拿掉。
+ */
+describe('amount 是 DB 回傳的 number 時仍須正常產生 PDF', () => {
+  // DB round-trip 後的實際型別（SheetInput.amount 已改成誠實的 string | number | null）
+  const dbAmount = 18000;
+
+  test('generateSignoffSheet：number 金額不 throw，且與字串版頁數一致', async () => {
+    const base = {
+      title: '成大EMBA校友總會班聯費',
+      currency: 'TWD',
+      purpose: '班聯會',
+      applicant: 'Jerry',
+      dateLabel: '2026-08-22',
+      slots: sheetSlots(3),
+    };
+    const fromDb = await generateSignoffSheet({ ...base, amount: dbAmount });
+    const fromForm = await generateSignoffSheet({ ...base, amount: '18000' });
+    expect(isPdf(fromDb)).toBe(true);
+    expect(await pageCount(fromDb)).toBe(await pageCount(fromForm));
+  });
+
+  test('composeFinalPdf：number 金額不 throw（8/22 班聯費單的實際爆炸點）', async () => {
+    const slots = sheetSlots(3);
+    const final = await composeFinalPdf({
+      sheet: {
+        title: '成大EMBA校友總會班聯費',
+        amount: dbAmount,
+        currency: 'TWD',
+        purpose: '班聯會',
+        applicant: 'Jerry',
+        dateLabel: '2026-08-22',
+        slots,
+      },
+      signatures: slots.map((s) => ({
+        slot_page: s.slot_page,
+        slot_x: s.slot_x,
+        slot_y: s.slot_y,
+        slot_w: s.slot_w,
+        slot_h: s.slot_h,
+        signer_name: s.signer_name,
+        signed_at_label: '2026-08-22 11:09',
+        png: opaquePng(300, 100),
+      })),
+      sources: [{ bytes: opaquePng(400, 300), mime: 'image/png' }],
+    });
+    expect(isPdf(final)).toBe(true);
+    expect(await pageCount(final)).toBe(2); // 1 簽核表 + 1 附件
+  });
+
+  /**
+   * 上面兩個測試只保證「不 throw」——如果未來有人把修法改成「遇到 number 就跳過
+   * 不畫金額」，PDF 照樣產得出來、頁數也不變，兩個測試都會假綠，但簽核單上的
+   * 金額會人間蒸發（比 throw 更糟：錯誤靜默、財務長看不到金額還照簽）。
+   * 這裡實際把 PDF 讀回來斷言文字層真的有金額。（Codex 敵對審查 2026-08-22 提出）
+   */
+  test('number 金額必須真的出現在 PDF 文字層（防「靜默不畫」假綠）', async () => {
+    const final = await composeFinalPdf({
+      sheet: {
+        title: '金額迴歸測試',
+        amount: 18000,
+        currency: 'TWD',
+        purpose: null,
+        applicant: null,
+        dateLabel: '2026-08-22',
+        slots: sheetSlots(1),
+      },
+      signatures: [],
+      sources: [],
+    });
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const doc = await pdfjs.getDocument({ data: final.slice() }).promise;
+    try {
+      const page = await doc.getPage(1);
+      const content = await page.getTextContent();
+      const text = content.items.map((item) => ('str' in item ? item.str : '')).join(' ');
+      expect(text).toContain('18000');
+    } finally {
+      await doc.destroy();
+    }
+  });
+});
+
 describe('wrapTextToWidth', () => {
   test('每一行的畫出寬度都不超過 maxWidth', async () => {
     const font = await embedRealFont();

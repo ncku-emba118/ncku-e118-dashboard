@@ -68,7 +68,13 @@ export type SheetPaymentAccount = {
 
 export type SheetInput = {
   title: string;
-  amount: string | null;
+  /**
+   * ⚠ 誠實型別：建單當下是表單正規化過的 string，但「從 DB 讀回重建簽核表」
+   * （合成最終 PDF）拿到的是 number —— signoff_documents.amount 是 NUMERIC(12,2)，
+   * Supabase 回傳 JS number。宣告成純 string 會讓 TypeScript 對這條路徑完全失明，
+   * 2026-08-22 的最終 PDF 合成失敗就是這樣漏掉的。畫之前一律 String()。
+   */
+  amount: string | number | null;
   currency: string;
   purpose: string | null;
   applicant: string | null;
@@ -338,7 +344,10 @@ function drawSheet(pdf: PDFDocument, font: PDFFont, input: SheetInput): PDFPage[
     drawRightAligned(p0, '金額', LABEL_RIGHT_X, my + 0.7, LABEL_SIZE, font, MUTE);
     p0.drawText(input.currency, { x: VALUE_X, y: my, size: AMOUNT_SIZE, font, color: MUTE });
     const curW = font.widthOfTextAtSize(input.currency, AMOUNT_SIZE);
-    p0.drawText(input.amount, { x: VALUE_X + curW + 6, y: my, size: AMOUNT_SIZE, font, color: INK });
+    // ⚠ 一定要 String()：型別宣告是 string，但 amount 在 DB 是 numeric，
+    // Supabase 讀回來是 JS number（TS 抓不到），直接丟給 pdf-lib 會拋
+    // "`text` must be of type `string`" —— 2026-08-22 班聯費單最終 PDF 合成失敗即此。
+    p0.drawText(String(input.amount), { x: VALUE_X + curW + 6, y: my, size: AMOUNT_SIZE, font, color: INK });
     my -= BODY_LINE_HEIGHT + 3;
   }
 
