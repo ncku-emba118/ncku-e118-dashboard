@@ -13,6 +13,7 @@ import {
 import { sumIncome } from '@/lib/finance/income';
 import { ACTIVITIES, RESERVES, META, LAST_SETTLED_AT } from '@/lib/budget/data';
 import Breadcrumb from '@/components/Breadcrumb';
+import { readSession } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,12 +31,33 @@ const STATUS = {
 } as const;
 
 export default async function FinancePage() {
-  const [settings, expenses, reportRows, incomeRows] = await Promise.all([
+  const [settings, expenses, reportRows, incomeRows, session] = await Promise.all([
     getFinanceSettings(),
     listFinanceExpenses(),
     listFinanceReports(),
     listFinanceIncome(),
+    readSession(),
   ]);
+  /**
+   * 「查看明細」連結的顯示對象（2026-09-11）。
+   *
+   * 這頁是公開頁，原本只對 status==='approved' 給連結——因為未登入的同學點
+   * 簽核中的單只會拿到 404（公開摘要僅涵蓋已核准）。但這個判斷只看單據狀態、
+   * 沒看「誰在看」，導致秘書長/班代/財務長連自己簽過、還在跑流程的單都點不進去，
+   * 得等全部簽完才有入口。
+   *
+   * 這裡放行的四個人（3 個 super + 財務長）在 lib/signoff/permission.ts 的
+   * view 判斷是無條件放行的，點進去保證看得到內容，不會出現「給了連結卻 404」。
+   * 其餘部門帳號維持原行為（只有已核准才給連結），因為他們只看得到自己部門/
+   * 自己被指派的單，逐張判斷要多撈一次指派資料，等有需求再說。
+   *
+   * ⚠ 這只是 UX 入口：/api/board/signoff/[id] 自己有完整權限閘口
+   * （requireSignoffAccess），未登入者手動打網址一樣 404，前端多給連結不開洞。
+   * readSession() 預設擋掉帶 magic_scope 的唯讀連結 session（回 null），
+   * 財務長的單張唯讀連結不會因此在這頁拿到全站明細入口。
+   */
+  const canSeeAllDetails =
+    session != null && (session.role === 'super' || session.home_dept_id === 'finance');
   // 班費收入 = 收入明細帳本（feature B）加總；finance_settings.income_total 已停用
   const income = Math.round(sumIncome(incomeRows));
   const approved = expenses.filter((e) => e.status === 'approved');
@@ -164,8 +186,9 @@ export default async function FinancePage() {
                 </div>
               </>
             );
-            // 已核准 → 連到公開摘要頁；簽核中/退回/作廢維持純卡片（無明細可看）
-            return e.status === 'approved' ? (
+            // 已核准 → 任何人都連到公開摘要頁；其餘狀態（簽核中/退回/作廢）只對
+            // 秘書長·班代·副班代·財務長給入口（見上方 canSeeAllDetails 說明）。
+            return e.status === 'approved' || canSeeAllDetails ? (
               <a key={e.id} href={`/finance/signoff/${e.id}`} style={expCard}>
                 {inner}
                 <div style={{ marginTop: 6, fontSize: 11.5, color: WINE, fontWeight: 600, textAlign: 'right' }}>查看明細 →</div>

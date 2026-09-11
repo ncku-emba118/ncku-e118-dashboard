@@ -4,7 +4,9 @@
  * 純函式：吃 actor（session 子集）+ action + context（doc + 指派名單），回 boolean。
  * route 端取得 doc / 指派資料後呼叫；service-role 寫入前的統一閘口。
  *
- *   view/download : super 全部；dept 限 created_by 自己 / owner_dept 自部門 / 被指派者
+ *   view/download : super 全部；財務長（home_dept_id==='finance'）全部（帳務負責人，
+ *                   2026-09-11 加開）；其餘 dept 限 created_by 自己 / owner_dept 自部門 /
+ *                   被指派者
  *   sign/reject   : 必須是 pending 被指派者（即使 super 也要被指派才能簽）
  *   nudge         : super 或 document creator
  *   void          : 僅 super
@@ -75,10 +77,16 @@ export function canAccessSignoff(
     actor.home_dept_id != null && actor.home_dept_id === ctx.doc.owner_dept_id;
   const isAssignee = ctx.allAssigneeIds.includes(actor.sub);
   const isPendingAssignee = ctx.pendingAssigneeIds.includes(actor.sub);
+  // 財務長對「所有」經費單的檢視權（2026-09-11）：他是全班金流的帳務負責人，
+  // 不論單子由哪個部門發起、是否指派給他簽，都要看得到內容才能對帳。
+  // 與 canDownloadSettlementProof 的「super + finance 四人」同一組語意，
+  // 用 home_dept_id 判斷、不比對 username，職務輪替換帳號不用改這裡。
+  // 刻意只放寬 view：sign/reject 仍限 pending 被指派者，void 仍限 super。
+  const isFinance = actor.home_dept_id === 'finance';
 
   switch (action) {
     case 'view':
-      return isSuper || isCreator || isOwnerDept || isAssignee;
+      return isSuper || isFinance || isCreator || isOwnerDept || isAssignee;
     case 'sign':
     case 'reject':
       // 必須是「還沒處理」的被指派者；身分不在指派名單一律拒
