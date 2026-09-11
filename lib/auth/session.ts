@@ -77,7 +77,18 @@ export async function readSession(
     .eq('id', sessionFromToken.sub)
     .maybeSingle();
 
-  if (error || !account) return null;
+  // fail-closed：查不到帳號一律當未登入。但 error（DB 逾時/故障）與「帳號已不存在」
+  // 要分開——前者是故障訊號，靜默降級會讓人完全看不出原因：畫面只是少了幹部才有的
+  // 入口（例如 /finance 的「查看明細」），log 卻一片安靜。2026-09-11 起記一則結構化
+  // warning，至少查 log 時看得出是 session lookup 掛了，而不是權限設錯。
+  if (error) {
+    console.warn('[auth.session.account_lookup_failed]', {
+      account_id: sessionFromToken.sub,
+      error: error.message,
+    });
+    return null;
+  }
+  if (!account) return null;
 
   // ⚠ session_version 比對：DB 是 source of truth
   if (account.session_version !== sessionFromToken.session_version) return null;

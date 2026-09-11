@@ -35,6 +35,29 @@ describe('canAccessSignoff — view', () => {
     const otherFinance: SignoffActor = { sub: 'fin-2', role: 'dept', home_dept_id: 'finance' };
     expect(canAccessSignoff(otherFinance, 'view', ctx)).toBe(true);
   });
+
+  // 2026-09-11：財務長對所有經費單的檢視權（帳務負責人），與部門/指派無關。
+  test('finance can view a document from another dept it is not assigned to', () => {
+    const prCtx: SignoffAccessContext = {
+      doc: { created_by: 'pr-1', owner_dept_id: 'pr' },
+      pendingAssigneeIds: ['super-1'],
+      allAssigneeIds: ['super-1'],
+    };
+    expect(canAccessSignoff(FINANCE, 'view', prCtx)).toBe(true);
+    // 對照組：同樣與該單無關的其他部門仍不得檢視
+    expect(canAccessSignoff(MEDIA, 'view', prCtx)).toBe(false);
+  });
+
+  test('finance viewing rights do not leak into sign / void', () => {
+    const prCtx: SignoffAccessContext = {
+      doc: { created_by: 'pr-1', owner_dept_id: 'pr' },
+      pendingAssigneeIds: ['super-1'],
+      allAssigneeIds: ['super-1'],
+    };
+    expect(canAccessSignoff(FINANCE, 'sign', prCtx)).toBe(false);
+    expect(canAccessSignoff(FINANCE, 'reject', prCtx)).toBe(false);
+    expect(canAccessSignoff(FINANCE, 'void', prCtx)).toBe(false);
+  });
 });
 
 describe('canAccessSignoff — sign / reject', () => {
