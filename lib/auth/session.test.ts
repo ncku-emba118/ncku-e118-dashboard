@@ -155,4 +155,42 @@ describe('readSession — 既有行為不變的邊界情況', () => {
     const session = await readSession({ allowMagicScope: true });
     expect(session).toBeNull();
   });
+
+  // 2026-09-11 敵對審查 L1：DB 故障時維持 fail-closed，但要留下診斷訊號，
+  // 否則「幹部看不到入口」與「權限設錯」在 log 上長得一模一樣。
+  test('accounts 查詢失敗 → fail-closed 回 null，並記一則結構化 warning', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mocks.verifySession.mockResolvedValue({
+      sub: SUB,
+      role: 'dept',
+      home_dept_id: 'finance',
+      session_version: 1,
+    });
+    mocks.maybeSingle.mockResolvedValue({
+      data: null,
+      error: { message: 'Request was aborted (timeout)' },
+    });
+
+    await expect(readSession()).resolves.toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      '[auth.session.account_lookup_failed]',
+      expect.objectContaining({ account_id: SUB }),
+    );
+    warn.mockRestore();
+  });
+
+  test('帳號不存在（非 DB 故障）→ null，且不發故障 warning', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mocks.verifySession.mockResolvedValue({
+      sub: SUB,
+      role: 'dept',
+      home_dept_id: 'finance',
+      session_version: 1,
+    });
+    mocks.maybeSingle.mockResolvedValue({ data: null, error: null });
+
+    await expect(readSession()).resolves.toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
 });

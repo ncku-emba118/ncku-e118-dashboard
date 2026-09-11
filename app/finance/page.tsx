@@ -46,6 +46,10 @@ export default async function FinancePage() {
    * 沒看「誰在看」，導致秘書長/班代/財務長連自己簽過、還在跑流程的單都點不進去，
    * 得等全部簽完才有入口。
    *
+   * 範圍：listFinanceExpenses() 只撈 routing + approved（退回/作廢的單不算支出、
+   * 刻意不出現在本頁），所以這裡放行的實際效果＝「簽核中的單也給入口」，
+   * 不是字面上的「所有狀態」。要連 rejected/voided 也能從本頁點，得先改那支查詢。
+   *
    * 這裡放行的四個人（3 個 super + 財務長）在 lib/signoff/permission.ts 的
    * view 判斷是無條件放行的，點進去保證看得到內容，不會出現「給了連結卻 404」。
    * 其餘部門帳號維持原行為（只有已核准才給連結），因為他們只看得到自己部門/
@@ -186,8 +190,8 @@ export default async function FinancePage() {
                 </div>
               </>
             );
-            // 已核准 → 任何人都連到公開摘要頁；其餘狀態（簽核中/退回/作廢）只對
-            // 秘書長·班代·副班代·財務長給入口（見上方 canSeeAllDetails 說明）。
+            // 已核准 → 任何人都連到公開摘要頁；簽核中（本頁唯一的另一種狀態）
+            // 只對秘書長·班代·副班代·財務長給入口（見上方 canSeeAllDetails 說明）。
             return e.status === 'approved' || canSeeAllDetails ? (
               <a key={e.id} href={`/finance/signoff/${e.id}`} style={expCard}>
                 {inner}
