@@ -28,7 +28,8 @@ const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }>
 const actualOf = (a: (typeof ACTIVITIES)[number]) => a.actualSplit?.paidByFund;
 
 export default function TrackingPage() {
-  const settled = ACTIVITIES.filter((a) => a.actualSplit);
+  // 分期項目（校友會費按年撥款）不算「已結算」：本期實際數拿去跟全期預算比會失真
+  const settled = ACTIVITIES.filter((a) => a.actualSplit && !a.partialSettlement);
   const budgetTotal = ACTIVITIES.reduce((s, a) => s + a.net, 0);
   const settledBudget = settled.reduce((s, a) => s + a.net, 0);
   const settledActual = settled.reduce((s, a) => s + (actualOf(a) ?? 0), 0);
@@ -75,7 +76,8 @@ export default function TrackingPage() {
           <tbody>
             {ACTIVITIES.map((a) => {
               const actual = actualOf(a);
-              const diff = actual !== undefined ? actual - a.net : undefined;
+              // 分期項目：實際數只是本期撥款，拿去跟全期預算相減沒有意義
+              const diff = actual !== undefined && !a.partialSettlement ? actual - a.net : undefined;
               const st = STATUS_LABEL[a.status] ?? STATUS_LABEL.planning;
               return (
                 <tr key={a.slug}>
@@ -85,7 +87,18 @@ export default function TrackingPage() {
                     </Link>
                   </td>
                   <td className="num" data-label="預算">{fmt(a.net)}</td>
-                  <td className="num" data-label="實際">{actual !== undefined ? <strong>{fmt(actual)}</strong> : <span style={{ color: MUTE }}>—</span>}</td>
+                  <td className="num" data-label="實際">
+                    {actual !== undefined ? (
+                      <>
+                        <strong>{fmt(actual)}</strong>
+                        {a.partialSettlement && (
+                          <div style={{ fontSize: 11, color: MUTE, fontWeight: 400 }}>本期撥款</div>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ color: MUTE }}>—</span>
+                    )}
+                  </td>
                   <td className="num" data-label="差異" style={diff !== undefined ? { color: diff > 0 ? WINE : OK, fontWeight: 600 } : undefined}>
                     {diff !== undefined ? `${diff >= 0 ? '+' : '−'}${fmt(Math.abs(diff))}` : <span style={{ color: MUTE }}>—</span>}
                   </td>

@@ -109,7 +109,8 @@ export default async function SettlementDocPage({ params }: { params: Promise<{ 
 
       <div className="no-print" style={{ marginTop: 18, textAlign: 'center', fontSize: 12.5, color: MUTE }}>
         {activity.settlement!.no}　第 {activity.settlement!.revision} 版　·　製表 {activity.settlement!.issuedAt}
-        {activity.actualSplit && `　·　北班應付 NT$ ${fmt(activity.actualSplit.north.amount)}`}
+        {activity.actualSplit &&
+          `　·　北班應付 NT$ ${fmt(activity.actualSplit.north.amount + (activity.settlement?.prepaid?.north ?? 0))}`}
       </div>
     </>
   );

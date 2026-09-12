@@ -102,13 +102,13 @@ export default function SettlementPage() {
               <tr>
                 <td className="strong" data-label="費用類型">A 統一辦的活動</td>
                 <td data-label="範例">聖誕晚會 / 新生報到 / 新生營 / 116 午宴 / 118 畢業晚會</td>
-                <td data-label="結算邏輯">由南班主辦人統一付廠商；活動結束後按 83:16 比例向北班請款</td>
+                <td data-label="結算邏輯">由南班主辦人統一付廠商；活動結束後按 {META.southMembers}:{META.northMembers} 比例向北班請款</td>
               </tr>
               <tr>
                 <td className="strong" data-label="費用類型">B 班級共同購置</td>
                 <td data-label="範例">班服（含師長致贈、備用庫存）</td>
                 <td data-label="結算邏輯">
-                  屬班級共同財產，<strong>按全班人數 83:16 分攤</strong>，不因個人是否領取而異；
+                  屬班級共同財產，<strong>按全班人數 {META.southMembers}:{META.northMembers} 分攤</strong>，不因個人是否領取而異；
                   個人自費加購另計、不列入班費
                 </td>
               </tr>

@@ -1,24 +1,34 @@
 /**
- * 班費預算資料層 — 南班版（83 人）
+ * 班費預算資料層 — 南班版（80 人）
  * 適用期間：2026–2028（全期）
  *
  * 設計原則：
  * 1. 所有數字集中於此，頁面只負責呈現；改數字不用動 page
- * 2. 比例 83:16（南:北）= 83.84% : 16.16%；合辦活動實際結算後按此比例請款
+ * 2. 比例 80:15（南:北）= 84.21% : 15.79%；合辦活動實際結算後按此比例請款
  * 3. 預備金「備而不用」、期末按比例退回
+ *
+ * v5（2026-09-12）分攤基準調整：
+ * 南班扣 3 人（休學 2、未註冊 1）、北班扣 1 人（休學）。
+ * 原列為未註冊的 1 位南班同學已於同日確定回來就讀，故不計入排除名單——
+ * 他已繳費且將實際受益，本就該留在分攤基準內。
+ * 個別同學名單屬個資，不寫入本檔與任何公開頁面；名冊見秘書處內部文件
+ * 「2026-09-11 南北分攤調整（幹部版）」。
  */
 
 export const META = {
   className: 'NCKU EMBA E118 南班',
   period: '2026 – 2028',
-  southMembers: 83,
-  northMembers: 16,
-  totalMembers: 99,
-  southRatio: 83 / 99, // ≈ 0.8384
-  northRatio: 16 / 99, // ≈ 0.1616
+  /** 分攤人數基準＝仍在學者；休學/未註冊同學不再受益，不計入 */
+  southMembers: 80,
+  northMembers: 15,
+  totalMembers: 95,
+  southRatio: 80 / 95, // ≈ 0.8421
+  northRatio: 15 / 95, // ≈ 0.1579
+  /** 收入基準＝繳費人數，與 southMembers 一致。 */
+  payingMembers: 80,
   feePerPerson: 30000,
-  version: 'v4',
-  updatedAt: '2026-06-23',
+  version: 'v5',
+  updatedAt: '2026-09-12',
   drafter: '秘書長',
 } as const;
 
@@ -26,7 +36,7 @@ export const META = {
 export const BUDGET_DISCLAIMER =
   '本頁所有費用皆為預估金額；實際費用將依活動接近時的市場狀況、廠商報價、出席人數等實際情形調整預算後再行收費或結算。';
 
-// 83:16 比例攤分（四捨五入）
+// 80:15 比例攤分（四捨五入）
 export const split = (amount: number) => ({
   total: amount,
   south: Math.round((amount * META.southMembers) / META.totalMembers),
@@ -38,8 +48,8 @@ export const split = (amount: number) => ({
 // ──────────────────────────────────────────────────────────────────────────────
 export const INCOME = {
   perPerson: META.feePerPerson,
-  members: META.southMembers,
-  total: META.feePerPerson * META.southMembers,
+  members: META.payingMembers,
+  total: META.feePerPerson * META.payingMembers,
   rationale:
     '統一收費 30,000 元/人；包含必要支出（保守估）+ 安全水位（多收沉澱、三年期末按人頭退回）。',
 };
@@ -95,6 +105,11 @@ export type Activity = {
    * 取代預算階段的估算數。
    */
   actualSplit?: ActualSplit;
+  /**
+   * 分期結算項目：actualSplit 只涵蓋「本期」金額（例：校友會費每年 18,000，全期 360,000）。
+   * 為 true 時彙總與北班估算仍用全期 net / burden，避免總額被本期金額取代而低估。
+   */
+  partialSettlement?: boolean;
   /** 結算單內容；填入後可於 /budget/settlement/[slug] 產出正式結算單 */
   settlement?: SettlementStatement;
   notes?: string[];
@@ -132,6 +147,28 @@ export type SettlementStatement = {
   /** 匯款期限 */
   paymentDue?: string;
   /**
+   * 預繳（代管）部分。用於分期項目由某一方選擇一次繳清：
+   * 已實際撥付的部分走 actualSplit（真正的結算），尚未撥付的年度走這裡，
+   * 兩者必須分開列，否則帳上會出現尚未發生的支出。
+   * 收到的預繳款為「代管款」，不是班費收入。
+   */
+  prepaid?: {
+    /** 涵蓋範圍說明，例：第 2–20 年（19 年 × 18,000） */
+    label: string;
+    /** 預繳部分的全額 */
+    total: number;
+    south: number;
+    north: number;
+    /** 保管與撥付方式 */
+    custodyNote: string;
+  };
+  /**
+   * 預算對照用的比較基準。未填時用 activity.expense.total。
+   * 分期項目（校友會費按年撥款）或編列方式有變更（教師節禮品由 3 年改一次性）時，
+   * 直接拿全期預算比會失真，故可在此指定要比的數字與說明。
+   */
+  budgetForComparison?: { amount: number; label: string };
+  /**
    * 線上覆核紀錄——本單的 PDF 已走 /finance/signoff 會簽完成。
    * 填了就把簽署區的紙本簽名線換成線上覆核註記；沒填則維持手簽線。
    * docId 是簽核系統的 UUID，頁面只顯示前 8 碼，完整值留在此供幹部查件。
@@ -146,7 +183,7 @@ export type SettlementStatement = {
 };
 
 /**
- * 結算後的實際分攤金額。分攤基準與預算階段相同（全班人數、南北 83:16），
+ * 結算後的實際分攤金額。分攤基準與預算階段相同（全班人數、南北 80:15），
  * 只是把基數從預算數換成實際數；south/north 以未取整的每人金額計算後四捨五入。
  */
 export type ActualSplit = {
@@ -482,8 +519,10 @@ export const ACTIVITIES: Activity[] = [
     },
     income: { items: [], total: 0 },
     net: 118_380,
-    southBurden: Math.round((118_380 * META.southMembers) / META.totalMembers),
-    northBurden: Math.round((118_380 * META.northMembers) / META.totalMembers),
+    // 已於 2026-07-19 按當時比例 83:16 結算並向北班請款完畢，
+    // 不隨 v5 的 79:15 重算，否則已收款項與帳面對不起來。
+    southBurden: 99_264, // 118,380 × 83/99
+    northBurden: 19_116, // 118,380 × 16/99
     status: 'settled',
     statusNote: '已完成訂製與發放，合計 326 件（POLO + T-shirt + 帽子，含師長與備用庫存）',
     settledAt: '2026-07-19',
@@ -527,7 +566,7 @@ export const ACTIVITIES: Activity[] = [
     name: '校友會費',
     shortName: '校友會費',
     type: 'fixed-cost',
-    date: '2026 年（一次性收齊）',
+    date: '2026 年起每年撥付（共 20 年）',
     location: '—',
     organizer: '財務部',
     audience: 'E118 全班 99 人',
@@ -545,7 +584,50 @@ export const ACTIVITIES: Activity[] = [
     southBurden: Math.round((360_000 * META.southMembers) / META.totalMembers),
     northBurden: Math.round((360_000 * META.northMembers) / META.totalMembers),
     status: 'planning',
-    statusNote: '入學首年一次性收齊',
+    statusNote: '全期 20 年、每年撥付 18,000；2026 年第 1 年已撥款，北班已一次繳清全期份額',
+    partialSettlement: true,
+    actualSplit: {
+      paidByFund: 18_000,
+      members: 95,
+      perPerson: 189,
+      south: { count: 80, amount: 15_158 },
+      north: { count: 15, amount: 2_842 },
+      basisNote:
+        '本期（2026 年第 1 年）18,000 依在學人數 95 人（南 80 / 北 15）分攤。'
+        + '校友總會班聯費不隨人數增減，全年級固定一份。',
+      northNote: '請北班窗口彙整後轉南班財務',
+    },
+    settlementNote:
+      '校友總會班聯費為 18,000 元／年、共 20 年，全年級固定一份、不隨人數增減。'
+      + '南班按年撥付校友總會；北班於 2026-09-12 決議一次繳清全期份額 56,842，'
+      + '其中已撥付年度 2,842 為結算款，未撥付的第 2–20 年 54,000 併入班費公帳，'
+      + '於執行追蹤表逐年登記沖抵、不列為班費收入。',
+    settlement: {
+      no: 'E118-S-2026-002',
+      revision: 2,
+      issuedAt: '2026-09-12',
+      revisionNote:
+        '第 1 版僅就 2026 年度已撥付的 18,000 向北班請款。北班於 2026-09-12 決議一次繳清全期 20 年份額，'
+        + '改版為「已結算 + 預繳」兩段式；同日 1 位原列未註冊的南班同學確定回來就讀，'
+        + '分攤基準由 79:15/94 修正為 80:15/95，本版即以修正後基準計算，北班應匯總額為 56,842。第 1 版作廢，以本版為準。',
+      vendor: '成大 EMBA 校友總會',
+      invoiceTotal: 18_000,
+      budgetForComparison: { amount: 18_000, label: '本年度編列（全期 360,000 ÷ 20 年）' },
+      prepaid: {
+        label: '第 2–20 年（19 年 × 18,000）',
+        total: 342_000,
+        south: 288_000,
+        north: 54_000,
+        custodyNote:
+          '本欄為尚未撥付之年度，北班選擇一次繳清。收到之 54,000 併入班費公帳、不是班費收入，'
+          + '每年撥付校友總會後於執行追蹤表登記沖抵一年份（北班份額 2,842／年），沖完即結清，不另設專戶。',
+      },
+      signoffRef: {
+        docId: 'feaa241a-0a3c-4920-a632-9487c9412538',
+        approvedAt: '2026-08-22',
+        signers: [{ role: '秘書長' }, { role: '財務' }],
+      },
+    },
   },
   // 9. 教師節禮品（南北合辦、固定費用）— v3 新增 ────────────────────────────
   {
@@ -553,34 +635,71 @@ export const ACTIVITIES: Activity[] = [
     name: '教師節禮品',
     shortName: '教師節禮品',
     type: 'fixed-cost',
-    date: '2026 / 2027 / 2028 每年 9 月',
+    date: '2026 年 9 月（一次性）',
     location: '—',
-    organizer: '南班公關組（提案）',
-    audience: '系所師長（每年教師節）',
+    organizer: '南班公關組',
+    audience: '管理學院師長 24 位',
     estimatedAttendance: '—',
     overview:
-      '由公關組統籌準備教師節禮品贈與系所師長，比照 E117 學長班規格編列預算。三年共三次（2026、2027、2028），每年 36,000 元、三年合計 108,000 元。屬南北合辦固定費用，由南北班按 83:16 比例分攤。',
+      '由公關組統籌準備教師節禮品贈與管院師長。原編列為 2026／2027／2028 每年 36,000、三年合計 108,000；'
+      + 'v5 改為只於 2026 年致贈一次、單次規格提高至 72,000，全期總額因此由 108,000 降為 72,000。'
+      + '屬南北合辦固定費用，由南北班按 80:15 比例分攤。',
     highlights: [
-      '比照 E117 學長班規格編列',
-      '每年 36,000 元、三年共 108,000 元',
-      '由南班公關組統籌規劃禮品',
+      '改為只致贈一次（原編列三年三次）',
+      '三家廠商組合禮盒，管院 24 位師長、平均每位 3,000 元',
+      '全期總額由 108,000 降為 72,000，減少 36,000',
       '對象：系所教授群（南北班共同享有的師長關係）',
     ],
-    budgetBasis: '比照 E117 學長班教師節禮品預算編列；由南班公關組提案',
+    budgetBasis: 'v5 決議改為一次性致贈；金額依三家廠商實際報價合計',
     expense: {
       items: [
-        { name: '教師節禮品（2026）', qty: 1, unit: '式', amount: 36000, note: '由公關組規劃' },
-        { name: '教師節禮品（2027）', qty: 1, unit: '式', amount: 36000, note: '由公關組規劃' },
-        { name: '教師節禮品（2028）', qty: 1, unit: '式', amount: 36000, note: '由公關組規劃' },
+        { name: '教師節禮品 — 珍泰興', qty: 1, unit: '式', amount: 16800, note: '管院 24 位師長' },
+        { name: '教師節禮品 — 巴克氏', qty: 1, unit: '式', amount: 22800, note: '管院 24 位師長' },
+        { name: '教師節禮品 — 歐樂沃／宥泓', qty: 1, unit: '式', amount: 32400, note: '管院 24 位師長' },
       ],
-      total: 108_000,
+      total: 72_000,
     },
     income: { items: [], total: 0 },
-    net: 108_000,
-    southBurden: Math.round((108_000 * META.southMembers) / META.totalMembers),
-    northBurden: Math.round((108_000 * META.northMembers) / META.totalMembers),
-    status: 'planning',
-    statusNote: 'v3 新增（2026-06-22）；每年 9 月教師節前由公關組準備',
+    net: 72_000,
+    southBurden: Math.round((72_000 * META.southMembers) / META.totalMembers),
+    northBurden: Math.round((72_000 * META.northMembers) / META.totalMembers),
+    status: 'settled',
+    statusNote: 'v5 改為一次性致贈；2026-09-10 由公關長送出三張經費單',
+    settledAt: '2026-09-11',
+    actualExpense: 72_000,
+    actualExpenseNote: '三家廠商合計；原編列為三年共 108,000，改一次性後全期減少 36,000',
+    settlementNote:
+      '教師節禮品原編列 36,000／年 × 3 年共 108,000。經決議改為僅於 2026 年致贈一次，'
+      + '單次規格提高至 72,000（三家廠商組合禮盒、管院 24 位師長、平均每位 3,000）。'
+      + '全期總額由 108,000 降為 72,000，整體減少 36,000；南班分攤減少 30,255、北班減少 5,966。',
+    actualSplit: {
+      paidByFund: 72_000,
+      members: 95,
+      perPerson: 758,
+      south: { count: 80, amount: 60_632 },
+      north: { count: 15, amount: 11_368 },
+      basisNote:
+        '教師節禮品致贈對象為南北班共同享有的系所師長關係，屬南北合辦固定費用，'
+        + '按在學人數 95 人（南 80 / 北 15）分攤。每人 NT$ 72,000 ÷ 95 ≈ 758。',
+      northNote: '請北班窗口彙整後轉南班財務',
+    },
+    settlement: {
+      no: 'E118-S-2026-003',
+      revision: 1,
+      issuedAt: '2026-09-11',
+      vendor: '珍泰興、巴克氏、歐樂沃／宥泓（3 家）',
+      invoiceTotal: 72_000,
+      budgetForComparison: { amount: 108_000, label: '原全期編列（36,000／年 × 3 年）' },
+      variances: [
+        { kind: '單價變動', text: '單次禮品改為三家廠商組合禮盒致贈管院 24 位師長，單次金額由 36,000 提高為 72,000', amount: 36_000 },
+        { kind: '項目增減', text: '改為僅致贈一次，取消 2027、2028 兩年度各 36,000 之編列', amount: -72_000 },
+      ],
+      lineItems: [
+        { name: '珍泰興', unitPrice: 16_800, qty: 1, amount: 16_800, note: '管院 24 位師長教師節禮物' },
+        { name: '巴克氏', unitPrice: 22_800, qty: 1, amount: 22_800, note: '管院 24 位師長教師節禮物' },
+        { name: '歐樂沃／宥泓', unitPrice: 32_400, qty: 1, amount: 32_400, note: '管院 24 位師長教師節禮物' },
+      ],
+    },
   },
 ];
 
@@ -664,15 +783,24 @@ export const RESERVES: Reserve[] = [
 const CO_HOSTED = ACTIVITIES.filter((a) => a.type === 'co-hosted' || a.type === 'fixed-cost');
 const SOUTH_ONLY = ACTIVITIES.filter((a) => a.type === 'south-only');
 
-const CO_HOSTED_TOTAL_NET = CO_HOSTED.reduce((s, a) => s + a.net, 0);
-const CO_HOSTED_SOUTH_SHARE = Math.round((CO_HOSTED_TOTAL_NET * META.southMembers) / META.totalMembers);
+// 已結算項目用實際數（actualSplit），未結算才用預算淨額估算，
+// 否則彙總會停留在預算階段、與已發出的結算單對不起來。
+const CO_HOSTED_TOTAL_NET = CO_HOSTED.reduce((s, a) => s + (a.partialSettlement ? a.net : a.actualSplit?.paidByFund ?? a.net), 0);
+const CO_HOSTED_SOUTH_SHARE = CO_HOSTED.reduce(
+  (s, a) =>
+    s +
+    (a.partialSettlement || !a.actualSplit
+      ? Math.round((a.net * META.southMembers) / META.totalMembers)
+      : a.actualSplit.south.amount),
+  0,
+);
 
 const SOUTH_ONLY_TOTAL = SOUTH_ONLY.reduce((s, a) => s + a.southBurden, 0);
 const RESERVES_TOTAL = RESERVES.reduce((s, r) => s + r.amount, 0);
 
 export const SUMMARY = {
   coHosted: {
-    label: 'A 合辦項目分攤（83/99）',
+    label: 'A 合辦項目分攤（79/94）',
     items: ['班服', '116 畢業午宴', '119 新生報到', '119 新生營', '117 畢業相關', '校友會費', '教師節禮品'],
     totalNet: CO_HOSTED_TOTAL_NET,
     total: CO_HOSTED_SOUTH_SHARE,
@@ -690,9 +818,9 @@ export const SUMMARY = {
 } as const;
 
 export const TOTAL_EXPENSE = SUMMARY.coHosted.total + SUMMARY.southOnly.total + SUMMARY.reserves.total;
-export const NECESSARY_PER_PERSON = Math.round(TOTAL_EXPENSE / META.southMembers);
+export const NECESSARY_PER_PERSON = Math.round(TOTAL_EXPENSE / META.payingMembers);
 export const SURPLUS = INCOME.total - TOTAL_EXPENSE;
-export const SURPLUS_PER_PERSON = Math.round(SURPLUS / META.southMembers);
+export const SURPLUS_PER_PERSON = Math.round(SURPLUS / META.payingMembers);
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 北班分攤估算（給北班的通知用）
@@ -701,20 +829,25 @@ export const NORTH_ALLOCATION = CO_HOSTED.map((a) => ({
   slug: a.slug,
   name: a.shortName,
   date: a.date,
-  southNet: a.actualSplit?.south.amount ?? a.southBurden,
-  northEstimate: a.actualSplit?.north.amount ?? a.northBurden,
-  totalNet: a.actualSplit?.paidByFund ?? a.net,
-  /** 已結算項目：金額為實際請款數，非 16/99 估算 */
-  settled: a.actualSplit !== undefined,
+  southNet: a.partialSettlement ? a.southBurden : a.actualSplit?.south.amount ?? a.southBurden,
+  northEstimate: a.partialSettlement ? a.northBurden : a.actualSplit?.north.amount ?? a.northBurden,
+  totalNet: a.partialSettlement ? a.net : a.actualSplit?.paidByFund ?? a.net,
+  /** 已結算項目：金額為實際請款數，非比例估算；分期項目（校友會費）仍算未結清 */
+  settled: a.actualSplit !== undefined && !a.partialSettlement,
   // 注意：fmt 定義在本檔後段，模組初始化時尚在 TDZ，此處改用 toLocaleString
-  settledNote: a.actualSplit
+  settledNote: a.partialSettlement && a.actualSplit && a.settlement?.prepaid
+    ? `北班已一次繳清全期份額 NT$ ${(a.actualSplit.north.amount + a.settlement.prepaid.north).toLocaleString('en-US')}`
+      + `（已結算 ${a.actualSplit.north.amount.toLocaleString('en-US')} ＋ 預繳代管 ${a.settlement.prepaid.north.toLocaleString('en-US')}）`
+    : a.partialSettlement && a.actualSplit
+    ? `本期已撥款 NT$ ${a.actualSplit.paidByFund.toLocaleString('en-US')}，北班本期應付 NT$ ${a.actualSplit.north.amount.toLocaleString('en-US')}（左列為全期估算）`
+    : a.actualSplit
     ? `實際結算：全班 ${a.actualSplit.members} 人分攤，每人 NT$ ${a.actualSplit.perPerson.toLocaleString('en-US')}`
     : undefined,
 }));
 
 // 北班總額：已結算項目用實際請款數，未結算項目先彙總 net 再乘 16/99（避免逐場捨入誤差）
-const CO_HOSTED_PENDING_NET = CO_HOSTED.filter((a) => !a.actualSplit).reduce((s, a) => s + a.net, 0);
-const NORTH_SETTLED_TOTAL = CO_HOSTED.reduce((s, a) => s + (a.actualSplit?.north.amount ?? 0), 0);
+const CO_HOSTED_PENDING_NET = CO_HOSTED.filter((a) => a.partialSettlement || !a.actualSplit).reduce((s, a) => s + a.net, 0);
+const NORTH_SETTLED_TOTAL = CO_HOSTED.reduce((s, a) => s + (a.partialSettlement ? 0 : a.actualSplit?.north.amount ?? 0), 0);
 /**
  * 最近一次結算日。執行與結算區的頁尾掛這個值，而非預算書版次——
  * 該區數字隨每場結算更新，與預算書 v 版本各自獨立。
@@ -747,6 +880,30 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v5',
+    date: '2026-09-12',
+    title: '分攤基準調整 + 教師節禮品改一次性',
+    summary:
+      '4 位同學異動（南班休學 2、未註冊 1；北班休學 1），分攤比例由 83:16 改為 80:15。'
+      + '教師節禮品由三年三次改為只致贈一次，全期總額 108,000 → 72,000。'
+      + '校友會費與教師節禮品分別開立結算單向北班請款；北班決議校友會費一次繳清全期 20 年份額。',
+    changes: [
+      { type: 'change', text: '分攤人數基準 99 → 95（南班 83 → 80、北班 16 → 15）；比例 83:16 → 80:15' },
+      { type: 'change', text: '南班扣 3 人（休學 2、未註冊 1）、北班扣 1 人（休學）；名單屬個資，不列於公開頁' },
+      { type: 'change', text: '教師節禮品改為只致贈一次：全期 108,000 → 72,000' },
+      { type: 'new', text: '開立 E118-S-2026-002 校友會費結算單：本年 18,000，北班應付 2,842；北班決議一次繳清全期，本次應匯 56,842（已結算 2,842 ＋ 預繳 54,000）' },
+      { type: 'new', text: '新增「預繳代管」機制：未撥付年度的預收款併入班費公帳，逐年於執行追蹤表登記沖抵，不列為班費收入' },
+      { type: 'new', text: '開立 E118-S-2026-003 教師節禮品結算單：72,000，北班應付 11,368' },
+      { type: 'change', text: '班服分攤凍結於舊比例 83:16（2026-07-19 已結算請款完畢，不重算）' },
+    ],
+    numbers: [
+      { label: '班費收入', before: '2,490,000', after: '2,400,000', delta: '−90,000' },
+      { label: '每人收費（不變）', before: '30,000', after: '30,000', delta: '—' },
+      { label: '北班本次應匯（校友會費）', before: '—', after: '56,842', delta: '已結算 2,842 ＋ 預繳 54,000' },
+      { label: '北班本次應匯（教師節禮品）', before: '—', after: '11,368', delta: '一次性結算' },
+    ],
+  },
   {
     version: 'v4',
     date: '2026-06-23',

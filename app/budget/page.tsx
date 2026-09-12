@@ -100,7 +100,7 @@ export default function BudgetHome() {
       <Section title="你繳的 30,000 元怎麼用" subtitle="支出採保守編列，含班費預備金作為安全水位">
         <div className="bdg-grid bdg-grid-2">
           <BreakdownRow
-            band={`A 合辦項目分攤（83/99，共 ${SUMMARY.coHosted.items.length} 項）`}
+            band={`A 合辦項目分攤（${META.southMembers}/${META.totalMembers}，共 ${SUMMARY.coHosted.items.length} 項）`}
             desc={SUMMARY.coHosted.items.join('、')}
             amount={SUMMARY.coHosted.total}
             perPerson={Math.round(SUMMARY.coHosted.total / META.southMembers)}
@@ -233,7 +233,7 @@ export default function BudgetHome() {
       <Section title="設計邏輯（給想知道為什麼這樣訂的同學）">
         <ul style={{ paddingLeft: 22, color: '#4A413A', lineHeight: 2, fontSize: 14 }}>
           <li>
-            <strong>南北分帳</strong>：南班 83 人、北班 16 人；合辦項目按 83:16 比例攤分，南班自辦（119 迎新晚會、聖誕晚會）由南班獨自負擔，北班不分攤。
+            <strong>南北分帳</strong>：南班 {META.southMembers} 人、北班 {META.northMembers} 人；合辦項目按 {META.southMembers}:{META.northMembers} 比例攤分，南班自辦（119 迎新晚會、聖誕晚會）由南班獨自負擔，北班不分攤。
           </li>
           <li>
             <strong>預備金獨立</strong>：南班的聯誼機動金、緊急預備金、婚喪喜慶、活動補助均由南班自理；北班是否要編列由北班自決。

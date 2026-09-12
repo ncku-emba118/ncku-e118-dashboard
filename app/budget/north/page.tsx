@@ -4,7 +4,7 @@ import { META, NORTH_ALLOCATION, NORTH_TOTAL_ESTIMATE, ACTIVITIES, fmt } from '@
 
 export const metadata: Metadata = {
   title: '北班分攤通知｜E118 南班班費執行與結算',
-  description: '給北班幹部的合辦活動分攤估算 — 7 項合辦項目按 16/99 比例的應付金額、結算機制、匯款資訊。',
+  description: '給北班幹部的合辦活動分攤估算 — 7 項合辦項目按南北人頭比例的應付金額、結算機制、匯款資訊。',
 };
 
 const WINE = '#8B1F2F';
@@ -31,7 +31,7 @@ export default function NorthPage() {
         <Link href="/budget/tracking" style={{ fontSize: 13, color: MUTE, textDecoration: 'none' }}>← 回執行追蹤</Link>
         <h1 style={{ fontFamily: TC, fontSize: 28, color: WINE_DEEP, fontWeight: 600, margin: '12px 0 6px' }}>給北班的分攤通知</h1>
         <p style={{ fontSize: 14, color: '#4A413A', lineHeight: 1.8, maxWidth: 800 }}>
-          E118 採南北分帳；合辦項目（南北班一起用到的）按南北人頭比例 83:16 攤分，由 E118 統一執行、活動結束後向北班請款。
+          E118 採南北分帳；合辦項目（南北班一起用到的）按南北人頭比例 {META.southMembers}:{META.northMembers} 攤分，由 E118 統一執行、活動結束後向北班請款。
           未結算項目為「估算金額」，實際金額以每場活動結束後的結算單為準；已標示「已結算」者為實際請款數，可直接依該金額轉帳。
           三年期末總對帳調整差額。
         </p>
@@ -74,7 +74,7 @@ export default function NorthPage() {
 
       {/* 7 項合辦項目分攤表 */}
       <h2 style={{ fontFamily: TC, fontSize: 20, color: WINE_DEEP, borderLeft: `4px solid ${GOLD}`, paddingLeft: 12, margin: '24px 0 12px' }}>
-        北班應付金額（未結算項目按 16/99 ≈ 16.16% 估算）
+        北班應付金額（未結算項目按 {META.northMembers}/{META.totalMembers} ≈ {ratio}% 估算）
       </h2>
       <div className="bdg-table-wrap" style={{ marginBottom: 24 }}>
         <table className="bdg-table">
@@ -85,7 +85,7 @@ export default function NorthPage() {
               <th scope="col">日期</th>
               <th scope="col">主辦</th>
               <th scope="col" className="num">全班淨支出</th>
-              <th scope="col" className="num">南班 83/99</th>
+              <th scope="col" className="num">南班 {META.southMembers}/{META.totalMembers}</th>
               <th scope="col" className="num">北班應付</th>
             </tr>
           </thead>
@@ -128,7 +128,7 @@ export default function NorthPage() {
                 <td className="mute" data-label="日期">{a.date}</td>
                 <td className="mute" data-label="主辦">{a.organizer}</td>
                 <td className="num" data-label="全班淨支出">{fmt(a.totalNet)}</td>
-                <td className="num" data-label="南班 83/99">{fmt(a.southNet)}</td>
+                <td className="num" data-label="南班分攤">{fmt(a.southNet)}</td>
                 <td className="num strong" style={{ color: a.settled ? OK : WINE }} data-label="北班應付">
                   {fmt(a.northEstimate)}
                 </td>

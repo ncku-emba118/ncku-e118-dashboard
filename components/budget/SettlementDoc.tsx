@@ -44,7 +44,11 @@ export default function SettlementDoc({
   const income = s?.actualIncome ?? 0;
   const netBurden = fundExpense !== undefined ? fundExpense - income : undefined;
 
-  const budget = activity?.expense.total;
+  const budget = s?.budgetForComparison?.amount ?? activity?.expense.total;
+  // 預繳（代管）：北班選擇一次繳清尚未撥付的年度，須與已結算款分開列
+  const prepaid = s?.prepaid;
+  const northDue =
+    split && prepaid ? split.north.amount + prepaid.north : split?.north.amount;
   const invoiceVsBudget = invoice !== undefined && budget !== undefined ? invoice - budget : undefined;
   const netVsBudget = netBurden !== undefined && budget !== undefined ? netBurden - budget : undefined;
 
@@ -98,7 +102,7 @@ export default function SettlementDoc({
 
       {/* 預算對照 — 這欄是為了讓收件人不必再問「為什麼跟預算不一樣」 */}
       <Box title="預算對照與差異說明">
-        <Amount label="預算編列數" v={money(budget)} />
+        <Amount label={s?.budgetForComparison ? '原預算編列數' : '預算編列數'} v={money(budget)} tail={s?.budgetForComparison?.label} />
         <Amount label="廠商帳單總額" v={money(invoice)} tail={`較預算 ${signed(invoiceVsBudget)}`} />
         <Amount label="班費實際負擔" v={money(netBurden)} tail={`較預算 ${signed(netVsBudget)}`} emphasis />
         {s?.variances && s.variances.length > 0 ? (
@@ -133,6 +137,9 @@ export default function SettlementDoc({
               </tr>
             </tbody>
           </table>
+        ) : s && invoiceVsBudget === 0 ? (
+          // 填妥且與預算分毫不差：不必再印空白填寫線
+          <div style={{ marginTop: 6, fontSize: 11.5, color: MUTE }}>與預算編列一致，無差異。</div>
         ) : (
           <div style={{ marginTop: 8 }}>
             <div style={{ fontSize: 11.5, color: MUTE, marginBottom: 4 }}>
@@ -144,24 +151,38 @@ export default function SettlementDoc({
         )}
       </Box>
 
-      {/* 南北分攤 — 明寫分攤基準，這是最容易算錯的一步 */}
+      {/* 南北分攤 — 明寫分攤基準，這是最容易算錯的一步。
+          已結算項目（split 存在）一律用該次結算當時的人數/比例，絕不套用最新 META——
+          META 會隨學籍異動變動，但已請款的單子按規矩鎖定在開單當時的基準，兩者不可混用，
+          否則會出現「南班79人…按80:15攤分」這種自相矛盾的句子。 */}
       <Box title="南北分攤">
-        <div style={basisStyle}>
-          <strong style={{ color: WINE_DEEP }}>分攤基準：</strong>
-          {split
-            ? `全班 ${split.members} 人（南班 ${split.south.count} ／ 北班 ${split.north.count}），按 ${META.southMembers}:${META.northMembers} 攤分，不因個人是否參加或領取而異。`
-            : `全班 ${META.totalMembers} 人（南班 ${META.southMembers} ／ 北班 ${META.northMembers}），按 ${META.southMembers}:${META.northMembers} 攤分，不因個人是否參加或領取而異。若本場採其他基準，請於此註明：______`}
-        </div>
-        <Amount
-          label={`南班應付（${META.southMembers}/${META.totalMembers} ≈ 83.84%）`}
-          v={money(split?.south.amount)}
-          tail={split ? `平均每人 NT$ ${fmt(split.perPerson)}` : undefined}
-        />
-        <Amount
-          label={`北班應付（${META.northMembers}/${META.totalMembers} ≈ 16.16%）`}
-          v={money(split?.north.amount)}
-          tail={split ? `平均每人 NT$ ${fmt(split.perPerson)}` : undefined}
-        />
+        {(() => {
+          const members = split?.members ?? META.totalMembers;
+          const southCount = split?.south.count ?? META.southMembers;
+          const northCount = split?.north.count ?? META.northMembers;
+          const southPct = ((southCount / members) * 100).toFixed(2);
+          const northPct = ((northCount / members) * 100).toFixed(2);
+          return (
+            <>
+              <div style={basisStyle}>
+                <strong style={{ color: WINE_DEEP }}>分攤基準：</strong>
+                {split
+                  ? `全班 ${members} 人（南班 ${southCount} ／ 北班 ${northCount}），按 ${southCount}:${northCount} 攤分，不因個人是否參加或領取而異。`
+                  : `全班 ${members} 人（南班 ${southCount} ／ 北班 ${northCount}），按 ${southCount}:${northCount} 攤分，不因個人是否參加或領取而異。若本場採其他基準，請於此註明：______`}
+              </div>
+              <Amount
+                label={`南班應付（${southCount}/${members} ≈ ${southPct}%）`}
+                v={money(split?.south.amount)}
+                tail={split ? `平均每人 NT$ ${fmt(split.perPerson)}` : undefined}
+              />
+              <Amount
+                label={`北班應付（${northCount}/${members} ≈ ${northPct}%）`}
+                v={money(split?.north.amount)}
+                tail={split ? `平均每人 NT$ ${fmt(split.perPerson)}` : undefined}
+              />
+            </>
+          );
+        })()}
         {split && (
           <div style={{ fontSize: 11, color: MUTE, marginTop: 6, lineHeight: 1.6 }}>
             南北金額依未取整的每人金額計算後四捨五入，與「每人 × 人數」會有數元進位差；兩者合計等於班費淨負擔。
@@ -169,9 +190,30 @@ export default function SettlementDoc({
         )}
       </Box>
 
+      {/* 預繳（代管）— 僅分期項目由一方一次繳清時出現 */}
+      {prepaid && (
+        <Box title="預繳（代管）— 尚未撥付之年度">
+          <div style={basisStyle}>
+            <strong style={{ color: WINE_DEEP }}>範圍：</strong>
+            {prepaid.label}。此段費用<strong>尚未發生</strong>，不列入本期結算，僅先行收取代管。
+          </div>
+          <Amount label="預繳總額" v={money(prepaid.total)} />
+          <Amount label="南班（按年撥付，不預收）" v={money(prepaid.south)} tail="由南班逐年編列撥付" />
+          <Amount label="北班預繳" v={money(prepaid.north)} emphasis />
+          <div style={{ fontSize: 11, color: MUTE, marginTop: 6, lineHeight: 1.7 }}>{prepaid.custodyNote}</div>
+        </Box>
+      )}
+
       {/* 撥款指示 */}
       <Box title="撥款指示">
-        <Amount label="北班需匯款金額" v={money(split?.north.amount)} emphasis />
+        {prepaid && split && (
+          <>
+            <Amount label="① 已結算款（本年度分攤）" v={money(split.north.amount)} />
+            <Amount label={`② 預繳代管款 — ${prepaid.label}`} v={money(prepaid.north)} />
+            <div style={hrStyle} />
+          </>
+        )}
+        <Amount label={prepaid ? '北班需匯款金額 ＝ ① ＋ ②' : '北班需匯款金額'} v={money(northDue)} emphasis />
         {/* 填妥版未填期限時整列隱藏；空白範本仍顯示待填欄 */}
         {(!s || s.paymentDue) && <Row label="匯款期限" v={s?.paymentDue} />}
         <div style={{ marginTop: 8, fontSize: 11.5, color: MUTE, lineHeight: 1.7 }}>
@@ -221,7 +263,15 @@ export default function SettlementDoc({
       {/* 簽核狀態 — 簽核在「經費單簽核」系統完成，本單不設手寫簽名欄。
           liveSignoff（0022，DB 即時查詢）優先於靜態 signoffRef；只有 DB 查無
           對應簽核文件時才 fallback 到人工維護的靜態資料。 */}
-      <div style={signStyle}>{renderSignoffStatus(liveSignoff, s?.signoffRef)}</div>
+      <div style={signStyle}>
+        {renderSignoffStatus(
+          liveSignoff,
+          s?.signoffRef,
+          prepaid
+            ? `※ 上列簽核之範圍為已撥付校友總會的 ${money(invoice)}；預繳代管款 ${money(prepaid.north)} 係北班決議一次繳清，屬代收保管，不經本班經費支出簽核。`
+            : undefined,
+        )}
+      </div>
 
       <div style={footerStyle}>E118 南班秘書處製表　·　本結算單副本同步公告至南班幹部群組</div>
     </div>
@@ -238,6 +288,8 @@ export default function SettlementDoc({
 function renderSignoffStatus(
   liveSignoff: SettlementSignoffSummary | null | undefined,
   staticRef: NonNullable<Activity['settlement']>['signoffRef'],
+  /** 有預繳段時，簽核只涵蓋已撥付部分，須明寫範圍避免誤讀成整張單都已核准 */
+  scopeNote?: string,
 ) {
   if (liveSignoff === undefined || liveSignoff === null) {
     if (staticRef) {
@@ -255,6 +307,7 @@ function renderSignoffStatus(
           </div>
           <div style={{ marginTop: 8, fontSize: 11, color: MUTE, lineHeight: 1.7 }}>
             本單經上列單位於班網「經費單簽核」完成會簽，簽核紀錄與憑證存於系統備查。
+            {scopeNote && <><br />{scopeNote}</>}
           </div>
         </>
       );

@@ -252,7 +252,7 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
       {a.actualSplit ? (
         <Section
           title="班費分攤（實際結算）"
-          subtitle={`班費實付 NT$ ${fmt(a.actualSplit.paidByFund)}　由全班 ${a.actualSplit.members} 人按南北 83:16 分攤，每人 NT$ ${fmt(a.actualSplit.perPerson)}`}
+          subtitle={`班費實付 NT$ ${fmt(a.actualSplit.paidByFund)}　由全班 ${a.actualSplit.members} 人按南北 ${a.actualSplit.south.count}:${a.actualSplit.north.count} 分攤，每人 NT$ ${fmt(a.actualSplit.perPerson)}`}
         >
           <div className="bdg-grid bdg-grid-2 bdg-grid-gap-sm">
             <SplitCard
@@ -287,7 +287,7 @@ export default async function ActivityDetail({ params }: { params: Promise<{ slu
             </div>
           )}
           <div style={{ marginTop: 10, fontSize: 12, color: MUTE, lineHeight: 1.7 }}>
-            （預算階段原按南北 83:16 估算為南班 NT$ {fmt(a.southBurden)} ／ 北班 NT$ {fmt(a.northBurden)}；本項已結算，以上方實際金額為準。）
+            （預算階段估算為南班 NT$ {fmt(a.southBurden)} ／ 北班 NT$ {fmt(a.northBurden)}；本項已結算，以上方實際金額為準。）
           </div>
           {a.settlement && (
             <div style={{ marginTop: 12 }}>
