@@ -8,12 +8,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'E118 南班 班費預算說明書',
     description: '成大 EMBA E118 南班 2026–2028 班費收支預算總表',
-    images: [{ url: '/og-thumb.png', width: 400, height: 400, alt: '成大 EMBA 第 118 班' }],
+    images: [{ url: '/og-thumb-v2.png', width: 1200, height: 630, alt: '成大 EMBA 第 118 班' }],
   },
   twitter: {
     card: 'summary',
     title: 'E118 南班 班費預算說明書',
-    images: ['/og-thumb.png'],
+    images: ['/og-thumb-v2.png'],
   },
 };
 

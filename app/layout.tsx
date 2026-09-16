@@ -9,10 +9,10 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/assets/pwa-icon-192-v3.png', sizes: '192x192', type: 'image/png' },
-      { url: '/assets/pwa-icon-512-v3.png', sizes: '512x512', type: 'image/png' },
+      { url: '/assets/pwa-icon-192-v4.png', sizes: '192x192', type: 'image/png' },
+      { url: '/assets/pwa-icon-512-v4.png', sizes: '512x512', type: 'image/png' },
     ],
-    apple: '/assets/pwa-icon-180-v3.png',
+    apple: '/assets/pwa-icon-180-v4.png',
   },
   appleWebApp: {
     capable: true,
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     siteName: 'E118 班｜成大 EMBA',
     images: [
       {
-        url: '/og-thumb.png',
+        url: '/og-thumb-v2.png',
         width: 1200,
         height: 630,
         alt: '成大 EMBA 第 118 班',
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'E118 班｜成大 EMBA',
     description: '國立成功大學 EMBA 第 118 班 — 班級資訊系統入口',
-    images: ['/og-thumb.png'],
+    images: ['/og-thumb-v2.png'],
   },
 };
 
