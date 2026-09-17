@@ -875,9 +875,6 @@
 }
 
 .bx-ic {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
   width: 46px;
   height: 46px;
   border: 1px solid #dcc38d;
@@ -885,54 +882,18 @@
   color: var(--wine-deep);
   background: linear-gradient(145deg, #fffaf0 0%, #ead9b5 100%);
   box-shadow: 0 6px 15px rgba(94, 62, 40, .11), inset 0 1px 0 rgba(255, 255, 255, .8);
-  transition: color .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
-}
-
-.bx-ic::before {
-  content: '';
-  position: absolute;
-  z-index: 0;
-  right: -9px;
-  bottom: -9px;
-  width: 31px;
-  height: 31px;
-  border: 1px solid rgba(141, 103, 40, .26);
-  border-radius: 50%;
-}
-
-.bx-ic::after {
-  content: '';
-  position: absolute;
-  z-index: 0;
-  top: 8px;
-  left: 9px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(157, 41, 59, .48);
+  transition: border-color .2s ease, box-shadow .2s ease;
 }
 
 .bx-ic svg {
-  position: relative;
-  z-index: 1;
   width: 21px;
   height: 21px;
   stroke-width: 1.85;
 }
 
 .bx-tile:is(:hover, :focus-visible, :focus-within) > .bx-ic {
-  color: #fff;
-  border-color: #a34b58;
-  background: linear-gradient(145deg, #9d293b, var(--wine-deep));
-  box-shadow: 0 8px 16px rgba(112, 24, 39, .22), inset 0 1px 0 rgba(255, 255, 255, .16);
-}
-
-.bx-tile:is(:hover, :focus-visible, :focus-within) > .bx-ic::before {
-  border-color: rgba(255, 255, 255, .27);
-}
-
-.bx-tile:is(:hover, :focus-visible, :focus-within) > .bx-ic::after {
-  background: #e7ca8b;
+  border-color: #c5a060;
+  box-shadow: 0 8px 17px rgba(94, 62, 40, .14), inset 0 1px 0 rgba(255, 255, 255, .8);
 }
 
 .bx-title {
@@ -969,20 +930,10 @@
 
 .bx-feed .bx-ic,
 .bx-feedcal .bx-ic {
-  color: #fff;
-  border-color: #9b3545;
-  background: linear-gradient(145deg, #9d293b, var(--wine-deep));
-  box-shadow: 0 8px 16px rgba(112, 24, 39, .18), inset 0 1px 0 rgba(255, 255, 255, .16);
-}
-
-.bx-feed .bx-ic::before,
-.bx-feedcal .bx-ic::before {
-  border-color: rgba(255, 255, 255, .25);
-}
-
-.bx-feed .bx-ic::after,
-.bx-feedcal .bx-ic::after {
-  background: #e7ca8b;
+  color: var(--wine);
+  border-color: #c8a362;
+  background: #fffaf0;
+  box-shadow: 0 5px 13px rgba(94, 62, 40, .1), inset 0 1px 0 #fff;
 }
 
 .bx-fitem {
@@ -1002,9 +953,11 @@
 .bx-feedfoot {
   display: inline-flex;
   align-items: center;
-  align-self: flex-start;
+  justify-content: center;
+  align-self: center;
+  min-width: 116px;
   min-height: 38px;
-  margin-top: 12px;
+  margin-top: auto;
   padding: 0 14px;
   border: 1px solid #c9a76b;
   border-radius: 999px;
@@ -1019,8 +972,8 @@
 .bx-feedcal:hover .bx-feedfoot,
 .bx-feed:focus-within .bx-feedfoot {
   border-color: var(--wine);
-  color: #fff;
-  background: var(--wine);
+  color: var(--wine);
+  background: #f4eadb;
 }
 
 .bx-feedfoot:active {
@@ -1058,8 +1011,8 @@
 .ql-install > summary:hover,
 .ql-install[open] > summary {
   border-color: var(--wine);
-  color: #fff;
-  background: var(--wine);
+  color: var(--wine);
+  background: #f4eadb;
 }
 
 .ql-link:active,
@@ -1082,6 +1035,15 @@
   border-radius: 12px;
   background: #fffdf9;
   box-shadow: 0 10px 22px rgba(75, 45, 26, .08);
+  color: #4c4038;
+}
+
+.ql-install-body .ql-row {
+  color: #4c4038;
+}
+
+.ql-install-body .ql-row-note {
+  color: #6d6057;
 }
 
 .foot {
