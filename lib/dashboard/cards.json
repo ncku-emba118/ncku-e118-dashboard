@@ -15,7 +15,7 @@
   "title": "班級公告欄",
   "meta": "7 個部門公告集中、推播到手機、留言互動",
   "domain": "emba.aqualux.dev/board",
-  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m3 11 18-5v12L3 14v-3z\"/><path d=\"M11.6 16.8a3 3 0 1 1-5.8-1.6\"/></svg>",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 11h3l10-4v10l-10-4H4v-2Z\"/><path d=\"M7 15v2.2a2.2 2.2 0 0 0 4.2.9L12 16.8\"/><path d=\"M20 10.2a4.7 4.7 0 0 1 0 3.6\"/></svg>",
   "href": "/board",
   "localHref": null,
   "external": false,

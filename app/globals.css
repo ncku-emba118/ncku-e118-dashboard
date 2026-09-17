@@ -930,10 +930,20 @@
 
 .bx-feed .bx-ic,
 .bx-feedcal .bx-ic {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
   color: var(--wine);
   border-color: #c8a362;
   background: #fffaf0;
   box-shadow: 0 5px 13px rgba(94, 62, 40, .1), inset 0 1px 0 #fff;
+}
+
+.bx-feed .bx-ic svg,
+.bx-feedcal .bx-ic svg {
+  width: 29px;
+  height: 29px;
+  stroke-width: 1.7;
 }
 
 .bx-fitem {
@@ -950,11 +960,12 @@
   background: #f9f3e9;
 }
 
-.bx-feedfoot {
+.bx-feedfoot,
+.bx-feed .bx-feedfoot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  align-self: center;
+  align-self: flex-start;
   min-width: 116px;
   min-height: 38px;
   margin-top: auto;
@@ -965,6 +976,7 @@
   background: rgba(255, 255, 255, .55);
   font-weight: 700;
   line-height: 1;
+  text-align: center;
   transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
 }
 
