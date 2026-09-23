@@ -123,6 +123,7 @@ export default function HomeEasterEggs() {
   const [toastState, setToastState] = useState<'hidden' | 'in' | 'out'>('hidden');
   const [festival, setFestival] = useState<Festival | null>(null);
   const [festivalOpen, setFestivalOpen] = useState(false);
+  const [festivalRevealed, setFestivalRevealed] = useState(false);
   const clickTimes = useRef<number[]>([]);
 
   // ── 彩蛋 1：logo 連點 5 下 ──
@@ -174,6 +175,13 @@ export default function HomeEasterEggs() {
     };
   }, []);
 
+  // 展開祝福語後 6 秒自動收起（也可再點一次手動關）
+  useEffect(() => {
+    if (!festivalRevealed) return;
+    const t = window.setTimeout(() => setFestivalOpen(false), 6000);
+    return () => window.clearTimeout(t);
+  }, [festivalRevealed]);
+
   // ── 彩蛋 3：節慶小裝飾（命中區間才顯示、每 session 一次）──
   useEffect(() => {
     const found = FESTIVALS.find((f) => f.match(taipeiDateParts()));
@@ -222,11 +230,17 @@ export default function HomeEasterEggs() {
           box-shadow:0 8px 20px rgba(0,0,0,.25);cursor:pointer;
           font-size:18px;line-height:1;padding:0;
           opacity:0;transform:translateY(-8px);
-          transition:opacity .5s ease,transform .5s ease;
+          transition:opacity .5s ease,transform .5s ease,width .35s ease,border-color .35s ease;
           animation:eeFadeIn .5s ease both;}
         .ee-festival.in{opacity:1;transform:translateY(0);}
+        .ee-festival.revealed{width:auto;gap:9px;padding:0 15px 0 12px;border-radius:999px;
+          justify-content:flex-start;border-color:rgba(212,168,67,.6);}
+        .ee-festival-msg{font:500 13.5px/1 'Noto Serif TC',serif;color:#EFE0BE;
+          white-space:nowrap;letter-spacing:.06em;}
         @media (max-width:720px){
           .ee-festival{top:74px;right:14px;width:34px;height:34px;font-size:16px;}
+          .ee-festival.revealed{width:auto;padding:0 13px 0 10px;}
+          .ee-festival-msg{font-size:12.5px;}
         }
         @media (prefers-reduced-motion:reduce){
           .ee-overlay{animation:none}
@@ -276,12 +290,13 @@ export default function HomeEasterEggs() {
       {festival && festivalOpen && (
         <button
           type="button"
-          className="ee-festival in"
+          className={`ee-festival in${festivalRevealed ? ' revealed' : ''}`}
           title={festival.message}
-          aria-label={`${festival.message}（點擊關閉）`}
-          onClick={() => setFestivalOpen(false)}
+          aria-label={festivalRevealed ? `${festival.message}（點擊關閉）` : '節慶問候（點擊查看）'}
+          onClick={() => (festivalRevealed ? setFestivalOpen(false) : setFestivalRevealed(true))}
         >
           <span aria-hidden="true">{festival.emoji}</span>
+          {festivalRevealed && <span className="ee-festival-msg">{festival.message}</span>}
         </button>
       )}
     </>

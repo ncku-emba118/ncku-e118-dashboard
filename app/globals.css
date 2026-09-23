@@ -574,7 +574,8 @@
     .ql-install[open] > summary {
       color: var(--ncku-wine);
       font-weight: 500;
-      display: inline-block;
+      /* 不要改 display：下方 .ql-link,.ql-install>summary 用 inline-flex + align-items
+         做垂直置中，這裡若設 inline-block 會讓文字掉到框外（2026-09-23 修） */
     }
     .ql-install-body {
       margin: 8px auto 0;
@@ -814,7 +815,7 @@
 
 .bx-hero-eyebrow {
   letter-spacing: .17em;
-  color: var(--wine);
+  color: var(--ncku-wine);
 }
 
 .bx-hero-h1 {
@@ -844,7 +845,7 @@
   right: 0;
   left: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--wine) 0 72%, #b5904e 72% 100%);
+  background: linear-gradient(90deg, var(--ncku-wine) 0 72%, #b5904e 72% 100%);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform .22s ease;
@@ -879,7 +880,7 @@
   height: 46px;
   border: 1px solid #dcc38d;
   border-radius: 12px;
-  color: var(--wine-deep);
+  color: var(--ncku-wine-deep);
   background: linear-gradient(145deg, #fffaf0 0%, #ead9b5 100%);
   box-shadow: 0 6px 15px rgba(94, 62, 40, .11), inset 0 1px 0 rgba(255, 255, 255, .8);
   transition: border-color .2s ease, box-shadow .2s ease;
@@ -903,7 +904,7 @@
 }
 
 .bx-tile:is(:hover, :focus-visible, :focus-within) .bx-title {
-  color: var(--wine);
+  color: var(--ncku-wine);
 }
 
 .bx-meta {
@@ -920,7 +921,7 @@
 }
 
 .bx-feed {
-  border-top: 3px solid var(--wine);
+  border-top: 3px solid var(--ncku-wine);
   border-left-width: 1px;
 }
 
@@ -933,7 +934,7 @@
   width: 58px;
   height: 58px;
   border-radius: 14px;
-  color: var(--wine);
+  color: var(--ncku-wine);
   border-color: #c8a362;
   background: #fffaf0;
   box-shadow: 0 5px 13px rgba(94, 62, 40, .1), inset 0 1px 0 #fff;
@@ -972,7 +973,7 @@
   padding: 0 14px;
   border: 1px solid #c9a76b;
   border-radius: 999px;
-  color: var(--wine);
+  color: var(--ncku-wine);
   background: rgba(255, 255, 255, .55);
   font-weight: 700;
   line-height: 1;
@@ -983,8 +984,8 @@
 .bx-feedfoot:hover,
 .bx-feedcal:hover .bx-feedfoot,
 .bx-feed:focus-within .bx-feedfoot {
-  border-color: var(--wine);
-  color: var(--wine);
+  border-color: var(--ncku-wine);
+  color: var(--ncku-wine);
   background: #f4eadb;
 }
 
@@ -1012,7 +1013,7 @@
   padding: 0 15px;
   border: 1px solid #d7bd8a;
   border-radius: 999px;
-  color: var(--wine);
+  color: var(--ncku-wine);
   background: #fffdf9;
   font-weight: 700;
   line-height: 1;
@@ -1022,8 +1023,8 @@
 .ql-link:hover,
 .ql-install > summary:hover,
 .ql-install[open] > summary {
-  border-color: var(--wine);
-  color: var(--wine);
+  border-color: var(--ncku-wine);
+  color: var(--ncku-wine);
   background: #f4eadb;
 }
 
