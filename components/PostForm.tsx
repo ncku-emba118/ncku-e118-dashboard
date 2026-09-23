@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { parseGdriveUrl } from '@/lib/gdrive';
 import type { Attachment } from '@/lib/attachment';
 import { attachmentEmoji, formatSize } from '@/lib/attachment';
+import { LoadingLabel } from '@/components/Loading';
 
 type Dept = { id: string; name: string; color: string };
 
@@ -637,7 +638,7 @@ export default function PostForm({
               }}
             >
               {uploading
-                ? '📤 上傳中…'
+                ? <LoadingLabel text="📤 上傳中…" />
                 : reachedLimit
                   ? '已達 10 個附件上限'
                   : '📁 從電腦選檔上傳'}
@@ -878,9 +879,7 @@ export default function PostForm({
               }}
             >
               {submitting
-                ? isEdit
-                  ? '儲存中…'
-                  : '發布中…'
+                ? <LoadingLabel text={isEdit ? '儲存中…' : '發布中…'} />
                 : ctaLabel}
             </button>
           </div>

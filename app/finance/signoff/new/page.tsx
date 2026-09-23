@@ -6,6 +6,7 @@ import { ATTACHMENT_LABELS } from '@/lib/signoff/constants';
 import { attachmentCountError } from '@/lib/signoff/attachment-limit';
 import { normalizeImageOrientation } from '@/lib/signoff/normalize-image';
 import { normalizeAmountInput } from '@/lib/signoff/amount';
+import { LoadingLabel } from '@/components/Loading';
 
 const WINE = '#8B1F2F';
 const CREAM = '#FAF7F2';
@@ -313,7 +314,7 @@ export default function SignoffNewPage() {
           disabled={busy}
           style={{ marginTop: 18, width: '100%', background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 4, padding: '12px', fontSize: 15, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}
         >
-          {busy ? '處理中…' : '建立並送出簽核'}
+          {busy ? <LoadingLabel text="處理中…" /> : '建立並送出簽核'}
         </button>
         <p style={{ marginTop: 16 }}>
           <a href="/finance/signoff" style={{ color: MUTE, fontSize: 13 }}>← 取消</a>

@@ -14,6 +14,7 @@
  */
 import { useState } from 'react';
 import AttachmentGrid, { type ViewAttachment } from '@/components/signoff/AttachmentGrid';
+import { LoadingRow } from '@/components/Loading';
 
 const WINE = '#8B1F2F';
 const WINE_DEEP = '#6B1622';
@@ -67,7 +68,7 @@ export default function SettlementProofPanel({ slug }: { slug: string }) {
           <div style={{ fontFamily: TC, fontSize: 14, color: WINE_DEEP, fontWeight: 600, marginBottom: 10 }}>
             結算單原始憑證
           </div>
-          {state.status === 'loading' && <div style={{ fontSize: 13, color: MUTE }}>讀取中…</div>}
+          {state.status === 'loading' && <LoadingRow text="讀取中…" />}
           {state.status === 'error' && <div style={{ fontSize: 13, color: WINE }}>{state.message}</div>}
           {state.status === 'ready' && state.attachments.length === 0 && (
             <div style={{ fontSize: 13, color: MUTE }}>此結算單尚無憑證</div>

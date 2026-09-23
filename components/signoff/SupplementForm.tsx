@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { SUPPLEMENT_ATTACHMENT_LABELS, MAX_SUPPLEMENT_ATTACHMENTS } from '@/lib/signoff/constants';
 import { normalizeImageOrientation } from '@/lib/signoff/normalize-image';
+import { Loading, LoadingLabel } from '@/components/Loading';
 
 /**
  * 補充資料表單。
@@ -307,7 +308,7 @@ export default function SupplementForm({
       })}
 
       {busy && progress && (
-        <div style={{ marginTop: 12, fontSize: 13, color: WINE, fontWeight: 600 }}>{progress}</div>
+        <div role="status" aria-live="polite" style={{ marginTop: 12, fontSize: 13, color: WINE, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}><Loading size={14} />{progress}</div>
       )}
       {msg && <div style={{ marginTop: 12, fontSize: 13.5, color: '#b00' }}>{msg}</div>}
 
@@ -317,7 +318,7 @@ export default function SupplementForm({
           disabled={busy}
           style={{ flex: 1, background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 5, padding: 12, fontSize: 15, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}
         >
-          {busy ? '處理中…' : picks.length > 0 ? `送出補充（含 ${picks.length} 個附件）` : '送出補充'}
+          {busy ? <LoadingLabel text="處理中…" /> : picks.length > 0 ? `送出補充（含 ${picks.length} 個附件）` : '送出補充'}
         </button>
         <button
           onClick={() => { setOpen(false); setMsg(''); }}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Breadcrumb from '@/components/Breadcrumb';
+import { LoadingRow } from '@/components/Loading';
 
 const WINE = '#8B1F2F';
 const CREAM = '#FAF7F2';
@@ -101,7 +102,7 @@ export default function SignoffInboxPage() {
           </a>
         </div>
 
-        {loading && <p style={{ color: MUTE }}>載入中…</p>}
+        {loading && <LoadingRow text="載入中…" />}
         {needLogin && (
           <p>
             請先<a href="/board/login?next=/finance/signoff" style={{ color: WINE }}>登入幹部帳號</a>。

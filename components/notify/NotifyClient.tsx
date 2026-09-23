@@ -11,6 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LoadingLabel, LoadingRow } from '@/components/Loading';
 
 // ── 設計 token（沿用 CLAUDE.md 第 7 節色票，不自創）──
 const WINE = '#8B1F2F';
@@ -180,7 +181,7 @@ function PinGate({ onPass }: { onPass: () => void }) {
           />
           {error && <div style={errorBox}>{error}</div>}
           <button type="submit" disabled={loading || pin.length !== 4} style={primaryButton(loading || pin.length !== 4)}>
-            {loading ? '驗證中…' : '進入'}
+            {loading ? <LoadingLabel text="驗證中…" /> : '進入'}
           </button>
         </form>
 
@@ -461,7 +462,7 @@ function Console({ onSessionExpired }: { onSessionExpired: () => void }) {
         </div>
 
         {listError && <div style={errorBox}>{listError}</div>}
-        {loadingList && <div style={{ fontSize: 13, color: MUTE }}>載入名單中…</div>}
+        {loadingList && <LoadingRow text="載入名單中…" />}
 
         {!loadingList && !listError && (
           <div
@@ -551,7 +552,7 @@ function Console({ onSessionExpired }: { onSessionExpired: () => void }) {
           disabled={!canSend || sending}
           style={primaryButton(!canSend || sending)}
         >
-          {sending ? '發送中…' : `送出通知給 ${selected.size} 位同學`}
+          {sending ? <LoadingLabel text="發送中…" /> : `送出通知給 ${selected.size} 位同學`}
         </button>
         <p style={{ fontSize: 11, color: MUTE, marginTop: 10, lineHeight: 1.7 }}>
           逐一單獨私訊，每人各扣 1 則額度。送出後無法收回。

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { LoadingLabel } from '@/components/Loading';
 
 export default function AdminPostRowActions({
   postId,
@@ -86,7 +87,7 @@ export default function AdminPostRowActions({
             cursor: resending ? 'not-allowed' : 'pointer',
           }}
         >
-          {resending ? '排入中…' : '🔔 重發'}
+          {resending ? <LoadingLabel text="排入中…" /> : '🔔 重發'}
         </button>
       )}
       <a
@@ -102,7 +103,7 @@ export default function AdminPostRowActions({
         disabled={deleting}
         style={{ ...btnBase, color: deleting ? '#8A7F73' : '#8B1F2F', border: '1px solid rgba(139,31,47,0.4)', cursor: deleting ? 'not-allowed' : 'pointer' }}
       >
-        {deleting ? '刪除中…' : '刪除'}
+        {deleting ? <LoadingLabel text="刪除中…" /> : '刪除'}
       </button>
     </div>
   );

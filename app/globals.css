@@ -1082,3 +1082,43 @@
   .bx-lg.bx-feed, .bx-lg.bx-feedcal { grid-row: span 2; }
 }
 @media (max-width: 560px) { .bx-hero-h1 { font-size: 22px; } }
+
+
+/* ── 載入動畫（components/Loading.tsx 使用）──────────────────────
+   來源：loading.dev / npm `loading-dev` v0.3.4 · MIT © 2026 Jakub Krehel
+   純 CSS + SVG 移植版，不需 React 19。正本：
+   ~/Documents/6_工具基建/_tools/loading-ui/
+   可調變數：--ld-size（預設 20px）/ --ld-duration（1000ms）/ --ld-play-state
+   顏色走 currentColor。已內建 prefers-reduced-motion 降級。           */
+.ld-loading {
+  width: var(--ld-size, 20px);
+  height: var(--ld-size, 20px);
+}
+
+.ld-loading-segment {
+  animation: ld-loading-fade var(--ld-duration, 1000ms) linear infinite;
+  animation-play-state: var(--ld-play-state, running);
+  animation-delay: calc(var(--ld-duration, 1000ms) * (var(--ld-step) - 8) / 8);
+}
+
+@keyframes ld-loading-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-loading-segment {
+    opacity: 0.6;
+    animation: none;
+  }
+}
+
+/* 本地補強：flex 容器（按鈕）內避免 SVG 被壓縮。上游重新萃取後需重加。 */
+.ld-loading { flex: none; }
+
+/* 專案預設：2026-09-23 定案 20px / 1600ms。上游速度為 1000ms，慢速更耐看。 */
+.ld-loading { --ld-duration: 1600ms; }
