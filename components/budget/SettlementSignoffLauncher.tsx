@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { normalizeImageOrientation } from '@/lib/signoff/normalize-image';
+import { LoadingLabel, LoadingRow } from '@/components/Loading';
 
 const WINE = '#8B1F2F';
 const WINE_DEEP = '#6B1622';
@@ -223,7 +224,7 @@ function Modal({
 
       <label style={label}>指派簽核人 *（勾選 + 填角色）</label>
       {loadingAccounts ? (
-        <div style={{ fontSize: 12.5, color: MUTE }}>載入幹部名單中…</div>
+        <LoadingRow text="載入幹部名單中…" />
       ) : (
         <div style={{ border: `1px solid ${LINE}`, borderRadius: 4, background: '#fff', maxHeight: 260, overflowY: 'auto' }}>
           {accounts.map((a) => (
@@ -253,7 +254,7 @@ function Modal({
           取消
         </button>
         <button type="button" onClick={submit} disabled={busy} style={{ ...primaryBtnStyle, opacity: busy ? 0.6 : 1 }}>
-          {busy ? '送出中…' : '確認送出'}
+          {busy ? <LoadingLabel text="送出中…" /> : '確認送出'}
         </button>
       </div>
     </Overlay>

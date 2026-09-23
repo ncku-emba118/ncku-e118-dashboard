@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { LoadingRow, LoadingLabel } from '@/components/Loading';
 
 type LineGroup = {
   groupId: string;
@@ -152,7 +153,7 @@ export default function AdminLineRouting() {
 
       <div style={cardStyle}>
         {load.status === 'loading' && (
-          <div style={{ color: '#8A7F73', fontSize: 13 }}>載入中…</div>
+          <LoadingRow text="載入中…" />
         )}
 
         {load.status === 'error' && (
@@ -289,7 +290,7 @@ export default function AdminLineRouting() {
                       fontFamily: 'inherit',
                     }}
                   >
-                    {saving ? '儲存中…' : '儲存設定'}
+                    {saving ? <LoadingLabel text="儲存中…" /> : '儲存設定'}
                   </button>
                   {saveMsg && (
                     <span

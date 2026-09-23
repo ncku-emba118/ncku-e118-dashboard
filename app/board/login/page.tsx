@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { safeNext } from '@/lib/auth/safe-next';
 import Breadcrumb from '@/components/Breadcrumb';
+import { LoadingLabel } from '@/components/Loading';
 
 const ACCOUNTS: Array<{ value: string; label: string; role: 'super' | 'dept' }> = [
   { value: '班代',   label: '班代（super · 全部部門）',   role: 'super' },
@@ -242,7 +243,7 @@ function LoginForm() {
               letterSpacing: '0.05em',
             }}
           >
-            {loading ? '登入中…' : '登入'}
+            {loading ? <LoadingLabel text="登入中…" /> : '登入'}
           </button>
         </form>
 

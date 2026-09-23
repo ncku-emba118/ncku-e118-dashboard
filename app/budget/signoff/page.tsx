@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import SignaturePad from 'signature_pad';
+import { LoadingLabel } from '@/components/Loading';
 import {
   META,
   INCOME,
@@ -881,7 +882,7 @@ function SignatureModal({
               opacity: submitting ? 0.6 : 1,
             }}
           >
-            {submitting ? '上傳中…' : '確認簽名'}
+            {submitting ? <LoadingLabel text="上傳中…" /> : '確認簽名'}
           </button>
         </div>
       </div>

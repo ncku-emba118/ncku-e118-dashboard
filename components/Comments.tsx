@@ -13,6 +13,7 @@ export type Comment = {
 };
 
 import { formatDateTW } from '@/lib/format';
+import { LoadingLabel } from '@/components/Loading';
 const formatDate = formatDateTW;
 
 export default function Comments({
@@ -412,7 +413,7 @@ export default function Comments({
               letterSpacing: '0.05em',
             }}
           >
-            {submitting ? '送出中…' : '送出留言'}
+            {submitting ? <LoadingLabel text="送出中…" /> : '送出留言'}
           </button>
         </div>
 

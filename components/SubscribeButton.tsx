@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { LoadingLabel } from '@/components/Loading';
 
 const TOKEN_KEY = 'e118.board.push.management_token';
 const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
@@ -200,7 +201,7 @@ export default function SubscribeButton() {
           width: '100%',
         }}
       >
-        {loading ? '訂閱中…' : '📢 開啟全班公告推播'}
+        {loading ? <LoadingLabel text="訂閱中…" /> : '📢 開啟全班公告推播'}
       </button>
 
       {state.kind === 'permission_denied' && (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { INCOME_CATEGORIES } from '@/lib/finance/income';
 import Breadcrumb from '@/components/Breadcrumb';
+import { LoadingLabel, LoadingRow } from '@/components/Loading';
 
 const WINE = '#8B1F2F';
 const CREAM = '#FAF7F2';
@@ -94,7 +95,7 @@ export default function IncomeManagePage() {
           <a href="/finance/signoff" style={{ color: MUTE, fontSize: 13, textDecoration: 'none' }}>經費單簽核 →</a>
         </div>
 
-        {loading && <p style={{ color: MUTE }}>載入中…</p>}
+        {loading && <LoadingRow text="載入中…" />}
         {needLogin && (
           <p>請先<a href="/board/login?next=/finance/income" style={{ color: WINE }}>登入幹部帳號</a>（限財務長 / 班代）。</p>
         )}
@@ -124,7 +125,7 @@ export default function IncomeManagePage() {
               </div>
               {formErr && <p style={{ color: '#b00', fontSize: 13, margin: '10px 0 0' }}>{formErr}</p>}
               <button type="submit" disabled={submitting} style={{ marginTop: 12, background: WINE, color: '#fff', border: 0, borderRadius: 4, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: submitting ? 0.6 : 1 }}>
-                {submitting ? '新增中…' : '新增收入'}
+                {submitting ? <LoadingLabel text="新增中…" /> : '新增收入'}
               </button>
             </form>
 

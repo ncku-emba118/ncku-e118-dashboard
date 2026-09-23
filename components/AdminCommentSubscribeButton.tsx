@@ -11,6 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import type { DeptInfo } from '@/lib/depts';
+import { LoadingLabel } from '@/components/Loading';
 
 const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 
@@ -188,7 +189,7 @@ export default function AdminCommentSubscribeButton({
           letterSpacing: '0.03em',
         }}
       >
-        {loading ? '訂閱中…' : '訂閱留言通知'}
+        {loading ? <LoadingLabel text="訂閱中…" /> : '訂閱留言通知'}
       </button>
 
       {state.kind === 'permission_denied' && (

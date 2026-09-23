@@ -8,6 +8,7 @@ import { deptInfo } from '@/lib/depts';
 import AttachmentGrid, { type ViewAttachment } from '@/components/signoff/AttachmentGrid';
 import SupplementForm from '@/components/signoff/SupplementForm';
 import { SESSION_EXPIRED_MSG, resolveDownloadFinalError } from '@/lib/signoff/download-error';
+import { LoadingLabel, LoadingRow } from '@/components/Loading';
 
 const WINE = '#8B1F2F';
 const WINE_DEEP = '#6B1622';
@@ -452,7 +453,7 @@ export default function SignoffDetailPage() {
       </div>
     </main></>
   );
-  if (!d) return <>{breadcrumb}<main style={{ minHeight: '100vh', background: CREAM, padding: 24 }}><p style={{ color: MUTE }}>載入中…</p></main></>;
+  if (!d) return <>{breadcrumb}<main style={{ minHeight: '100vh', background: CREAM, padding: 24 }}><LoadingRow text="載入中…" /></main></>;
 
   const isPublic = d.public === true;
   const signedCount = d.assignments.filter((a) => a.status === 'signed').length;
@@ -567,7 +568,7 @@ export default function SignoffDetailPage() {
                     disabled={busy}
                     style={{ marginTop: 12, minHeight: 44, background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 15, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}
                   >
-                    {busy ? '處理中…' : '撤銷退回，恢復簽核'}
+                    {busy ? <LoadingLabel text="處理中…" /> : '撤銷退回，恢復簽核'}
                   </button>
                 </>
               )}
@@ -703,7 +704,7 @@ export default function SignoffDetailPage() {
                     font: 'inherit', cursor: downloading ? 'default' : 'pointer', textDecoration: 'underline',
                   }}
                 >
-                  {downloading ? '準備下載中…' : '⬇ 下載最終 PDF（含簽名）'}
+                  {downloading ? <LoadingLabel text="準備下載中…" /> : '⬇ 下載最終 PDF（含簽名）'}
                 </button>
                 {/* 分享連結：LINE 的分享功能不接受 PDF 檔案（只收連結/文字/圖片），
                     所以「分享檔案」那條路在 LINE 上不會出現 LINE 這個選項（2026-08-14
@@ -887,12 +888,12 @@ export default function SignoffDetailPage() {
             <button onClick={doVoid} style={{ minHeight: 40, fontSize: 13.5, color: MUTE, background: 'none', border: `1px solid ${LINE}`, borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }}>作廢（限班代）</button>
             {d.doc.status === 'approved' && !d.urls?.final && (
               <button onClick={doFinalize} disabled={busy} style={{ minHeight: 40, fontSize: 13.5, color: '#7a5c00', background: '#FFF8E7', border: '1px solid #E8D9A8', borderRadius: 8, padding: '8px 14px', cursor: busy ? 'default' : 'pointer', fontWeight: 600 }}>
-                {busy ? '處理中…' : '⟳ 重新產生最終 PDF'}
+                {busy ? <LoadingLabel text="處理中…" /> : '⟳ 重新產生最終 PDF'}
               </button>
             )}
             {d.doc.status === 'approved' && (
               <button onClick={doRegenerateFinanceLink} disabled={busy} style={{ minHeight: 40, fontSize: 13.5, color: WINE, background: 'none', border: '1px solid #D9CDB8', borderRadius: 8, padding: '8px 14px', cursor: busy ? 'default' : 'pointer' }}>
-                {busy ? '處理中…' : '⟳ 重新產生財務長下載連結'}
+                {busy ? <LoadingLabel text="處理中…" /> : '⟳ 重新產生財務長下載連結'}
               </button>
             )}
             {d.can_delete && (
@@ -988,7 +989,7 @@ export default function SignoffDetailPage() {
             {sheetShowMenu && (
               <>
                 <button onClick={doSignStamp} disabled={busy} style={{ width: '100%', minHeight: 54, background: busy ? MUTE : GREEN, color: '#fff', border: 'none', borderRadius: 12, padding: 14, fontSize: 18, fontWeight: 700, cursor: busy ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  {busy ? '處理中…' : '同意．蓋我的簽名'}
+                  {busy ? <LoadingLabel text="處理中…" /> : '同意．蓋我的簽名'}
                 </button>
                 <p style={{ fontSize: 12.5, color: MUTE, textAlign: 'center', margin: '8px 0 0', lineHeight: 1.6 }}>
                   會用你先前存下的預存簽名完成這張單
@@ -1036,7 +1037,7 @@ export default function SignoffDetailPage() {
                   存為我的預存簽名（日後可一鍵簽核）
                 </label>
                 <button onClick={doSign} disabled={busy} style={{ width: '100%', minHeight: 54, marginTop: 16, background: busy ? MUTE : WINE, color: '#fff', border: 'none', borderRadius: 12, padding: 14, fontSize: 18, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>
-                  {busy ? '處理中…' : '送出簽核'}
+                  {busy ? <LoadingLabel text="處理中…" /> : '送出簽核'}
                 </button>
                 <button onClick={() => { setRejectOpen(true); setMsg(''); }} disabled={busy} style={{ width: '100%', minHeight: 48, marginTop: 10, background: 'none', color: '#b00', border: '1px solid #e0b4b4', borderRadius: 10, padding: 12, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
                   改為退回
@@ -1068,7 +1069,7 @@ export default function SignoffDetailPage() {
                   disabled={busy || rejectReason.trim().length < 4}
                   style={{ width: '100%', minHeight: 54, marginTop: 12, background: busy || rejectReason.trim().length < 4 ? '#c99' : '#b00', color: '#fff', border: 'none', borderRadius: 12, padding: 14, fontSize: 17, fontWeight: 700, cursor: busy || rejectReason.trim().length < 4 ? 'default' : 'pointer' }}
                 >
-                  {busy ? '處理中…' : '確認退回'}
+                  {busy ? <LoadingLabel text="處理中…" /> : '確認退回'}
                 </button>
               </>
             )}
