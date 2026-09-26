@@ -37,9 +37,18 @@ export default async function FinanceReportPage({ params }: { params: Promise<{ 
   ]);
   if (!report) notFound();
 
-  const { income, spent, balance, approvedExpenses } = computeFinanceOverview(incomeRows, expenses);
+  // 這頁是「當時的快照」，不是即時看板：11 月上傳新月報之後，9 月這份報表打開
+  // 還是要停在 9 月當下的數字，不能被之後新增的收支資料悄悄改掉。做法是拿
+  // 上傳時間當截止線，收入依 occurred_on、支出依 created_at 過濾到那個時間點
+  // 為止；之後每個月上傳新報表，各自的截止線往前推進，互不影響。
+  const cutoff = new Date(report.created_at);
+  const incomeUpToCutoff = incomeRows.filter((r) => new Date(r.occurred_on) <= cutoff);
+  const expensesUpToCutoff = expenses.filter((e) => new Date(e.created_at) <= cutoff);
+  const { income, spent, balance, approvedExpenses } = computeFinanceOverview(incomeUpToCutoff, expensesUpToCutoff);
   const bank = report.parsed_summary?.bankBalances;
-  const northPaid = ACTIVITIES.filter((a) => a.actualSplit?.northPaidAt);
+  const northPaid = ACTIVITIES.filter(
+    (a) => a.actualSplit?.northPaidAt && new Date(a.actualSplit.northPaidAt) <= cutoff,
+  );
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '16px 16px 48px' }}>
@@ -77,9 +86,9 @@ export default async function FinanceReportPage({ params }: { params: Promise<{ 
         <StatCard label="結餘" value={balance} color={INK} />
       </div>
 
-      <Box title="收入明細" tag={`${incomeRows.length} 筆`}>
-        {incomeRows.length === 0 && <Empty text="尚無收入紀錄" />}
-        {incomeRows.map((r) => (
+      <Box title="收入明細" tag={`${incomeUpToCutoff.length} 筆`}>
+        {incomeUpToCutoff.length === 0 && <Empty text="尚無收入紀錄" />}
+        {incomeUpToCutoff.map((r) => (
           <Row
             key={r.id}
             left={r.category}
