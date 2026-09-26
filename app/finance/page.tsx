@@ -14,6 +14,7 @@ import { sumIncome } from '@/lib/finance/income';
 import { ACTIVITIES, RESERVES, META, LAST_SETTLED_AT } from '@/lib/budget/data';
 import Breadcrumb from '@/components/Breadcrumb';
 import ReportUploadForm from '@/components/finance/ReportUploadForm';
+import ReportSummaryCard from '@/components/finance/ReportSummaryCard';
 import { readSession } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
@@ -83,7 +84,11 @@ export default async function FinancePage() {
   const reports = await Promise.all(
     reportRows
       .filter((r) => r.object_path.startsWith('reports/'))
-      .map(async (r) => ({ period_label: r.period_label, url: (await createSignedReadUrl(r.object_path)).url })),
+      .map(async (r) => ({
+        period_label: r.period_label,
+        url: (await createSignedReadUrl(r.object_path)).url,
+        parsed_summary: r.parsed_summary,
+      })),
   );
 
   return (
@@ -164,9 +169,12 @@ export default async function FinancePage() {
           {session && <ReportUploadForm />}
           {reports.length === 0 && <p style={{ color: MUTE, fontSize: 13 }}>尚無月報。</p>}
           {reports.map((r, i) => (
-            <div key={i} style={repRow}>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>{r.period_label}</div>
-              {r.url ? <a href={r.url} target="_blank" rel="noreferrer" style={dl}>↓ 下載</a> : <span style={{ color: MUTE, fontSize: 12 }}>—</span>}
+            <div key={i} style={{ ...repRow, flexDirection: 'column', alignItems: 'stretch' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{r.period_label}</div>
+                {r.url ? <a href={r.url} target="_blank" rel="noreferrer" style={dl}>↓ 下載</a> : <span style={{ color: MUTE, fontSize: 12 }}>—</span>}
+              </div>
+              {r.parsed_summary && <ReportSummaryCard summary={r.parsed_summary} />}
             </div>
           ))}
         </section>

@@ -10,6 +10,7 @@ import { readSession } from '@/lib/auth/session';
 import { jsonResp, isSameOrigin } from '@/lib/signoff/http';
 import { rateLimit } from '@/lib/signoff/rate-limit';
 import { uploadObject, createFinanceReport } from '@/lib/signoff/dal';
+import { parseReportExcel } from '@/lib/finance/report-parser';
 
 const MAX_BYTES = 15 * 1024 * 1024; // 15MB，比照既有簽核附件上限
 const ALLOWED_TYPES = new Set([
@@ -52,6 +53,17 @@ export async function POST(req: NextRequest) {
   const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
   const objectPath = `reports/${crypto.randomUUID()}.${EXT_BY_TYPE[file.type]}`;
 
+  // 只有 .xlsx 能自動解析（見 report-parser.ts 檔頭說明：ExcelJS 讀不了舊版 .xls，
+  // 也刻意不裝有已知漏洞的舊版 xlsx npm 套件）；PDF/.xls 解析結果一律 null，
+  // 頁面 fallback 回純下載連結，不影響既有「月報下載」行為。
+  const parsedSummary =
+    file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ? await parseReportExcel(bytes).catch((e) => {
+          console.error('[finance.reports.parse.failed]', { traceId, e: String(e) });
+          return null;
+        })
+      : null;
+
   const { error: uploadError } = await uploadObject(objectPath, bytes, file.type);
   if (uploadError) {
     console.error('[finance.reports.upload.failed]', { traceId, e: uploadError });
@@ -63,6 +75,7 @@ export async function POST(req: NextRequest) {
     object_path: objectPath,
     sha256,
     uploaded_by: session.sub,
+    parsed_summary: parsedSummary,
   });
   if (error) {
     console.error('[finance.reports.create.failed]', { traceId, e: error });

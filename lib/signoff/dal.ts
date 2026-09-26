@@ -805,6 +805,8 @@ export type FinanceReportRow = {
   period_label: string;
   object_path: string;
   created_at: string;
+  /** Excel 自動解析摘要（見 lib/finance/report-parser.ts）；PDF/舊版 .xls 或解析失敗為 null */
+  parsed_summary: import('../finance/report-parser').ParsedReportSummary | null;
 };
 
 export async function getFinanceSettings(): Promise<FinanceSettings> {
@@ -840,7 +842,7 @@ export async function listFinanceReports(): Promise<FinanceReportRow[]> {
   const supabase = getServerClient();
   const { data } = await supabase
     .from('finance_reports')
-    .select('id, period_label, object_path, created_at')
+    .select('id, period_label, object_path, created_at, parsed_summary')
     .order('created_at', { ascending: false })
     .limit(24);
   return (data ?? []) as FinanceReportRow[];
@@ -851,11 +853,12 @@ export async function createFinanceReport(input: {
   object_path: string;
   sha256: string;
   uploaded_by: string;
+  parsed_summary?: import('../finance/report-parser').ParsedReportSummary | null;
 }): Promise<{ id: string | null; error: string | null }> {
   const supabase = getServerClient();
   const { data, error } = await supabase
     .from('finance_reports')
-    .insert(input)
+    .insert({ ...input, parsed_summary: input.parsed_summary ?? null })
     .select('id')
     .single();
   if (error || !data) return { id: null, error: error?.message ?? 'insert failed' };
