@@ -825,11 +825,15 @@ export async function listFinanceExpenses(): Promise<FinanceExpense[]> {
   const supabase = getServerClient();
   const { data } = await supabase
     .from('signoff_documents')
-    .select('id, title, amount, category, status, owner_dept_id, created_at')
+    .select('id, title, amount, category, status, owner_dept_id, created_at, supersedes_document_id')
     .in('status', ['routing', 'approved'])
     .order('created_at', { ascending: false })
     .limit(1000); // 班級量遠低於此；總計需涵蓋完整集合（Codex P1）
-  return (data ?? []) as FinanceExpense[];
+  const rows = (data ?? []) as (FinanceExpense & { supersedes_document_id: string | null })[];
+  // 補開的追認單會用 supersedes_document_id 指向原單（例如流程漏簽、事後補核的情況）：
+  // 兩張單代表同一筆實際支出，只算一次，原單不重複列入支出明細與加總。
+  const supersededIds = new Set(rows.map((r) => r.supersedes_document_id).filter((id): id is string => !!id));
+  return rows.filter((r) => !supersededIds.has(r.id));
 }
 
 export async function listFinanceReports(): Promise<FinanceReportRow[]> {
