@@ -848,6 +848,16 @@ export async function listFinanceReports(): Promise<FinanceReportRow[]> {
   return (data ?? []) as FinanceReportRow[];
 }
 
+export async function getFinanceReport(id: string): Promise<FinanceReportRow | null> {
+  const supabase = getServerClient();
+  const { data } = await supabase
+    .from('finance_reports')
+    .select('id, period_label, object_path, created_at, parsed_summary')
+    .eq('id', id)
+    .maybeSingle();
+  return (data as FinanceReportRow) ?? null;
+}
+
 export async function createFinanceReport(input: {
   period_label: string;
   object_path: string;

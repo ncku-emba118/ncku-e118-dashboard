@@ -66,10 +66,12 @@ export default function ReportUploadForm() {
           opacity: submitting ? 0.6 : 1,
         }}
       >
-        {submitting ? '上傳中…' : '⬆ 上傳月報'}
+        {submitting ? '上傳中…' : '⬆ 上傳財務長 Excel 檔案'}
       </button>
       {err && <div style={{ width: '100%', fontSize: 12, color: WINE }}>{err}</div>}
-      <div style={{ width: '100%', fontSize: 11, color: MUTE }}>接受 PDF / Excel（.xls .xlsx），15MB 以內。</div>
+      <div style={{ width: '100%', fontSize: 11, color: MUTE }}>
+        接受 PDF / Excel（.xls .xlsx），15MB 以內。上傳的原始檔案不對外公開，全班只會看到整理過的收支報表。
+      </div>
     </form>
   );
 }

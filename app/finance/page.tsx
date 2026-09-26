@@ -10,11 +10,10 @@ import {
   listFinanceIncome,
   createSignedReadUrl,
 } from '@/lib/signoff/dal';
-import { sumIncome } from '@/lib/finance/income';
+import { computeFinanceOverview } from '@/lib/finance/overview';
 import { ACTIVITIES, RESERVES, META, LAST_SETTLED_AT } from '@/lib/budget/data';
 import Breadcrumb from '@/components/Breadcrumb';
 import ReportUploadForm from '@/components/finance/ReportUploadForm';
-import ReportSummaryCard from '@/components/finance/ReportSummaryCard';
 import { readSession } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
@@ -64,30 +63,19 @@ export default async function FinancePage() {
    */
   const canSeeAllDetails =
     session != null && (session.role === 'super' || session.home_dept_id === 'finance');
-  // 班費收入 = 收入明細帳本（feature B）加總；finance_settings.income_total 已停用
-  const income = Math.round(sumIncome(incomeRows));
-  const approved = expenses.filter((e) => e.status === 'approved');
-  const spent = Math.round(approved.reduce((s, e) => s + n(e.amount), 0));
-  const balance = income - spent;
+  const { income, spent, balance, categories } = computeFinanceOverview(incomeRows, expenses);
   const settledCount = ACTIVITIES.filter((a) => a.actualSplit).length;
 
-  const catMap = new Map<string, number>();
-  for (const e of approved) {
-    const k = e.category || '其他';
-    catMap.set(k, (catMap.get(k) ?? 0) + n(e.amount));
-  }
-  const categories = [...catMap.entries()]
-    .map(([category, total]) => ({ category, total: Math.round(total) }))
-    .sort((a, b) => b.total - a.total);
-
-  // 只簽 reports/ 前綴的月報（防誤植 path 簽出 bucket 內其他私有檔，Codex P1）
+  // 只簽 reports/ 前綴的月報（防誤植 path 簽出 bucket 內其他私有檔，Codex P1）。
+  // 原始 Excel/PDF 不對外公開下載——公開頁只給「查看收支報表」的整理版連結；
+  // 原始檔案的簽章連結只給秘書長/財務長這種需要核對憑證的人。
   const reports = await Promise.all(
     reportRows
       .filter((r) => r.object_path.startsWith('reports/'))
       .map(async (r) => ({
+        id: r.id,
         period_label: r.period_label,
-        url: (await createSignedReadUrl(r.object_path)).url,
-        parsed_summary: r.parsed_summary,
+        rawUrl: canSeeAllDetails ? (await createSignedReadUrl(r.object_path)).url : null,
       })),
   );
 
@@ -165,16 +153,20 @@ export default async function FinancePage() {
         <div style={divider} />
 
         <section style={sec}>
-          <div style={secH}><h2 style={h2}>月報下載</h2><span style={tag}>幹部上傳</span></div>
+          <div style={secH}><h2 style={h2}>財務月報</h2><span style={tag}>財務長 Excel 檔案上傳</span></div>
           {session && <ReportUploadForm />}
           {reports.length === 0 && <p style={{ color: MUTE, fontSize: 13 }}>尚無月報。</p>}
-          {reports.map((r, i) => (
-            <div key={i} style={{ ...repRow, flexDirection: 'column', alignItems: 'stretch' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{r.period_label}</div>
-                {r.url ? <a href={r.url} target="_blank" rel="noreferrer" style={dl}>↓ 下載</a> : <span style={{ color: MUTE, fontSize: 12 }}>—</span>}
+          {reports.map((r) => (
+            <div key={r.id} style={repRow}>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>{r.period_label}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {r.rawUrl && (
+                  <a href={r.rawUrl} target="_blank" rel="noreferrer" style={{ ...dl, color: MUTE, fontSize: 11.5 }}>
+                    原始檔案（限秘書長/財務）
+                  </a>
+                )}
+                <a href={`/finance/report/${r.id}`} style={dl}>📊 查看收支報表 →</a>
               </div>
-              {r.parsed_summary && <ReportSummaryCard summary={r.parsed_summary} />}
             </div>
           ))}
         </section>
