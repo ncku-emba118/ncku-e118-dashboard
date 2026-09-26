@@ -846,6 +846,22 @@ export async function listFinanceReports(): Promise<FinanceReportRow[]> {
   return (data ?? []) as FinanceReportRow[];
 }
 
+export async function createFinanceReport(input: {
+  period_label: string;
+  object_path: string;
+  sha256: string;
+  uploaded_by: string;
+}): Promise<{ id: string | null; error: string | null }> {
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from('finance_reports')
+    .insert(input)
+    .select('id')
+    .single();
+  if (error || !data) return { id: null, error: error?.message ?? 'insert failed' };
+  return { id: data.id as string, error: null };
+}
+
 // ── 收入明細帳本（feature B）：財務長 / super 記帳；公開頁加總顯示 ──
 export type FinanceIncome = {
   id: string;

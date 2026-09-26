@@ -13,6 +13,7 @@ import {
 import { sumIncome } from '@/lib/finance/income';
 import { ACTIVITIES, RESERVES, META, LAST_SETTLED_AT } from '@/lib/budget/data';
 import Breadcrumb from '@/components/Breadcrumb';
+import ReportUploadForm from '@/components/finance/ReportUploadForm';
 import { readSession } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
@@ -159,7 +160,8 @@ export default async function FinancePage() {
         <div style={divider} />
 
         <section style={sec}>
-          <div style={secH}><h2 style={h2}>月報下載</h2><span style={tag}>財務長上傳</span></div>
+          <div style={secH}><h2 style={h2}>月報下載</h2><span style={tag}>幹部上傳</span></div>
+          {session && <ReportUploadForm />}
           {reports.length === 0 && <p style={{ color: MUTE, fontSize: 13 }}>尚無月報。</p>}
           {reports.map((r, i) => (
             <div key={i} style={repRow}>
