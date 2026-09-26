@@ -106,6 +106,11 @@ export default function TrackingPage() {
                     <span style={{ display: 'inline-block', padding: '2px 9px', borderRadius: 10, background: st.bg, color: st.color, fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {st.label}
                     </span>
+                    {a.actualSplit?.northPaidAt && (
+                      <div style={{ marginTop: 4, fontSize: 10.5, color: OK, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        ✓ 北班已付款
+                      </div>
+                    )}
                   </td>
                   <td data-label="結算單">
                     {a.settlement ? (
