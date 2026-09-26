@@ -197,6 +197,8 @@ export type ActualSplit = {
   north: { count: number; amount: number };
   basisNote?: string;
   northNote?: string;
+  /** 北班實際匯款日期，填了就代表已核對銀行入帳、確認收款完畢（非請款提醒） */
+  northPaidAt?: string;
 };
 
 export const ACTIVITIES: Activity[] = [
@@ -539,6 +541,7 @@ export const ACTIVITIES: Activity[] = [
       basisNote:
         '班服為班級共同支出（含同學衣服、師長致贈與備用庫存），與其他班費項目一樣由全班 99 人共同分攤，不因個人是否領取而異，仍按南北人數 83:16 攤分。每人 NT$ 123,000 ÷ 99 ≈ 1,242。南北合計依未取整金額計算，與「每人 × 人數」會有數元進位差。',
       northNote: '請北班窗口彙整後轉南班財務',
+      northPaidAt: '2026-08-03',
     },
     settlement: {
       no: 'E118-S-2026-001',
@@ -595,7 +598,8 @@ export const ACTIVITIES: Activity[] = [
       basisNote:
         '本期（2026 年第 1 年）18,000 依在學人數 95 人（南 80 / 北 15）分攤。'
         + '校友總會班聯費不隨人數增減，全年級固定一份。',
-      northNote: '請北班窗口彙整後轉南班財務',
+      northNote: '北班已一次繳清全期 20 年份額 NT$ 56,842（含本期已結算 2,842 ＋ 第 2–20 年預繳代管 54,000）',
+      northPaidAt: '2026-09-22',
     },
     settlementNote:
       '校友總會班聯費為 18,000 元／年、共 20 年，全年級固定一份、不隨人數增減。'
@@ -682,6 +686,7 @@ export const ACTIVITIES: Activity[] = [
         '教師節禮品致贈對象為南北班共同享有的系所師長關係，屬南北合辦固定費用，'
         + '按在學人數 95 人（南 80 / 北 15）分攤。每人 NT$ 72,000 ÷ 95 ≈ 758。',
       northNote: '請北班窗口彙整後轉南班財務',
+      northPaidAt: '2026-09-22',
     },
     settlement: {
       no: 'E118-S-2026-003',

@@ -178,7 +178,13 @@ export default function SettlementDoc({
               <Amount
                 label={`北班應付（${northCount}/${members} ≈ ${northPct}%）`}
                 v={money(split?.north.amount)}
-                tail={split ? `平均每人 NT$ ${fmt(split.perPerson)}` : undefined}
+                tail={
+                  split
+                    ? [`平均每人 NT$ ${fmt(split.perPerson)}`, split.northPaidAt ? `✅ 已付款（${split.northPaidAt}）` : undefined]
+                        .filter(Boolean)
+                        .join('　·　')
+                    : undefined
+                }
               />
             </>
           );
@@ -213,9 +219,21 @@ export default function SettlementDoc({
             <div style={hrStyle} />
           </>
         )}
-        <Amount label={prepaid ? '北班需匯款金額 ＝ ① ＋ ②' : '北班需匯款金額'} v={money(northDue)} emphasis />
-        {/* 填妥版未填期限時整列隱藏；空白範本仍顯示待填欄 */}
-        {(!s || s.paymentDue) && <Row label="匯款期限" v={s?.paymentDue} />}
+        <Amount
+          label={split?.northPaidAt ? '北班應付金額（已收款）' : prepaid ? '北班需匯款金額 ＝ ① ＋ ②' : '北班需匯款金額'}
+          v={money(northDue)}
+          emphasis
+        />
+        {split?.northPaidAt ? (
+          <div style={{ marginTop: 6, fontSize: 12, color: WINE_DEEP, fontWeight: 600 }}>
+            ✅ 北班已於 {split.northPaidAt} 匯款付清，無待收款項。
+          </div>
+        ) : (
+          <>
+            {/* 填妥版未填期限時整列隱藏；空白範本仍顯示待填欄 */}
+            {(!s || s.paymentDue) && <Row label="匯款期限" v={s?.paymentDue} />}
+          </>
+        )}
         <div style={{ marginTop: 8, fontSize: 11.5, color: MUTE, lineHeight: 1.7 }}>
           匯款戶名與帳號由南班財務長另行私訊提供，不列於本單與網站公開頁面。
         </div>
