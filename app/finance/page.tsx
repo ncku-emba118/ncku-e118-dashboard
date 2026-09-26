@@ -8,7 +8,6 @@ import {
   listFinanceExpenses,
   listFinanceReports,
   listFinanceIncome,
-  createSignedReadUrl,
 } from '@/lib/signoff/dal';
 import { computeFinanceOverview } from '@/lib/finance/overview';
 import { ACTIVITIES, RESERVES, META, LAST_SETTLED_AT } from '@/lib/budget/data';
@@ -66,18 +65,12 @@ export default async function FinancePage() {
   const { income, spent, balance, categories } = computeFinanceOverview(incomeRows, expenses);
   const settledCount = ACTIVITIES.filter((a) => a.actualSplit).length;
 
-  // 只簽 reports/ 前綴的月報（防誤植 path 簽出 bucket 內其他私有檔，Codex P1）。
-  // 原始 Excel/PDF 不對外公開下載——公開頁只給「查看收支報表」的整理版連結；
-  // 原始檔案的簽章連結只給秘書長/財務長這種需要核對憑證的人。
-  const reports = await Promise.all(
-    reportRows
-      .filter((r) => r.object_path.startsWith('reports/'))
-      .map(async (r) => ({
-        id: r.id,
-        period_label: r.period_label,
-        rawUrl: canSeeAllDetails ? (await createSignedReadUrl(r.object_path)).url : null,
-      })),
-  );
+  // 只列 reports/ 前綴的月報（防誤植 path 誤列 bucket 內其他私有檔，Codex P1）。
+  // 原始檔案完全不對外提供下載連結——網站只開放上傳，檔案只有財務長自己手上有；
+  // 全班（含秘書長/財務長本人）一律只能透過 /finance/report/[id] 看整理版報表。
+  const reports = reportRows
+    .filter((r) => r.object_path.startsWith('reports/'))
+    .map((r) => ({ id: r.id, period_label: r.period_label }));
 
   return (
     <>
@@ -159,14 +152,7 @@ export default async function FinancePage() {
           {reports.map((r) => (
             <div key={r.id} style={repRow}>
               <div style={{ fontSize: 14, fontWeight: 500 }}>{r.period_label}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {r.rawUrl && (
-                  <a href={r.rawUrl} target="_blank" rel="noreferrer" style={{ ...dl, color: MUTE, fontSize: 11.5 }}>
-                    原始檔案（限秘書長/財務）
-                  </a>
-                )}
-                <a href={`/finance/report/${r.id}`} style={dl}>📊 查看收支報表 →</a>
-              </div>
+              <a href={`/finance/report/${r.id}`} style={dl}>📊 查看收支報表 →</a>
             </div>
           ))}
         </section>
