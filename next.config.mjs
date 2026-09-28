@@ -61,11 +61,28 @@ const nextConfig = {
   // 部署用 @netlify/plugin-nextjs（Netlify 自動偵測 Next.js）
   // 社團總表為 public/clubs/index.html 靜態頁；rewrite 讓乾淨網址 /clubs 直接服務該檔
   // 年度回顧同為 public/annual/index.html 靜態頁，同一機制服務 /annual
+  //
+  // ⚠ emba-resources.aqualux.dev 網域層級轉址：這個網域是給不分屆別的公開資源站
+  // 用的獨立網址（domain alias，同一個 Netlify site），未加這條 beforeFiles rewrite
+  // 之前，訪問裸網址會直接落到 Next.js 預設的 "/" 首頁 —— 也就是 E118 屆別專屬的完整
+  // 班級面板，資源站白名單範圍形同虛設。必須用 beforeFiles（不是預設陣列形式，那個
+  // 是「afterFiles」語意，Next 會先用檔案系統路由解析 "/"，rewrite 永遠不會被觸發）。
+  // 排除 resources/assets/_next/favicon.ico，其餘路徑（含根目錄）一律導去 /resources。
   async rewrites() {
-    return [
-      { source: '/clubs', destination: '/clubs/index.html' },
-      { source: '/annual', destination: '/annual/index.html' },
-    ];
+    return {
+      beforeFiles: [
+        {
+          source: '/:path((?!resources|assets|_next|favicon.ico).*)',
+          has: [{ type: 'host', value: 'emba-resources.aqualux.dev' }],
+          destination: '/resources',
+        },
+      ],
+      afterFiles: [
+        { source: '/clubs', destination: '/clubs/index.html' },
+        { source: '/annual', destination: '/annual/index.html' },
+      ],
+      fallback: [],
+    };
   },
   // 學分追蹤已獨立成 credits.e118.aqualux.dev（單一來源）；舊內嵌路徑 /credits 一律 301 轉過去
   async redirects() {
