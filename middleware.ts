@@ -7,10 +7,30 @@
  *   • session_version 比對由下游 admin server page / API route 做（需 DB）
  *   • PUBLIC_PATHS 白名單 /api/board/login 等不需登入即可訪問的 endpoint
  *   • API request → JSON 401；Page request → redirect /board/login?next=
+ *
+ * ── 2026-09 新增：班級共用密碼（外層閘門）──
+ * 請求一進來先「分流」，兩條路互不交錯：
+ *   1. 內層（幹部個人帳密）路徑 = 舊 matcher 那五組
+ *      （/board/admin /api/board /finance /budget /staff）
+ *      → 原封不動交給 legacyAuthMiddleware()（即改動前的 middleware 本體，
+ *        一行未改），完全不看班級 cookie。所以：
+ *        • LINE Bot / cron 的 PUBLIC_API_PATHS 等白名單行為不變（不需要班級密碼）
+ *        • 班級 cookie 不可能繞過個人帳密：這條路根本不讀它
+ *   2. 其他所有路徑（原本 middleware 不會執行、等於完全公開）
+ *      → classGate()：有效班級 cookie 才放行，否則頁面導去 /class-login?next=、
+ *        API 回 JSON 401。豁免清單見 lib/auth/class-gate.ts（班級登入頁本身、
+ *        幹部登入頁、PWA 靜態檔、秘書通知工具、跨網域 feed、資源書院網域）。
+ *   採 deny-by-default：新增的頁面預設就在班級密碼後面，不用記得登記。
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE_NAME, verifySession } from './lib/auth/jwt';
 import { isMagicScopeAllowed } from './lib/auth/magic-allowlist';
+import {
+  CLASS_COOKIE_NAME,
+  CLASS_LOGIN_PATH,
+  isClassGateExempt,
+  verifyClassToken,
+} from './lib/auth/class-gate';
 
 /**
  * 白名單：這些 path 不需登入即可訪問（所有 method）。
@@ -67,7 +87,75 @@ const GET_PUBLIC_PATTERNS: RegExp[] = [
  */
 const REQUIRES_LOGIN_PREFIXES = ['/board/admin', '/api/board'];
 
+/**
+ * 內層（幹部個人帳密）路徑 = 改動前 config.matcher 的五組，語意比照 Next
+ * matcher 的 `/x/:path*`：`/x` 本身或 `/x/...`（`/x-evil` 不算）。
+ * 命中的請求走 legacyAuthMiddleware()，行為與加班級密碼之前完全一致。
+ */
+const LEGACY_MATCHER_BASES = ['/board/admin', '/api/board', '/finance', '/budget', '/staff'];
+
+function matchesLegacyBase(path: string): boolean {
+  return LEGACY_MATCHER_BASES.some((base) => path === base || path.startsWith(`${base}/`));
+}
+
+export function isLegacyAuthPath(path: string): boolean {
+  if (matchesLegacyBase(path)) return true;
+  // 保守：%xx 編碼後的變體（例如 /board/%61dmin）也當內層，交給既有邏輯把關，
+  // 不讓它掉進「只要班級 cookie」的外層。
+  try {
+    return matchesLegacyBase(decodeURIComponent(path));
+  } catch {
+    return false;
+  }
+}
+
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  if (isLegacyAuthPath(path)) {
+    return legacyAuthMiddleware(request);
+  }
+  return classGate(request, path);
+}
+
+/**
+ * 外層：班級共用密碼。只處理「非內層」路徑（見檔頭）。
+ * 不讀、不驗、不改幹部 session cookie。
+ */
+async function classGate(request: NextRequest, path: string) {
+  const host = request.headers.get('host') ?? request.nextUrl.host;
+  if (isClassGateExempt(path, host)) {
+    return NextResponse.next();
+  }
+
+  const token = request.cookies.get(CLASS_COOKIE_NAME)?.value;
+  if (await verifyClassToken(token)) {
+    return NextResponse.next();
+  }
+
+  // API（非 /api/board，那條走內層）→ JSON 401；頁面 GET/HEAD → 導去班級登入頁
+  if (path.startsWith('/api/')) {
+    const res = NextResponse.json({ error: '請先輸入班級密碼' }, { status: 401 });
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
+  }
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    const res = new NextResponse('請先輸入班級密碼', { status: 401 });
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
+  }
+  const url = request.nextUrl.clone();
+  url.pathname = CLASS_LOGIN_PATH;
+  url.search = '';
+  url.searchParams.set('next', `${path}${request.nextUrl.search}`);
+  const res = NextResponse.redirect(url);
+  res.headers.set('Cache-Control', 'no-store');
+  return res;
+}
+
+/**
+ * 內層：改動前的 middleware 本體，內容一字未改（只改了函式名稱）。
+ */
+async function legacyAuthMiddleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const token = request.cookies.get(COOKIE_NAME)?.value;
   const session = token ? await verifySession(token) : null;
@@ -156,5 +244,10 @@ export const config = {
     '/finance/:path*',
     '/budget/:path*',
     '/staff/:path*',
+    // 班級共用密碼（外層）：deny-by-default，其餘所有路徑都要經過 middleware。
+    // 只排除 Next 的建置產物（/_next/static：JS/CSS chunk，不含班級資料）
+    // 與 dev HMR。/_next/image 刻意不排除（可被拿來代抓 /assets 圖片）。
+    // 上面五條仍保留、語意不變：它們在 middleware() 內會先被分流到既有邏輯。
+    '/((?!_next/static|_next/webpack-hmr).*)',
   ],
 };
