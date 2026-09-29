@@ -45,7 +45,21 @@ export type StoredHashResult =
   | { ok: true; hash: string | null }
   | { ok: false; error: string };
 
-/** 讀目前的班級密碼 hash。hash=null 代表尚未設定（呼叫端必須 fail-closed）。 */
+/**
+ * 完整 bcrypt 格式：$2a$/$2b$/$2y$ + 兩位數 cost（04–31，bcryptjs 可接受的範圍）
+ * + 53 字元（22 字 salt + 31 字 hash，bcrypt 自用 base64 字母表）。
+ */
+const BCRYPT_HASH_RE = /^\$2[aby]\$(0[4-9]|[12]\d|3[01])\$[./A-Za-z0-9]{53}$/;
+
+export function isWellFormedBcryptHash(value: string): boolean {
+  return BCRYPT_HASH_RE.test(value);
+}
+
+/**
+ * 讀目前的班級密碼 hash。
+ *   • hash=null → 尚未設定（空值 / 沒有這筆），呼叫端必須 fail-closed
+ *   • ok=false  → DB 錯誤，或存的值不是完整 bcrypt 格式（設定錯誤，不當成「未設定」）
+ */
 export async function getClassPasswordHash(): Promise<StoredHashResult> {
   const supabase = getServerClient();
   const { data, error } = await supabase
@@ -55,13 +69,28 @@ export async function getClassPasswordHash(): Promise<StoredHashResult> {
     .maybeSingle();
   if (error) return { ok: false, error: error.message };
   const value = (data?.value as string | undefined) ?? null;
-  // bcrypt hash 一定是 $2a$/$2b$/$2y$ 開頭；其他值一律當作「未設定」
-  if (!value || !/^\$2[aby]\$\d{2}\$/.test(value)) return { ok: true, hash: null };
+  if (!value) return { ok: true, hash: null };
+  if (typeof value !== 'string' || !isWellFormedBcryptHash(value)) {
+    return { ok: false, error: 'stored_hash_malformed' };
+  }
   return { ok: true, hash: value };
 }
 
-export async function compareClassPassword(plain: string, hash: string): Promise<boolean> {
-  return await bcrypt.compare(plain, hash);
+/**
+ * 比對密碼。區分「密碼錯」與「設定錯誤」：
+ *   • { ok: true, match }        正常比對完成
+ *   • { ok: false, errorType }   hash 格式壞掉 / bcrypt 例外 → 呼叫端回 503，
+ *                                不可當成一次密碼錯誤。errorType 不含 hash / 密碼。
+ */
+export type CompareResult = { ok: true; match: boolean } | { ok: false; errorType: string };
+
+export async function compareClassPassword(plain: string, hash: string): Promise<CompareResult> {
+  if (!isWellFormedBcryptHash(hash)) return { ok: false, errorType: 'malformed_hash' };
+  try {
+    return { ok: true, match: await bcrypt.compare(plain, hash) };
+  } catch (e) {
+    return { ok: false, errorType: e instanceof Error ? `bcrypt_${e.name}` : 'bcrypt_unknown' };
+  }
 }
 
 /** 設定新班級密碼（呼叫端負責權限檢查 + validateNewClassPassword）。 */
@@ -133,22 +162,35 @@ export async function beginClassLoginAttempt(ipHash: string): Promise<AttemptGat
   return { ok: true, attemptId };
 }
 
-/** 驗證成功 → 把本次嘗試改成 succeeded（不計入失敗次數）。失敗不影響登入結果。 */
-export async function markClassLoginSucceeded(attemptId: number): Promise<void> {
-  const supabase = getServerClient();
-  const { error } = await supabase
-    .from('class_gate_attempts')
-    .update({ succeeded: true })
-    .eq('id', attemptId);
-  if (error) {
-    console.warn('[class_gate.mark_success_failed]', { attemptId, error: error.message });
+/**
+ * 驗證成功 → 把本次嘗試改成 succeeded（不計入失敗次數）。
+ * 回傳 { ok: false } 時該筆會一直被算成失敗（污染限流計數）→ 呼叫端要 console.error
+ * 記錄；但不影響登入結果（密碼是對的）。本函式不 throw。
+ */
+export async function markClassLoginSucceeded(
+  attemptId: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const supabase = getServerClient();
+    const { error } = await supabase
+      .from('class_gate_attempts')
+      .update({ succeeded: true })
+      .eq('id', attemptId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.name : 'unknown' };
   }
 }
 
-/** 順手清掉 24 小時前的紀錄（不影響登入結果，失敗只記 log） */
+/** 順手清掉 24 小時前的紀錄（不影響登入結果，失敗只記 log；不 throw） */
 export async function pruneOldClassLoginAttempts(): Promise<void> {
-  const supabase = getServerClient();
-  const cutoff = new Date(Date.now() - ATTEMPT_RETENTION_MS).toISOString();
-  const { error } = await supabase.from('class_gate_attempts').delete().lt('created_at', cutoff);
-  if (error) console.warn('[class_gate.prune_failed]', { error: error.message });
+  try {
+    const supabase = getServerClient();
+    const cutoff = new Date(Date.now() - ATTEMPT_RETENTION_MS).toISOString();
+    const { error } = await supabase.from('class_gate_attempts').delete().lt('created_at', cutoff);
+    if (error) console.warn('[class_gate.prune_failed]', { error: error.message });
+  } catch (e) {
+    console.warn('[class_gate.prune_failed]', { error: e instanceof Error ? e.name : 'unknown' });
+  }
 }

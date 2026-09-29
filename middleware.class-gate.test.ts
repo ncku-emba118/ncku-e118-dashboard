@@ -1,5 +1,6 @@
 import { describe, expect, test, beforeAll } from 'vitest';
 import { NextRequest } from 'next/server';
+import { unstable_doesMiddlewareMatch } from 'next/experimental/testing/server';
 
 /**
  * middleware.ts — 班級共用密碼（外層）整合測試。
@@ -19,7 +20,7 @@ beforeAll(() => {
   process.env.CLASS_GATE_SECRET = 'e'.repeat(40);
 });
 
-const { middleware, isLegacyAuthPath } = await import('./middleware');
+const { middleware, isLegacyAuthPath, classifyAuthPath, config } = await import('./middleware');
 const { signSession } = await import('./lib/auth/jwt');
 const { signClassToken } = await import('./lib/auth/class-gate');
 
@@ -197,7 +198,51 @@ describe('內層不受影響：個人帳密保護照舊', () => {
   );
 });
 
-describe('isLegacyAuthPath（分流判斷）', () => {
+describe('編碼路徑繞過：原始 path 沒命中內層、decode 後才命中 → 一律 404', () => {
+  // legacyAuthMiddleware() 內部用「未解碼」字串比對 REQUIRES_LOGIN_PREFIXES，
+  // 若把編碼變體交給它會直接 NextResponse.next() 放行 → 兩層都沒擋。
+  test.each([
+    ['GET', '/board/%61dmin'],
+    ['GET', '/board/%41dmin'],
+    ['GET', '/board/%61dmin/new'],
+    ['GET', '/api/board%2Fposts'],
+    ['GET', '/api/%62oard/posts'],
+    ['POST', '/api/%62oard/class-password'],
+    ['GET', '/%66inance'],
+    ['GET', '/fin%61nce'],
+    ['GET', '/%62udget/settlement'],
+    ['GET', '/st%61ff'],
+  ])('%s %s → 404 no-store，不放行、不 redirect', async (method, p) => {
+    for (const cookie of [undefined, await classCookie(), await officerCookie()]) {
+      const res = await middleware(makeReq(p, method, cookie));
+      expect(isPassthrough(res)).toBe(false);
+      expect(res.status).toBe(404);
+      expect(res.headers.get('location')).toBeNull();
+      expect(res.headers.get('cache-control')).toBe('no-store');
+      expect(res.headers.get('set-cookie')).toBeNull();
+    }
+  });
+
+  test('/board/admin（未編碼、無 session）→ 仍導 /board/login', async () => {
+    const res = await middleware(makeReq('/board/admin'));
+    expect(redirectTarget(res)?.pathname).toBe('/board/login');
+  });
+
+  test.each(['/finance/%E4%B8%AD', '/finance/%E4%B8%AD%E6%96%87', '/budget/settlement/%E6%B8%AC'])(
+    '合法中文 slug %s → 仍走內層（放行，行為不變）',
+    async (p) => {
+      const res = await middleware(makeReq(p));
+      expect(isPassthrough(res)).toBe(true);
+    },
+  );
+
+  test('decode 失敗的 malformed 編碼 → 走外層（deny-by-default）', async () => {
+    const res = await middleware(makeReq('/board/%E0%A4%A'));
+    expect(redirectTarget(res)?.pathname).toBe('/class-login');
+  });
+});
+
+describe('classifyAuthPath / isLegacyAuthPath（分流判斷）', () => {
   test.each([
     '/board/admin',
     '/board/admin/new',
@@ -205,17 +250,58 @@ describe('isLegacyAuthPath（分流判斷）', () => {
     '/api/board/login',
     '/finance',
     '/finance/signoff/x',
+    '/finance/%E4%B8%AD',
     '/budget',
     '/staff',
-    '/board/%61dmin', // 編碼變體也歸內層（交給既有邏輯）
   ])('%s → 內層', (p) => {
+    expect(classifyAuthPath(p)).toBe('legacy');
     expect(isLegacyAuthPath(p)).toBe(true);
   });
 
-  test.each(['/', '/board', '/board/login', '/board/adminx', '/finance-evil', '/staffroom', '/api/boardx'])(
-    '%s → 外層',
+  test.each(['/board/%61dmin', '/api/board%2Fposts', '/api/%62oard/x', '/fin%61nce', '/board/admin%2Fx'])(
+    '%s → 編碼變體（不交給內層）',
     (p) => {
+      expect(classifyAuthPath(p)).toBe('encoded_legacy');
       expect(isLegacyAuthPath(p)).toBe(false);
     },
   );
+
+  test.each([
+    '/',
+    '/board',
+    '/board/login',
+    '/board/adminx',
+    '/finance-evil',
+    '/staffroom',
+    '/api/boardx',
+    '/board/%E0%A4%A', // malformed
+  ])('%s → 外層', (p) => {
+    expect(classifyAuthPath(p)).toBe('class_gate');
+    expect(isLegacyAuthPath(p)).toBe(false);
+  });
+});
+
+describe('config.matcher（unstable_doesMiddlewareMatch）', () => {
+  const matches = (p: string) =>
+    unstable_doesMiddlewareMatch({ config, url: `http://localhost:3000${p}` });
+
+  test.each([
+    '/',
+    '/clubs',
+    '/calendar',
+    '/assets/x.jpeg',
+    '/_next/image',
+    '/_next/image?url=%2Fassets%2Fclass.jpeg&w=640&q=75',
+    '/class-login',
+    '/api/class-gate/login',
+    '/finance',
+    '/board/admin',
+    '/board/%61dmin',
+  ])('%s → middleware 會執行', (p) => {
+    expect(matches(p)).toBe(true);
+  });
+
+  test.each(['/_next/static/chunks/x.js', '/_next/webpack-hmr'])('%s → 不執行（Next 建置產物 / HMR）', (p) => {
+    expect(matches(p)).toBe(false);
+  });
 });

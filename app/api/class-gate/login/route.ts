@@ -5,10 +5,10 @@
  *   對它走既有白名單邏輯；本 API 由 lib/auth/class-gate.ts 的豁免清單放行。
  *
  * 安全設計比照 app/api/board/login/route.ts：
- *   • Content-Length 上限 1 KB
+ *   • body 上限 1 KB（Content-Length 快速拒絕 + 實際讀取 byte 數，擋 chunked 大 body）
  *   • IP 抓不到 → 503（不歸到共用 bucket）
  *   • 防暴力：DB 計數（同 IP / 全站），見 lib/auth/class-gate-server.ts
- *   • 任何 DB 錯誤 → 503（fail-closed，不放行）
+ *   • 任何 DB 錯誤 / 外部依賴例外 / hash 格式壞掉 → 503（fail-closed，不放行、不發 cookie）
  *   • 密碼尚未設定 / CLASS_GATE_SECRET 未設定 → 503（fail-closed）
  *   • cookie httpOnly + Secure(prod) + SameSite=Lax + Path=/
  *   • 回應不含任何身分資訊；log 不記密碼、不記原始 IP
@@ -24,11 +24,13 @@ import {
   beginClassLoginAttempt,
   compareClassPassword,
   getClassPasswordHash,
+  isWellFormedBcryptHash,
   markClassLoginSucceeded,
   pruneOldClassLoginAttempts,
 } from '@/lib/auth/class-gate-server';
 import { hashIp } from '@/lib/ip-hash';
 import { resolveClientIp } from '@/lib/ip-resolve';
+import { parseJsonOrNull, readLimitedText } from '@/lib/read-limited-body';
 
 const MAX_BODY_BYTES = 1024;
 const MAX_PASSWORD_INPUT = 128;
@@ -50,12 +52,30 @@ function jsonResponse(body: object, status: number, traceId: string) {
 
 const UNAVAILABLE = '系統暫時無法驗證，請稍後再試';
 
+/** log 用：只記錯誤類別名稱，不記 message（可能夾帶連線字串等） */
+function errorType(e: unknown): string {
+  return e instanceof Error ? e.name : typeof e;
+}
+
 export async function POST(req: NextRequest) {
   const traceId = crypto.randomUUID();
+  try {
+    return await handleLogin(req, traceId);
+  } catch (e) {
+    // 外部依賴（Supabase / env / bcrypt…）例外 → 受控 503，不 throw 成 500、不發 cookie
+    console.error('[class_gate.login.unexpected_error]', { traceId, errorType: errorType(e) });
+    return jsonResponse({ error: UNAVAILABLE }, 503, traceId);
+  }
+}
 
-  // ── 1. Body size limit ──
+async function handleLogin(req: NextRequest, traceId: string) {
+  // ── 1. Body size limit（Content-Length 快速拒絕 + 實際 byte 數）──
   const contentLength = Number(req.headers.get('content-length') || 0);
   if (contentLength > MAX_BODY_BYTES) {
+    return jsonResponse({ error: '請求過大' }, 413, traceId);
+  }
+  const raw = await readLimitedText(req, MAX_BODY_BYTES);
+  if (!raw.ok && raw.reason === 'too_large') {
     return jsonResponse({ error: '請求過大' }, 413, traceId);
   }
 
@@ -72,8 +92,8 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 3. Parse body ──
-  const body = (await req.json().catch(() => null)) as { password?: unknown } | null;
-  if (!body || typeof body.password !== 'string') {
+  const body = (raw.ok ? parseJsonOrNull(raw.text) : null) as { password?: unknown } | null;
+  if (!body || typeof body !== 'object' || typeof body.password !== 'string') {
     return jsonResponse({ error: '請輸入班級密碼' }, 400, traceId);
   }
   const password = body.password;
@@ -91,6 +111,11 @@ export async function POST(req: NextRequest) {
     console.error('[class_gate.login.password_not_set]', { traceId });
     return jsonResponse({ error: '班級密碼尚未設定，請聯繫幹部' }, 503, traceId);
   }
+  // 設定錯誤（hash 格式壞掉）必須在記嘗試之前擋下：不算一次失敗登入、不污染限流計數
+  if (!isWellFormedBcryptHash(stored.hash)) {
+    console.error('[class_gate.login.hash_malformed]', { traceId });
+    return jsonResponse({ error: UNAVAILABLE }, 503, traceId);
+  }
 
   // ── 5. 防暴力：先記嘗試再數次數 ──
   const { hash: ipHash } = hashIp(ip);
@@ -105,15 +130,31 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 6. bcrypt compare ──
-  const ok = await compareClassPassword(password, stored.hash);
-  if (!ok) {
+  const cmp = await compareClassPassword(password, stored.hash);
+  if (!cmp.ok) {
+    // 設定錯誤（不是密碼錯）→ 503，不發 cookie
+    console.error('[class_gate.login.compare_failed]', { traceId, errorType: cmp.errorType });
+    return jsonResponse({ error: UNAVAILABLE }, 503, traceId);
+  }
+  if (!cmp.match) {
     console.info('[class_gate.login.bad_password]', { traceId });
     return jsonResponse({ error: '班級密碼錯誤' }, 401, traceId);
   }
 
   // ── 7. 成功：發 cookie ──
-  await markClassLoginSucceeded(gate.attemptId);
-  await pruneOldClassLoginAttempts();
+  // 記帳失敗不擋登入（密碼是對的），但要留 error log：該筆嘗試會一直被算成失敗
+  const marked = await markClassLoginSucceeded(gate.attemptId).catch((e: unknown) => ({
+    ok: false as const,
+    error: errorType(e),
+  }));
+  if (!marked.ok) {
+    console.error('[class_gate.login.mark_success_failed]', {
+      traceId,
+      attemptId: gate.attemptId,
+      error: marked.error,
+    });
+  }
+  await pruneOldClassLoginAttempts().catch(() => {});
 
   const token = await signClassToken();
   console.info('[class_gate.login.success]', { traceId });

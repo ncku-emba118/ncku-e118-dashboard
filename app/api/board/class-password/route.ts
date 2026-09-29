@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readSession } from '@/lib/auth/session';
 import { isSameOrigin } from '@/lib/signoff/http';
 import { setClassPassword, validateNewClassPassword } from '@/lib/auth/class-gate-server';
+import { parseJsonOrNull, readLimitedText } from '@/lib/read-limited-body';
 
 const MAX_BODY_BYTES = 1024;
 
@@ -34,9 +35,14 @@ export async function POST(req: NextRequest) {
   if (contentLength > MAX_BODY_BYTES) {
     return NextResponse.json({ error: '請求過大' }, { status: 413 });
   }
+  // 沒帶 Content-Length（chunked）也要擋：以實際讀到的 UTF-8 byte 數為準
+  const raw = await readLimitedText(req, MAX_BODY_BYTES);
+  if (!raw.ok && raw.reason === 'too_large') {
+    return NextResponse.json({ error: '請求過大' }, { status: 413 });
+  }
 
-  const body = (await req.json().catch(() => null)) as { password?: unknown } | null;
-  if (!body || typeof body.password !== 'string') {
+  const body = (raw.ok ? parseJsonOrNull(raw.text) : null) as { password?: unknown } | null;
+  if (!body || typeof body !== 'object' || typeof body.password !== 'string') {
     return NextResponse.json({ error: '請輸入新密碼' }, { status: 400 });
   }
   const invalid = validateNewClassPassword(body.password);

@@ -1,4 +1,4 @@
-import { describe, expect, test, vi, beforeEach, beforeAll } from 'vitest';
+import { describe, expect, test, vi, beforeEach, beforeAll, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import bcrypt from 'bcryptjs';
 
@@ -27,13 +27,17 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/auth/class-gate-server', async () => {
-  const bcryptjs = (await import('bcryptjs')).default;
+  // compareClassPassword 用真的（bcrypt 真的跑，含 malformed hash 的例外處理）
+  const actual = await vi.importActual<typeof import('@/lib/auth/class-gate-server')>(
+    '@/lib/auth/class-gate-server',
+  );
   return {
     getClassPasswordHash: mocks.getClassPasswordHash,
     beginClassLoginAttempt: mocks.beginClassLoginAttempt,
     markClassLoginSucceeded: mocks.markClassLoginSucceeded,
     pruneOldClassLoginAttempts: mocks.pruneOldClassLoginAttempts,
-    compareClassPassword: (p: string, h: string) => bcryptjs.compare(p, h),
+    compareClassPassword: actual.compareClassPassword,
+    isWellFormedBcryptHash: actual.isWellFormedBcryptHash,
   };
 });
 
@@ -58,11 +62,15 @@ function classCookieFrom(res: Response): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getClassPasswordHash.mockResolvedValue({ ok: true, hash: HASH });
   mocks.beginClassLoginAttempt.mockResolvedValue({ ok: true, attemptId: 1 });
-  mocks.markClassLoginSucceeded.mockResolvedValue(undefined);
+  mocks.markClassLoginSucceeded.mockResolvedValue({ ok: true });
   mocks.pruneOldClassLoginAttempts.mockResolvedValue(undefined);
 });
 
@@ -150,5 +158,157 @@ describe('POST /api/class-gate/login', () => {
   test('body 過大 → 413', async () => {
     const res = await POST(makeReq({ password: 'x' }, { 'content-length': '5000' }));
     expect(res.status).toBe(413);
+  });
+
+  test('正常大小但沒帶 content-length 的 body → 行為不變（200）', async () => {
+    const req = makeReq({ password: 'correct-horse' });
+    expect(req.headers.get('content-length')).toBeNull();
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+  });
+});
+
+/** 抓 console.error 的所有參數序列化後，確認沒有敏感值 */
+function expectNoSecretsLogged(spy: ReturnType<typeof vi.spyOn>) {
+  const logged = JSON.stringify(spy.mock.calls);
+  expect(logged).not.toContain('correct-horse');
+  expect(logged).not.toContain(HASH);
+  expect(logged).not.toContain('203.0.113.9');
+}
+
+describe('外部依賴例外 → 受控 503（不 throw 成 500、不發 cookie）', () => {
+  test('讀 hash 時 reject（DB / env 例外）→ 503 + x-trace-id、無 cookie', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.getClassPasswordHash.mockRejectedValueOnce(new Error('fetch failed'));
+    const res = await POST(makeReq({ password: 'correct-horse' }));
+    expect(res.status).toBe(503);
+    expect(res.headers.get('x-trace-id')).toBeTruthy();
+    expect(classCookieFrom(res)).toBeNull();
+    expect(err).toHaveBeenCalled();
+    expect(JSON.stringify(err.mock.calls)).toContain(res.headers.get('x-trace-id')!);
+    expectNoSecretsLogged(err);
+  });
+
+  test('beginClassLoginAttempt reject → 503、無 cookie', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.beginClassLoginAttempt.mockRejectedValueOnce(new Error('boom'));
+    const res = await POST(makeReq({ password: 'correct-horse' }));
+    expect(res.status).toBe(503);
+    expect(classCookieFrom(res)).toBeNull();
+    expect(err).toHaveBeenCalled();
+    expectNoSecretsLogged(err);
+  });
+
+  test('DB 裡的 bcrypt hash 格式壞掉（$2b$99$…）→ 503（設定錯誤，不是密碼錯）、無 cookie', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const badHash = '$2b$99$' + 'a'.repeat(53);
+    mocks.getClassPasswordHash.mockResolvedValueOnce({ ok: true, hash: badHash });
+    const res = await POST(makeReq({ password: 'correct-horse' }));
+    expect(res.status).toBe(503);
+    expect(classCookieFrom(res)).toBeNull();
+    expect(err).toHaveBeenCalled();
+    expect(JSON.stringify(err.mock.calls)).not.toContain(badHash);
+    expectNoSecretsLogged(err);
+    // 不能被當成一次「密碼錯誤」：不記嘗試（不污染限流計數）、不記 bad_password
+    expect(mocks.beginClassLoginAttempt).not.toHaveBeenCalled();
+    expect(JSON.stringify(info.mock.calls)).not.toContain('bad_password');
+  });
+});
+
+describe('compareClassPassword（真的 bcrypt）', () => {
+  test('對 / 錯密碼 → ok:true + match；壞掉的 hash → ok:false（不 throw、不含 hash）', async () => {
+    const { compareClassPassword } = await vi.importActual<
+      typeof import('@/lib/auth/class-gate-server')
+    >('@/lib/auth/class-gate-server');
+    expect(await compareClassPassword('correct-horse', HASH)).toEqual({ ok: true, match: true });
+    expect(await compareClassPassword('wrong', HASH)).toEqual({ ok: true, match: false });
+    for (const bad of ['$2b$99$' + 'a'.repeat(53), '$2b$03$' + 'a'.repeat(53), '$2b$12$short', 'plain']) {
+      const r = await compareClassPassword('correct-horse', bad);
+      expect(r.ok).toBe(false);
+      expect(JSON.stringify(r)).not.toContain(bad);
+    }
+  });
+});
+
+describe('沒有 Content-Length 的超大 body', () => {
+  test('不帶 content-length、body 2MB → 413、不查 DB', async () => {
+    const big = JSON.stringify({ password: 'x'.repeat(2 * 1024 * 1024) });
+    const req = makeReq(big);
+    expect(req.headers.get('content-length')).toBeNull();
+    const res = await POST(req);
+    expect(res.status).toBe(413);
+    expect(mocks.getClassPasswordHash).not.toHaveBeenCalled();
+    expect(mocks.beginClassLoginAttempt).not.toHaveBeenCalled();
+  });
+
+  test('chunked stream（無 content-length）超過 1KB → 413', async () => {
+    const chunk = new TextEncoder().encode('x'.repeat(600));
+    let sent = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(ctrl) {
+        if (sent++ < 4000) ctrl.enqueue(chunk);
+        else ctrl.close();
+      },
+    });
+    const req = new NextRequest('http://localhost:3000/api/class-gate/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-nf-client-connection-ip': '203.0.113.9' },
+      body: stream,
+      duplex: 'half', // undici 需要 duplex 才能送 stream body
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(413);
+    expect(sent).toBeLessThan(4000); // 沒有把整包讀完
+  });
+
+  test('UTF-8 實際 byte 數超過上限（字元數沒超過）→ 413', async () => {
+    // 400 個中文字 ≈ 1200 bytes > 1KB，但字元數 < 1024
+    const res = await POST(makeReq(JSON.stringify({ password: '中'.repeat(400) })));
+    expect(res.status).toBe(413);
+  });
+});
+
+describe('成功登入後記帳失敗', () => {
+  test('markClassLoginSucceeded 回 { ok: false } → 仍 200 + cookie，並 console.error', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.markClassLoginSucceeded.mockResolvedValueOnce({ ok: false, error: 'update failed' });
+    const res = await POST(makeReq({ password: 'correct-horse' }));
+    expect(res.status).toBe(200);
+    const token = classCookieFrom(res);
+    expect(token).toBeTruthy();
+    expect(await verifyClassToken(token!)).toBe(true);
+    expect(err).toHaveBeenCalled();
+    expect(JSON.stringify(err.mock.calls)).toContain(res.headers.get('x-trace-id')!);
+    expectNoSecretsLogged(err);
+    expect(JSON.stringify(err.mock.calls)).not.toContain(token!);
+  });
+});
+
+describe('production cookie（NODE_ENV=production）', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  test('Set-Cookie = __Host-class-sid; Path=/; Secure; HttpOnly; SameSite=Lax; 無 Domain；token 可驗', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.resetModules();
+    const prodRoute = await import('./route');
+    const prodGate = await import('@/lib/auth/class-gate');
+    expect(prodGate.CLASS_COOKIE_NAME).toBe('__Host-class-sid');
+
+    const res = await prodRoute.POST(makeReq({ password: 'correct-horse' }));
+    expect(res.status).toBe(200);
+    const sc = res.headers.get('set-cookie')!;
+    expect(sc).toMatch(/^__Host-class-sid=/);
+    expect(sc).toMatch(/;\s*Path=\/(;|$)/);
+    expect(sc).toMatch(/;\s*Secure(;|$)/i);
+    expect(sc).toMatch(/;\s*HttpOnly(;|$)/i);
+    expect(sc).toMatch(/;\s*SameSite=Lax(;|$)/i);
+    expect(sc).toMatch(/Max-Age=7776000/);
+    expect(sc).not.toMatch(/Domain=/i);
+    const token = decodeURIComponent(sc.match(/^__Host-class-sid=([^;]+)/)![1]);
+    expect(await prodGate.verifyClassToken(token)).toBe(true);
   });
 });
