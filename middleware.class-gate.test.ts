@@ -104,6 +104,49 @@ describe('外層：沒有班級 cookie → 導去 /class-login?next=', () => {
   });
 });
 
+describe('結尾斜線：不可無限重導（Deploy Preview 實測 P0）', () => {
+  test.each(['/clubs/', '/calendar/', '/', '/clubs', '/board/', '/calendar/?month=10'])(
+    'GET %s → Location pathname 恰好是 /class-login（無結尾斜線），query 只帶 next',
+    async (p) => {
+      const res = await middleware(makeReq(p));
+      const loc = redirectTarget(res)!;
+      expect(loc.pathname).toBe('/class-login');
+      expect([...loc.searchParams.keys()]).toEqual(['next']);
+      expect(loc.searchParams.get('next')).toBe(p);
+    },
+  );
+
+  test.each([
+    ['GET', '/class-login/'],
+    ['GET', '/board/login/'],
+    ['POST', '/api/class-gate/login/'],
+    ['GET', '/api/class-gate/login/'],
+  ])('%s %s（單一結尾斜線）→ 豁免放行', async (method, p) => {
+    const res = await middleware(makeReq(p, method));
+    expect(isPassthrough(res)).toBe(true);
+  });
+
+  test.each(['/class-login//', '/class-login/x', '/class-login%2F', '//', '/api/class-gate/login//'])(
+    '%s → 仍被擋（不放寬）',
+    async (p) => {
+      const res = await middleware(makeReq(p));
+      expect(isPassthrough(res)).toBe(false);
+    },
+  );
+
+  test.each([...GATED_PAGES, '/clubs/', '/calendar/', '/board/', '/calendar/?month=10', '/class-login//'])(
+    '循環防護：GET %s 的 redirect 目標再丟進 middleware → 不再 redirect',
+    async (p) => {
+      const first = await middleware(makeReq(p));
+      const loc = redirectTarget(first)!;
+      expect(loc).toBeTruthy();
+      const second = await middleware(makeReq(`${loc.pathname}${loc.search}`));
+      expect(second.headers.get('location')).toBeNull();
+      expect(isPassthrough(second)).toBe(true);
+    },
+  );
+});
+
 describe('外層：有效班級 cookie → 放行', () => {
   test.each(GATED_PAGES)('GET %s', async (p) => {
     const res = await middleware(makeReq(p, 'GET', await classCookie()));

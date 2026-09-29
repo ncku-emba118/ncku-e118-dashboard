@@ -18,7 +18,10 @@ export function safeClassNext(raw: string | null): string {
     const base = 'http://class-gate.invalid';
     const u = new URL(raw, base);
     if (u.origin !== base) return CLASS_DEFAULT_NEXT;
-    if (u.pathname === CLASS_LOGIN_PATH) return CLASS_DEFAULT_NEXT; // 避免導回自己
+    // 避免導回自己（含單一結尾斜線版 /class-login/，它也是豁免的登入頁）
+    if (u.pathname === CLASS_LOGIN_PATH || u.pathname === `${CLASS_LOGIN_PATH}/`) {
+      return CLASS_DEFAULT_NEXT;
+    }
     return `${u.pathname}${u.search}${u.hash}`;
   } catch {
     return CLASS_DEFAULT_NEXT;

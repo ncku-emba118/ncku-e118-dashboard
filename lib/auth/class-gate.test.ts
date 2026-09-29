@@ -211,6 +211,8 @@ describe('safeClassNext（防開放重導向）', () => {
     'javascript:alert(1)',
     '/class-login',
     '/class-login?next=/x',
+    '/class-login/',
+    '/class-login/?next=%2Fclubs%2F',
     '/foo\nbar',
   ])('%s → /', (raw) => {
     expect(safeClassNext(raw as string | null)).toBe('/');

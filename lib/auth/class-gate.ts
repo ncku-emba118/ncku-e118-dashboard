@@ -174,8 +174,21 @@ const EXEMPT_PATTERNS: RegExp[] = [/^\/assets\/pwa-icon-[a-z0-9-]+\.png$/];
 export const RESOURCES_HOST = 'emba-resources.aqualux.dev';
 const RESOURCES_HOST_EXEMPT_ASSET = /^\/assets\/resources\/[A-Za-z0-9._-]+$/;
 
-function isPathExempt(path: string): boolean {
+/**
+ * EXEMPT_EXACT 容忍「單一」結尾斜線（/class-login/、/api/class-gate/login/…）：
+ * 舊書籤 / LINE 連結常帶斜線，Next（trailingSlash:false）之後會自己 308 到無斜線版。
+ * 只放寬 EXACT；'/'、'//'、'/x//' 不算（PREFIXES / PATTERNS 不受影響）。
+ */
+function isExactExempt(path: string): boolean {
   if (EXEMPT_EXACT.has(path)) return true;
+  if (path.length > 1 && path.endsWith('/') && !path.endsWith('//')) {
+    return EXEMPT_EXACT.has(path.slice(0, -1));
+  }
+  return false;
+}
+
+function isPathExempt(path: string): boolean {
+  if (isExactExempt(path)) return true;
   if (EXEMPT_PREFIXES.some((p) => path.startsWith(p))) return true;
   return EXEMPT_PATTERNS.some((re) => re.test(path));
 }

@@ -183,9 +183,10 @@ async function classGate(request: NextRequest, path: string) {
     res.headers.set('Cache-Control', 'no-store');
     return res;
   }
-  const url = request.nextUrl.clone();
-  url.pathname = CLASS_LOGIN_PATH;
-  url.search = '';
+  // ⚠ 不用 request.nextUrl.clone()：NextURL 會記住原請求有沒有結尾斜線，改 pathname
+  //   後照樣補回 → /clubs/ 會導去 /class-login/，而那條本身又被擋 → 無限重導。
+  //   用一般 URL 組出恰好 '/class-login'（無結尾斜線），query 只帶 next。
+  const url = new URL(CLASS_LOGIN_PATH, request.nextUrl.origin);
   url.searchParams.set('next', `${path}${request.nextUrl.search}`);
   const res = NextResponse.redirect(url);
   res.headers.set('Cache-Control', 'no-store');
