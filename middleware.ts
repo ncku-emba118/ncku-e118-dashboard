@@ -7,10 +7,37 @@
  *   • session_version 比對由下游 admin server page / API route 做（需 DB）
  *   • PUBLIC_PATHS 白名單 /api/board/login 等不需登入即可訪問的 endpoint
  *   • API request → JSON 401；Page request → redirect /board/login?next=
+ *
+ * ── 2026-09 新增：班級共用密碼（外層閘門）──
+ * 請求一進來先「分流」，兩條路互不交錯：
+ *   1. 內層（幹部個人帳密）路徑 = 舊 matcher 那五組
+ *      （/board/admin /api/board /finance /budget /staff）
+ *      → 原封不動交給 legacyAuthMiddleware()（即改動前的 middleware 本體，
+ *        一行未改），完全不看班級 cookie。所以：
+ *        • LINE Bot / cron 的 PUBLIC_API_PATHS 等白名單行為不變（不需要班級密碼）
+ *        • 班級 cookie 不可能繞過個人帳密：這條路根本不讀它
+ *      只認「原始（未解碼）path」直接命中；%xx 編碼變體（decode 後才命中，
+ *      例如 /board/%61dmin）一律 404，見 classifyAuthPath()。
+ *   2. 其他所有路徑（原本 middleware 不會執行、等於完全公開）→ classGate()：
+ *      • 2026-09-29 拍板：只有 App 專用網址 ncku-emba-e118.aqualux.dev（+ Netlify
+ *        deploy preview、本機 localhost/127.0.0.1）才套班級密碼；主站
+ *        emba.aqualux.dev、emba-resources、ncku-e118.netlify.app → 直接放行，行為與改動前正式站相同（完全公開）。見 isClassGatedHost()。
+ *      • App host 上：有效班級 cookie 才放行，否則頁面導去 /class-login?next=、
+ *        API 回 JSON 401。豁免清單見 lib/auth/class-gate.ts（班級登入頁本身、
+ *        幹部登入頁、PWA 靜態檔、秘書通知工具、跨網域 feed）。
+ *        deny-by-default：新增的頁面在 App host 上預設就在班級密碼後面。
+ *   第 1 條的分流與編碼變體 404 對所有 host 都生效（不看 host）。
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE_NAME, verifySession } from './lib/auth/jwt';
 import { isMagicScopeAllowed } from './lib/auth/magic-allowlist';
+import {
+  CLASS_COOKIE_NAME,
+  CLASS_LOGIN_PATH,
+  isClassGateExempt,
+  isClassGatedHost,
+  verifyClassToken,
+} from './lib/auth/class-gate';
 
 /**
  * 白名單：這些 path 不需登入即可訪問（所有 method）。
@@ -67,7 +94,120 @@ const GET_PUBLIC_PATTERNS: RegExp[] = [
  */
 const REQUIRES_LOGIN_PREFIXES = ['/board/admin', '/api/board'];
 
+/**
+ * 內層（幹部個人帳密）路徑 = 改動前 config.matcher 的五組，語意比照 Next
+ * matcher 的 `/x/:path*`：`/x` 本身或 `/x/...`（`/x-evil` 不算）。
+ * 命中的請求走 legacyAuthMiddleware()，行為與加班級密碼之前完全一致。
+ */
+const LEGACY_MATCHER_BASES = ['/board/admin', '/api/board', '/finance', '/budget', '/staff'];
+
+function matchesLegacyBase(path: string): boolean {
+  return LEGACY_MATCHER_BASES.some((base) => path === base || path.startsWith(`${base}/`));
+}
+
+/**
+ * 分流判斷（看的是 request.nextUrl.pathname 的「原始、未解碼」字串）：
+ *   • 'legacy'         原始字串直接命中內層五組 → 交給 legacyAuthMiddleware()
+ *                      （含合法中文 slug，例如 /finance/%E4%B8%AD：原始字串就以
+ *                      /finance/ 開頭，行為與改動前完全一致）
+ *   • 'encoded_legacy' 原始字串沒命中、但 decode 後（不分大小寫）命中 → 編碼變體
+ *                      （/board/%61dmin、/api/board%2Fposts、/fin%61nce…）。
+ *                      ⚠ 不能交給 legacyAuthMiddleware()：它內部用「未解碼」字串
+ *                      比對 REQUIRES_LOGIN_PREFIXES，比不到就直接放行 → 兩層都
+ *                      沒擋。也不能交給外層（班級 cookie 不該開得了內層頁面）。
+ *                      → middleware() 直接回 404。
+ *   • 'class_gate'     其他（含 decode 失敗的 malformed 編碼）→ 外層，deny-by-default
+ */
+export type AuthRoute = 'legacy' | 'encoded_legacy' | 'class_gate';
+
+export function classifyAuthPath(path: string): AuthRoute {
+  if (matchesLegacyBase(path)) return 'legacy';
+  if (!path.includes('%')) return 'class_gate';
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    return 'class_gate';
+  }
+  return matchesLegacyBase(decoded.toLowerCase()) ? 'encoded_legacy' : 'class_gate';
+}
+
+/** 只有「原始 path 直接命中內層」才算內層（編碼變體不算，見 classifyAuthPath）。 */
+export function isLegacyAuthPath(path: string): boolean {
+  return classifyAuthPath(path) === 'legacy';
+}
+
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  const route = classifyAuthPath(path);
+  if (route === 'legacy') {
+    return legacyAuthMiddleware(request);
+  }
+  if (route === 'encoded_legacy') {
+    return encodedLegacyPathDeny(path);
+  }
+  return classGate(request, path);
+}
+
+/**
+ * 內層路徑的 %xx 編碼變體：一律 404（比照 magicScopeDeny 風格——不 redirect、
+ * 不帶 Set-Cookie、no-store，不洩漏「這其實是受保護路徑」的訊號）。
+ * 正常瀏覽器 / LINE Bot 不會送出這種編碼，擋掉不影響任何合法使用。
+ */
+function encodedLegacyPathDeny(path: string) {
+  const res = path.startsWith('/api/')
+    ? NextResponse.json({ error: 'Not Found' }, { status: 404 })
+    : new NextResponse('Not Found', { status: 404 });
+  res.headers.set('Cache-Control', 'no-store');
+  return res;
+}
+
+/**
+ * 外層：班級共用密碼。只處理「非內層」路徑（見檔頭）。
+ * 不讀、不驗、不改幹部 session cookie。
+ */
+async function classGate(request: NextRequest, path: string) {
+  // 只有 App 專用網址（+ deploy preview / 本機）套班級密碼；其他 host（主站
+  // emba.aqualux.dev 等）維持改動前的完全公開。沒有 Host header 時以 URL host
+  // 判斷（nextUrl.host = 實際請求網址），避免 edge 沒帶 Host 時 App 網址 fail-open。
+  const host = request.headers.get('host') ?? request.nextUrl.host;
+  if (!isClassGatedHost(host)) {
+    return NextResponse.next();
+  }
+  if (isClassGateExempt(path)) {
+    return NextResponse.next();
+  }
+
+  const token = request.cookies.get(CLASS_COOKIE_NAME)?.value;
+  if (await verifyClassToken(token)) {
+    return NextResponse.next();
+  }
+
+  // API（非 /api/board，那條走內層）→ JSON 401；頁面 GET/HEAD → 導去班級登入頁
+  if (path.startsWith('/api/')) {
+    const res = NextResponse.json({ error: '請先輸入班級密碼' }, { status: 401 });
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
+  }
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    const res = new NextResponse('請先輸入班級密碼', { status: 401 });
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
+  }
+  // ⚠ 不用 request.nextUrl.clone()：NextURL 會記住原請求有沒有結尾斜線，改 pathname
+  //   後照樣補回 → /clubs/ 會導去 /class-login/，而那條本身又被擋 → 無限重導。
+  //   用一般 URL 組出恰好 '/class-login'（無結尾斜線），query 只帶 next。
+  const url = new URL(CLASS_LOGIN_PATH, request.nextUrl.origin);
+  url.searchParams.set('next', `${path}${request.nextUrl.search}`);
+  const res = NextResponse.redirect(url);
+  res.headers.set('Cache-Control', 'no-store');
+  return res;
+}
+
+/**
+ * 內層：改動前的 middleware 本體，內容一字未改（只改了函式名稱）。
+ */
+async function legacyAuthMiddleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const token = request.cookies.get(COOKIE_NAME)?.value;
   const session = token ? await verifySession(token) : null;
@@ -156,5 +296,10 @@ export const config = {
     '/finance/:path*',
     '/budget/:path*',
     '/staff/:path*',
+    // 班級共用密碼（外層）：deny-by-default，其餘所有路徑都要經過 middleware。
+    // 只排除 Next 的建置產物（/_next/static：JS/CSS chunk，不含班級資料）
+    // 與 dev HMR。/_next/image 刻意不排除（可被拿來代抓 /assets 圖片）。
+    // 上面五條仍保留、語意不變：它們在 middleware() 內會先被分流到既有邏輯。
+    '/((?!_next/static|_next/webpack-hmr).*)',
   ],
 };
