@@ -18,11 +18,15 @@
  *        • 班級 cookie 不可能繞過個人帳密：這條路根本不讀它
  *      只認「原始（未解碼）path」直接命中；%xx 編碼變體（decode 後才命中，
  *      例如 /board/%61dmin）一律 404，見 classifyAuthPath()。
- *   2. 其他所有路徑（原本 middleware 不會執行、等於完全公開）
- *      → classGate()：有效班級 cookie 才放行，否則頁面導去 /class-login?next=、
+ *   2. 其他所有路徑（原本 middleware 不會執行、等於完全公開）→ classGate()：
+ *      • 2026-09-29 拍板：只有 App 專用網址 ncku-emba-e118.aqualux.dev（+ Netlify
+ *        deploy preview、本機 localhost/127.0.0.1）才套班級密碼；主站
+ *        emba.aqualux.dev、emba-resources、ncku-e118.netlify.app → 直接放行，行為與改動前正式站相同（完全公開）。見 isClassGatedHost()。
+ *      • App host 上：有效班級 cookie 才放行，否則頁面導去 /class-login?next=、
  *        API 回 JSON 401。豁免清單見 lib/auth/class-gate.ts（班級登入頁本身、
- *        幹部登入頁、PWA 靜態檔、秘書通知工具、跨網域 feed、資源書院網域）。
- *   採 deny-by-default：新增的頁面預設就在班級密碼後面，不用記得登記。
+ *        幹部登入頁、PWA 靜態檔、秘書通知工具、跨網域 feed）。
+ *        deny-by-default：新增的頁面在 App host 上預設就在班級密碼後面。
+ *   第 1 條的分流與編碼變體 404 對所有 host 都生效（不看 host）。
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE_NAME, verifySession } from './lib/auth/jwt';
@@ -31,6 +35,7 @@ import {
   CLASS_COOKIE_NAME,
   CLASS_LOGIN_PATH,
   isClassGateExempt,
+  isClassGatedHost,
   verifyClassToken,
 } from './lib/auth/class-gate';
 
@@ -162,8 +167,14 @@ function encodedLegacyPathDeny(path: string) {
  * 不讀、不驗、不改幹部 session cookie。
  */
 async function classGate(request: NextRequest, path: string) {
+  // 只有 App 專用網址（+ deploy preview / 本機）套班級密碼；其他 host（主站
+  // emba.aqualux.dev 等）維持改動前的完全公開。沒有 Host header 時以 URL host
+  // 判斷（nextUrl.host = 實際請求網址），避免 edge 沒帶 Host 時 App 網址 fail-open。
   const host = request.headers.get('host') ?? request.nextUrl.host;
-  if (isClassGateExempt(path, host)) {
+  if (!isClassGatedHost(host)) {
+    return NextResponse.next();
+  }
+  if (isClassGateExempt(path)) {
     return NextResponse.next();
   }
 

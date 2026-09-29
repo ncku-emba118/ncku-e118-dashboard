@@ -18,6 +18,8 @@ const {
   signClassToken,
   verifyClassToken,
   isClassGateExempt,
+  isClassGatedHost,
+  APP_HOST,
   isClassGateConfigured,
   CLASS_SESSION_TTL_SECONDS,
 } = await import('./class-gate');
@@ -110,7 +112,6 @@ describe('班級 token 簽章', () => {
 });
 
 describe('豁免路徑（未帶班級 cookie 也放行）', () => {
-  const MAIN = 'emba.aqualux.dev';
 
   test.each([
     '/class-login',
@@ -127,7 +128,7 @@ describe('豁免路徑（未帶班級 cookie 也放行）', () => {
     '/assets/pwa-icon-maskable-512-v6.png',
     '/assets/ncku-emba-logo.png',
   ])('%s → 豁免', (p) => {
-    expect(isClassGateExempt(p, MAIN)).toBe(true);
+    expect(isClassGateExempt(p)).toBe(true);
   });
 
   test.each([
@@ -157,40 +158,56 @@ describe('豁免路徑（未帶班級 cookie 也放行）', () => {
     '/assets/pwa-icon-%2e%2e.png',
     '/bad%zz',
   ])('%s → 需要班級密碼', (p) => {
-    expect(isClassGateExempt(p, MAIN)).toBe(false);
+    expect(isClassGateExempt(p)).toBe(false);
   });
 
-  test('host 不帶 / 帶 port 都一樣判斷', () => {
-    expect(isClassGateExempt('/', null)).toBe(false);
-    expect(isClassGateExempt('/', 'localhost:3000')).toBe(false);
-  });
 });
 
-describe('資源書院網域（emba-resources.aqualux.dev）', () => {
-  const RH = 'emba-resources.aqualux.dev';
-
-  test.each(['/', '/resources', '/board', '/calendar', '/class-login', '/anything'])(
-    '%s → 放行（next.config beforeFiles 會改寫成公開的 /resources）',
-    (p) => {
-      expect(isClassGateExempt(p, RH)).toBe(true);
-    },
-  );
-
-  test('帶 port / 大寫 host 也認得', () => {
-    expect(isClassGateExempt('/', 'EMBA-RESOURCES.aqualux.dev:443')).toBe(true);
+describe('isClassGatedHost（只有 App 專用網址 / deploy preview / 本機套閘門）', () => {
+  test('APP_HOST 常數', () => {
+    expect(APP_HOST).toBe('ncku-emba-e118.aqualux.dev');
   });
 
-  test('資源書院自己的圖 → 放行', () => {
-    expect(isClassGateExempt('/assets/resources/campus-hero.jpg', RH)).toBe(true);
-    expect(isClassGateExempt('/assets/ncku-emba-logo.png', RH)).toBe(true);
+  test.each([
+    'ncku-emba-e118.aqualux.dev',
+    'NCKU-EMBA-E118.aqualux.dev:443',
+    'deploy-preview-6--ncku-e118.netlify.app',
+    'deploy-preview-123--ncku-e118.netlify.app:443',
+    'localhost',
+    'localhost:3000',
+    '127.0.0.1:3000',
+    'ncku-emba-e118.aqualux.dev.',
+    'NCKU-EMBA-E118.aqualux.dev.:443',
+    'deploy-preview-6--ncku-e118.netlify.app.',
+    '[::1]',
+    '[::1]:3000',
+  ])('%s → 套閘門', (h) => {
+    expect(isClassGatedHost(h)).toBe(true);
   });
 
-  test.each(['/assets/class.jpeg', '/assets/officers/south.jpeg', '/assets/E118-guide.pdf', '/_next/image', '/%61ssets/class.jpeg'])(
-    '%s → 仍需班級密碼（/assets 不會被改寫，不能從這個網域外流）',
-    (p) => {
-      expect(isClassGateExempt(p, RH)).toBe(false);
-    },
-  );
+  test.each([
+    null,
+    '',
+    'emba.aqualux.dev',
+    'emba-resources.aqualux.dev',
+    'ncku-e118.netlify.app',
+    'ncku-emba-e118.aqualux.dev.evil.com',
+    'xncku-emba-e118.aqualux.dev',
+    'deploy-preview-6--ncku-e118.netlify.app.evil.com',
+    'deploy-preview---ncku-e118.netlify.app',
+    'deploy-preview-6--ncku-e118xnetlify.app',
+    'localhost.evil.com',
+    '127.0.0.2',
+    'ncku-emba-e118.aqualux.dev..',
+    'evil.com.',
+    'emba.aqualux.dev.',
+    '[::2]',
+    '[::1',
+    '::1]',
+    '.',
+  ])('%s → 不套（公開）', (h) => {
+    expect(isClassGatedHost(h)).toBe(false);
+  });
 });
 
 describe('safeClassNext（防開放重導向）', () => {

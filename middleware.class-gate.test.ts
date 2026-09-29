@@ -36,10 +36,11 @@ async function officerCookie(): Promise<string> {
   return `sid=${token}`;
 }
 
-function makeReq(path: string, method = 'GET', cookie?: string, host?: string): NextRequest {
+/** host 預設 localhost:3000（本機開發 = 套閘門）；傳 null 代表請求沒有 Host header（改看 URL host） */
+function makeReq(path: string, method = 'GET', cookie?: string, host: string | null = 'localhost:3000'): NextRequest {
   const headers: Record<string, string> = {};
   if (cookie) headers.cookie = cookie;
-  if (host) headers.host = host;
+  if (host !== null) headers.host = host;
   return new NextRequest(`http://localhost:3000${path}`, { method, headers });
 }
 
@@ -174,14 +175,122 @@ describe('外層：豁免路徑沒 cookie 也放行', () => {
     expect(isPassthrough(res)).toBe(true);
   });
 
-  test('資源書院網域的根目錄 → 放行（會被改寫成公開 /resources）', async () => {
-    const res = await middleware(makeReq('/', 'GET', undefined, 'emba-resources.aqualux.dev'));
+});
+
+/**
+ * 2026-09-29 拍板：主站 emba.aqualux.dev 維持完全公開（與改動前正式站相同），
+ * 班級密碼只套在 App 專用網址 ncku-emba-e118.aqualux.dev（+ deploy preview / 本機）。
+ */
+const HOST_TEST_PATHS = [
+  '/',
+  '/clubs/',
+  '/calendar',
+  '/assets/class.jpeg',
+  '/_next/image?url=%2Fassets%2Fclass.jpeg&w=640&q=75',
+  '/api/class-gate/nonexistent',
+];
+
+describe('非 App host → 外層不套閘門（公開，等同目前正式站）', () => {
+  // 包含相似但不該匹配的 host：非 App host 本來就公開，所以預期行為是 next()，不是擋
+  test.each([
+    'emba.aqualux.dev',
+    'EMBA.aqualux.dev:443',
+    'emba-resources.aqualux.dev',
+    'ncku-e118.netlify.app',
+    'ncku-emba-e118.aqualux.dev.evil.com',
+    'xncku-emba-e118.aqualux.dev',
+    'deploy-preview-6--ncku-e118.netlify.app.evil.com',
+    'deploy-preview-x--ncku-e118.netlify.app',
+    'unknown.example',
+  ])('host=%s：所有路徑 next()（不 redirect、不 401）', async (host) => {
+    for (const p of HOST_TEST_PATHS) {
+      for (const method of ['GET', 'POST']) {
+        const res = await middleware(makeReq(p, method, undefined, host));
+        expect(isPassthrough(res), `${method} ${p}`).toBe(true);
+        expect(res.headers.get('location')).toBeNull();
+      }
+    }
+  });
+});
+
+describe('沒有 Host header → 以 URL host 判斷（不 fail-open）', () => {
+  function noHostReq(origin: string, p: string, cookie?: string) {
+    const headers: Record<string, string> = {};
+    if (cookie) headers.cookie = cookie;
+    return new NextRequest(`${origin}${p}`, { headers });
+  }
+
+  test.each([
+    'https://ncku-emba-e118.aqualux.dev',
+    'https://deploy-preview-6--ncku-e118.netlify.app',
+    'http://localhost:3000',
+  ])('URL=%s → 被擋（頁面導 /class-login、API 401），有效 cookie 放行', async (origin) => {
+    for (const p of HOST_TEST_PATHS) {
+      const req = noHostReq(origin, p);
+      expect(req.headers.get('host')).toBeNull();
+      const res = await middleware(req);
+      expect(isPassthrough(res), p).toBe(false);
+      if (p.startsWith('/api/')) expect(res.status).toBe(401);
+      else expect(redirectTarget(res)!.pathname).toBe('/class-login');
+      const ok = await middleware(noHostReq(origin, p, await classCookie()));
+      expect(isPassthrough(ok), `cookie ${p}`).toBe(true);
+    }
+  });
+
+  test('URL=https://emba.aqualux.dev → 放行（主站公開）', async () => {
+    for (const p of HOST_TEST_PATHS) {
+      const res = await middleware(noHostReq('https://emba.aqualux.dev', p));
+      expect(isPassthrough(res), p).toBe(true);
+    }
+  });
+});
+
+describe('App host → 套閘門', () => {
+  test.each(['ncku-emba-e118.aqualux.dev', 'NCKU-EMBA-E118.aqualux.dev:443', 'deploy-preview-6--ncku-e118.netlify.app', '127.0.0.1:3000'])(
+    'host=%s：沒 cookie → 頁面 307 /class-login、API 401；有效 cookie → 放行',
+    async (host) => {
+      for (const p of HOST_TEST_PATHS) {
+        const res = await middleware(makeReq(p, 'GET', undefined, host));
+        expect(isPassthrough(res), p).toBe(false);
+        if (p.startsWith('/api/')) {
+          expect(res.status).toBe(401);
+        } else {
+          expect(res.status).toBe(307);
+          expect(redirectTarget(res)!.pathname).toBe('/class-login');
+        }
+        const ok = await middleware(makeReq(p, 'GET', await classCookie(), host));
+        expect(isPassthrough(ok), `cookie ${p}`).toBe(true);
+      }
+    },
+  );
+
+  test('App host 的豁免路徑仍放行', async () => {
+    const res = await middleware(makeReq('/class-login', 'GET', undefined, 'ncku-emba-e118.aqualux.dev'));
+    expect(isPassthrough(res)).toBe(true);
+  });
+});
+
+describe('主站 emba.aqualux.dev：內層（legacy）行為不變', () => {
+  const MAIN = 'emba.aqualux.dev';
+
+  test('/board/admin 無 session → /board/login', async () => {
+    const res = await middleware(makeReq('/board/admin', 'GET', undefined, MAIN));
+    expect(redirectTarget(res)?.pathname).toBe('/board/login');
+  });
+
+  test('/finance → next()', async () => {
+    const res = await middleware(makeReq('/finance', 'GET', undefined, MAIN));
     expect(isPassthrough(res)).toBe(true);
   });
 
-  test('資源書院網域的班級照片 → 仍要班級密碼', async () => {
-    const res = await middleware(makeReq('/assets/class.jpeg', 'GET', undefined, 'emba-resources.aqualux.dev'));
-    expect(isPassthrough(res)).toBe(false);
+  test('/board/%61dmin → 404（編碼變體封鎖對所有 host 生效）', async () => {
+    const res = await middleware(makeReq('/board/%61dmin', 'GET', undefined, MAIN));
+    expect(res.status).toBe(404);
+  });
+
+  test('受保護 /api/board/* 無 session → 401', async () => {
+    const res = await middleware(makeReq('/api/board/signoff', 'GET', undefined, MAIN));
+    expect(res.status).toBe(401);
   });
 });
 

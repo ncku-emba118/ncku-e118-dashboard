@@ -161,20 +161,6 @@ const EXEMPT_PREFIXES = [
 const EXEMPT_PATTERNS: RegExp[] = [/^\/assets\/pwa-icon-[a-z0-9-]+\.png$/];
 
 /**
- * emba-resources.aqualux.dev：不分屆別的公開資源書院（同一個 Netlify site 的
- * domain alias）。next.config.mjs 的 beforeFiles rewrite 會把這個 host 上除了
- * /resources /assets /_next /favicon.ico 以外的所有路徑改寫成 /resources
- * （rewrite 在 middleware 之後才執行，所以這裡看到的是原始路徑）。
- *
- * 在這個 host 上：
- *   • /assets/* 不會被改寫 → 仍要過班級密碼（只放行資源書院自己的圖）
- *   • /_next/image 不會被改寫 → 仍要過班級密碼（可拿來代抓 /assets 圖）
- *   • 其他一律放行（反正都會被改寫成公開的 /resources）
- */
-export const RESOURCES_HOST = 'emba-resources.aqualux.dev';
-const RESOURCES_HOST_EXEMPT_ASSET = /^\/assets\/resources\/[A-Za-z0-9._-]+$/;
-
-/**
  * EXEMPT_EXACT 容忍「單一」結尾斜線（/class-login/、/api/class-gate/login/…）：
  * 舊書籤 / LINE 連結常帶斜線，Next（trailingSlash:false）之後會自己 308 到無斜線版。
  * 只放寬 EXACT；'/'、'//'、'/x//' 不算（PREFIXES / PATTERNS 不受影響）。
@@ -202,22 +188,49 @@ function safeDecode(path: string): string | null {
 }
 
 /**
- * 這個請求是否不需要班級密碼。
+ * 這個路徑是否不需要班級密碼（只在 isClassGatedHost() 為 true 的 host 上才有意義）。
  * 保守比對：原始路徑與 decode 後的路徑「都」要命中豁免清單才放行，
  * 避免 %xx 編碼讓兩邊解讀不一致而繞過。
  */
-export function isClassGateExempt(path: string, host: string | null): boolean {
+export function isClassGateExempt(path: string): boolean {
   const decoded = safeDecode(path);
   if (decoded === null) return false;
-
-  if (host && host.toLowerCase().split(':')[0] === RESOURCES_HOST) {
-    const touchesGatedArea = (p: string) => p.startsWith('/assets') || p.startsWith('/_next/image');
-    if (!touchesGatedArea(path) && !touchesGatedArea(decoded)) return true;
-    if (RESOURCES_HOST_EXEMPT_ASSET.test(path) && RESOURCES_HOST_EXEMPT_ASSET.test(decoded)) {
-      return true;
-    }
-    // 其餘 /assets、/_next/image 落到下面的一般規則
-  }
-
   return isPathExempt(path) && isPathExempt(decoded);
+}
+
+/**
+ * 2026-09-29 拍板：班級密碼只套在 App 專用網址（同一個 Netlify site 的 domain alias）。
+ * 主站 emba.aqualux.dev、資源書院 emba-resources.aqualux.dev、ncku-e118.netlify.app、
+ * 沒有 Host / 未知 host → 不套（維持改動前的公開行為）。
+ *
+ * ⚠ 這是依 Host header 分流：同一份內容在主站本來就公開，所以偽造 Host 不構成繞過
+ *   （換到主站 host 看到的就是公開版）。閘門的目的是 App 網址的使用體驗，不是保密。
+ */
+export const APP_HOST = 'ncku-emba-e118.aqualux.dev';
+const DEPLOY_PREVIEW_HOST = /^deploy-preview-\d+--ncku-e118\.netlify\.app$/;
+const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+
+/**
+ * Host header → 比對用的主機名（小寫）：
+ *   • IPv6 方括號形式 `[::1]` / `[::1]:3000` → `::1`（格式不對 → null）
+ *   • 其他去掉 `:port`
+ *   • 去掉「單一」結尾點（FQDN 寫法 `ncku-emba-e118.aqualux.dev.`）；`..` 不去
+ */
+function normalizeHostname(host: string): string | null {
+  const h = host.toLowerCase();
+  if (h.startsWith('[')) {
+    const m = /^\[([0-9a-f:.]+)\](?::\d*)?$/.exec(h);
+    return m ? m[1] : null;
+  }
+  const name = h.split(':')[0];
+  return name.endsWith('.') && !name.endsWith('..') ? name.slice(0, -1) : name;
+}
+
+export function isClassGatedHost(host: string | null | undefined): boolean {
+  if (!host) return false;
+  const name = normalizeHostname(host);
+  if (!name) return false;
+  if (name === APP_HOST) return true;
+  if (DEPLOY_PREVIEW_HOST.test(name)) return true;
+  return LOCAL_DEV_HOSTS.has(name);
 }
