@@ -55,8 +55,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-Hant">
+    <html lang="zh-Hant" suppressHydrationWarning>
       <head>
+        {/* iOS App 殼（WKWebView UA 含 NCKU-E118-App）：hydration 前標記 <html>，
+            讓 CSS 隱藏「安裝成 App」。純 client、不讀 headers，不影響 SSG/快取。 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "if(/NCKU-E118-App/.test(navigator.userAgent))document.documentElement.classList.add('in-e118-app')",
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
