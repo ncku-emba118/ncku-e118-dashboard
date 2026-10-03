@@ -81,7 +81,7 @@ export default async function FinanceReportPage({ params }: { params: Promise<{ 
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, position: 'relative', zIndex: 1, marginTop: 18 }}>
-        <StatCard label="班費收入" value={income} color={OK} />
+        <StatCard label="收入合計" value={income} color={OK} />
         <StatCard label="已支出" value={spent} color={WINE} />
         <StatCard label="結餘" value={balance} color={INK} />
       </div>

@@ -14,6 +14,7 @@
 import { type NextRequest } from 'next/server';
 import crypto from 'node:crypto';
 import { getEnv } from '@/lib/env';
+import { botIncomeCategory } from '@/lib/finance/income';
 import { jsonResp } from '@/lib/signoff/http';
 import { upsertBotIncome, deleteBotIncomeByRef } from '@/lib/signoff/dal';
 
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
   const { error } = await upsertBotIncome({
     source_ref,
     occurred_on,
-    category: '收班費',
+    category: botIncomeCategory(activityId),
     amount,
     note,
   });

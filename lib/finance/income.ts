@@ -10,7 +10,20 @@ export function canManageIncome(actor: IncomeActor): boolean {
   return actor.role === 'super' || actor.home_dept_id === 'finance';
 }
 
-export const INCOME_CATEGORIES = ['收班費', '補收', '利息', '退款', '其他'] as const;
+export const INCOME_CATEGORIES = ['收班費', '班級活動', '補收', '利息', '退款', '其他'] as const;
+
+/**
+ * LINE Bot 對帳同步（/api/board/finance/income/sync）的班費活動 ID 集合。
+ * 這些活動入帳 → 「收班費」；其他班務活動（例如 A8）→ 「班級活動」。
+ * Bot payload 沒有活動類型，所以用 ID 常數判斷（不靠金額猜）；新增班費類活動時在此補 ID。
+ * 舊資料 category 仍是 '收班費' 的列不受影響（category 為自由文字、sumIncome 不看分類），
+ * 且 bot 下次同步會以 source_ref UPSERT 覆寫為新分類。
+ */
+export const CLASS_FEE_ACTIVITY_IDS: ReadonlySet<string> = new Set(['A7']);
+
+export function botIncomeCategory(activityId: string): string {
+  return CLASS_FEE_ACTIVITY_IDS.has(activityId) ? '收班費' : '班級活動';
+}
 
 export type IncomeInput = {
   occurred_on: string; // YYYY-MM-DD
