@@ -11,6 +11,8 @@
 
 import { useState, useEffect } from 'react';
 import type { DeptInfo } from '@/lib/depts';
+import { isNativeApp } from '@/lib/native-app';
+import NativeNotificationNotice from '@/components/NativeNotificationNotice';
 import { LoadingLabel } from '@/components/Loading';
 
 const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
@@ -37,12 +39,14 @@ export default function AdminCommentSubscribeButton({
 }: {
   depts: DeptInfo[];
 }) {
+  const [native, setNative] = useState(false);
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [supported, setSupported] = useState<boolean | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set(depts.map((d) => d.id)));
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (isNativeApp()) { setNative(true); return; }
     if (!VAPID) {
       setState({ kind: 'unsupported', reason: 'VAPID public key 未設定' });
       setSupported(false);
@@ -66,6 +70,7 @@ export default function AdminCommentSubscribeButton({
   }
 
   async function subscribe() {
+    if (isNativeApp()) { setNative(true); return; }
     setState({ kind: 'loading' });
     try {
       const permission = await Notification.requestPermission();
@@ -114,6 +119,7 @@ export default function AdminCommentSubscribeButton({
     }
   }
 
+  if (native) return <><NativeNotificationNotice /><p>留言檢舉請至「留言檢舉管理」查看。</p></>;
   if (supported === null) return null;
 
   const box = {

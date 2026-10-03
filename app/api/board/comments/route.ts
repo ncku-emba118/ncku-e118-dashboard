@@ -7,13 +7,15 @@
  *   • IP HMAC hash 防 spam（不存原始 IP, Codex Sec F9）
  *   • 同 IP 30 秒/則 in-memory rate limit
  *   • 內容含 URL → 同 IP 24h > 3 次自動 pending_review（不對外、要 super/dept 審）
- *   • visible 留言透過 Supabase Realtime 即時推到所有訂閱的 client
+ *   • visible 留言透過安全欄位 API 在頁面進入／回到前景時更新
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getServerClient } from '@/lib/supabase/server';
 import { hashIp } from '@/lib/ip-hash';
 import { resolveClientIp } from '@/lib/ip-resolve';
+import { COMMENT_FIELDS, publicComment } from '@/lib/comments/public';
+import { needsCommentReview } from '@/lib/comments/moderation';
 import { processQueuedJobs } from '@/lib/push/dispatcher';
 
 const MAX_BODY_BYTES = 4096;
@@ -126,6 +128,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Same moderation queue as URL spam; author names are also public user input.
+  if (needsCommentReview(content) || needsCommentReview(authorName ?? '')) {
+    status = 'pending_review';
+    reviewReason = 'inappropriate_content';
+  }
+
   // 6. Insert
   const { data: inserted, error: insertErr } = await supabase
     .from('comments')
@@ -138,7 +146,7 @@ export async function POST(req: NextRequest) {
       ip_hash_version: ipHashInfo.version,
       review_reason: reviewReason,
     })
-    .select('id, post_id, author_name, content, status, created_at')
+    .select(COMMENT_FIELDS)
     .single();
 
   if (insertErr || !inserted) {
@@ -188,13 +196,30 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(
     {
-      comment: status === 'visible' ? inserted : null,
+      comment: status === 'visible' ? publicComment(inserted) : null,
       pending: status === 'pending_review',
       message:
         status === 'pending_review'
-          ? '留言已送出、含網址需審核後才公開'
+          ? '留言已送出，待幹部審核後顯示'
           : undefined,
     },
     { status: 201, headers: traceHeaders(traceId) },
   );
+}
+
+// Curated, no-cache feed: hidden/deleted rows disappear from open screens on refresh.
+export async function GET(req: NextRequest) {
+  const postId = req.nextUrl.searchParams.get('post_id');
+  if (!z.string().uuid().safeParse(postId).success) {
+    return NextResponse.json({ error: '無效的公告 ID' }, { status: 400 });
+  }
+  const { data, error } = await getServerClient().from('comments')
+    .select(`${COMMENT_FIELDS}, posts!inner(published)`)
+    .eq('post_id', postId).eq('posts.published', true)
+    .eq('status', 'visible').is('deleted_at', null)
+    .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(200);
+  if (error) return NextResponse.json({ error: '無法更新留言' }, { status: 503 });
+  return NextResponse.json({ comments: (data || []).map(publicComment) }, {
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }

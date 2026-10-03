@@ -13,6 +13,8 @@
  */
 
 import { useState, useEffect } from 'react';
+import { isNativeApp } from '@/lib/native-app';
+import NativeNotificationNotice from '@/components/NativeNotificationNotice';
 import { LoadingLabel } from '@/components/Loading';
 
 const TOKEN_KEY = 'e118.board.push.management_token';
@@ -51,11 +53,13 @@ type State =
   | { kind: 'loading' };
 
 export default function SubscribeButton() {
+  const [native, setNative] = useState(false);
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [supported, setSupported] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (isNativeApp()) { setNative(true); return; }
     if (!VAPID) {
       setState({ kind: 'unsupported', reason: 'VAPID public key 未設定' });
       setSupported(false);
@@ -73,6 +77,7 @@ export default function SubscribeButton() {
   }, []);
 
   async function subscribe() {
+    if (isNativeApp()) { setNative(true); return; }
     setState({ kind: 'loading' });
     try {
       const permission = await Notification.requestPermission();
@@ -134,6 +139,7 @@ export default function SubscribeButton() {
     }
   }
 
+  if (native) return <NativeNotificationNotice />;
   if (supported === null) return null;
 
   if (state.kind === 'unsupported') {

@@ -1,9 +1,16 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { isNativeApp } from '@/lib/native-app';
+import NativeNotificationNotice from '@/components/NativeNotificationNotice';
 import SubscribeButton from '@/components/SubscribeButton';
 import Breadcrumb from '@/components/Breadcrumb';
 
 export default function SubscribePage() {
+  const [native, setNative] = useState<boolean | null>(null);
+  useEffect(() => setNative(isNativeApp()), []);
+  if (native === null) return null;
+  if (native) return <main style={{ maxWidth: 640, margin: 'auto', padding: 24 }}><a href="/board">← 回公告欄</a><h1>班級通知</h1><NativeNotificationNotice /></main>;
   return (
     <>
     <Breadcrumb items={[

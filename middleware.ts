@@ -65,6 +65,7 @@ const PUBLIC_API_PATHS = new Set<string>([
  * POST-only 公開 path：anon user 可以 POST，但 PATCH/DELETE 仍需登入。
  */
 const POST_PUBLIC_PATHS = new Set<string>([
+  '/api/board/comments/reports', // 匿名檢舉：route 同源檢查 + DB 限流
   '/api/board/comments',   // 留言（半實名、IP HMAC 防 spam）
   '/api/board/subscribe',  // PWA push 訂閱（management_token 自驗 + endpoint allowlist）
 ]);
@@ -74,6 +75,7 @@ const POST_PUBLIC_PATHS = new Set<string>([
  * 但 POST/PATCH/DELETE 仍需登入。Route handler 自己再驗 session。
  */
 const GET_PUBLIC_PATTERNS: RegExp[] = [
+  /^\/api\/board\/comments$/, // 僅公開、已發布留言的 curated feed
   /^\/api\/board\/posts$/,                                              // GET 列表
   /^\/api\/board\/posts\/[a-fA-F0-9-]{36}$/,                            // GET 單篇（UUID）
   // 已核准單據公開摘要：只放行「單一文件詳情」GET（route 端只在 status==='approved' 回摘要）。
