@@ -107,7 +107,7 @@ export default async function FinancePage() {
         <section style={sec}>
           <div style={secH}><h2 style={h2}>收支總覽</h2><span style={tag}>系統自動統計</span></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-            <Stat label="班費收入" value={income} />
+            <Stat label="收入合計" value={income} />
             <Stat label="已支出" value={spent} />
             <Stat label="結餘" value={balance} bal />
           </div>
@@ -129,7 +129,7 @@ export default async function FinancePage() {
         <div style={divider} />
 
         <section style={sec}>
-          <div style={secH}><h2 style={h2}>收入明細</h2><span style={tag}>班費・補收・利息</span></div>
+          <div style={secH}><h2 style={h2}>收入明細</h2><span style={tag}>班費・班級活動・補收・利息</span></div>
           {incomeRows.length === 0 && <p style={{ color: MUTE, fontSize: 13 }}>目前沒有收入紀錄。</p>}
           {incomeRows.map((r) => (
             <div key={r.id} style={incCard}>

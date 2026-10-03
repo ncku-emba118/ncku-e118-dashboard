@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canManageIncome, parseIncomeInput, sumIncome } from './income';
+import { canManageIncome, parseIncomeInput, sumIncome, botIncomeCategory, INCOME_CATEGORIES } from './income';
 
 describe('canManageIncome', () => {
   it('super（班代/副班代/秘書）可管理', () => {
@@ -64,5 +64,18 @@ describe('sumIncome', () => {
   it('空陣列為 0、null 當 0', () => {
     expect(sumIncome([])).toBe(0);
     expect(sumIncome([{ amount: null }, { amount: '10' }])).toBe(10);
+  });
+});
+
+describe('botIncomeCategory（bot 對帳同步分類）', () => {
+  it('A7（班費）→ 收班費', () => expect(botIncomeCategory('A7')).toBe('收班費'));
+  it('A8 與其他活動 → 班級活動', () => {
+    expect(botIncomeCategory('A8')).toBe('班級活動');
+    expect(botIncomeCategory('A70')).toBe('班級活動');
+    expect(botIncomeCategory('a7')).toBe('班級活動');
+  });
+  it('回傳值都在 INCOME_CATEGORIES 內，且舊值「收班費」仍可通過驗證', () => {
+    for (const id of ['A7', 'A8']) expect(INCOME_CATEGORIES).toContain(botIncomeCategory(id));
+    expect(parseIncomeInput({ occurred_on: '2026-03-01', category: '班級活動', amount: 100 }).ok).toBe(true);
   });
 });
