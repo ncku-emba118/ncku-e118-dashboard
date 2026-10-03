@@ -46,7 +46,7 @@ export default async function Home() {
           <ul className="nav-links">
             <li><a href="#apps">常用入口</a></li>
             <li><a href="#help">使用說明</a></li>
-            <li><a href="#install">安裝 App</a></li>
+            <li data-install-guide><a href="#install">安裝 App</a></li>
           </ul>
         </div>
       </header>
@@ -148,8 +148,8 @@ export default async function Home() {
             >
               使用指南<span className="ql-meta"> · PDF</span>
             </a>
-            <span className="ql-dot" aria-hidden="true">·</span>
-            <details id="install" className="ql-install">
+            <span className="ql-dot" aria-hidden="true" data-install-guide>·</span>
+            <details id="install" className="ql-install" data-install-guide>
               <summary>安裝成 App<span className="ql-meta"> · 3 步驟</span></summary>
               <div className="ql-install-body">
                 <div className="ql-row"><strong>iPhone / iPad</strong>　Safari → 分享 → 加入主畫面</div>

@@ -13,6 +13,7 @@ import Markdown from '@/components/Markdown';
 import Attachments from '@/components/Attachments';
 import Comments, { type Comment } from '@/components/Comments';
 import { normalizeAttachments } from '@/lib/attachment';
+import { COMMENT_FIELDS, publicComment } from '@/lib/comments/public';
 import { logPostView } from '@/lib/board/view_logger';
 
 const UUID_RE = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
@@ -47,14 +48,14 @@ async function loadComments(postId: string): Promise<Comment[]> {
   const supabase = getServerClient();
   const { data, error } = await supabase
     .from('comments')
-    .select('id, post_id, author_name, content, status, created_at')
+    .select(COMMENT_FIELDS)
     .eq('post_id', postId)
     .eq('status', 'visible')
     .is('deleted_at', null)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false }).order('id', { ascending: false })
     .limit(200);
   if (error) return [];
-  return (data || []) as Comment[];
+  return (data || []).map(publicComment);
 }
 
 import { formatDateTW as formatDate } from '@/lib/format';
@@ -197,7 +198,7 @@ export default async function PostDetail({
         {/* Attachments — GDrive iframe embed + Supabase Storage 直傳檔案 */}
         <Attachments items={normalizeAttachments(post.attachments)} />
 
-        {/* Comments — Realtime 訂閱、可即時看到別人新留言 */}
+        {/* Comments — 進入或回到前景時更新公開留言 */}
         <Comments
           postId={post.id}
           initialComments={initialComments}

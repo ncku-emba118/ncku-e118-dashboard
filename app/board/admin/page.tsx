@@ -370,6 +370,15 @@ export default async function AdminHome() {
   const session = await readSession();
   if (!session) redirect('/board/login?next=/board/admin');
 
+  const depts = manageableDepts(session).map((dept) => dept.id);
+  const [reportsCount, pendingCount] = await Promise.all([
+    getServerClient().from('comment_reports')
+      .select('id, comments!inner(posts!inner(department_id))', { count: 'exact', head: true })
+      .in('comments.posts.department_id', depts).is('resolved_at', null),
+    getServerClient().from('comments')
+      .select('id, posts!inner(department_id)', { count: 'exact', head: true })
+      .in('posts.department_id', depts).eq('status', 'pending_review').is('deleted_at', null),
+  ]);
   const posts = await loadManageablePosts(session.role, session.home_dept_id);
   const isSuper = session.role === 'super';
   // 只有 super（秘書長）看推播統計
@@ -443,6 +452,7 @@ export default async function AdminHome() {
             >
               ← 回公告欄
             </a>
+            <a href="/board/admin/reports" style={{ padding: 12, color: "#8B1F2F" }}>待處理檢舉 {reportsCount.error || reportsCount.count === null ? '待確認' : reportsCount.count}、待審留言 {pendingCount.error || pendingCount.count === null ? '待確認' : pendingCount.count}</a>
             <a
               href="/board/admin/new"
               style={{

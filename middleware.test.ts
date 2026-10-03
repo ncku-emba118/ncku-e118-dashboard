@@ -60,6 +60,23 @@ function isPassthrough(res: Response): boolean {
   return res.headers.get('x-middleware-next') === '1';
 }
 
+describe('匿名留言安全入口', () => {
+  test.each([
+    ['POST', '/api/board/comments/reports'],
+    ['GET', '/api/board/comments?post_id=11111111-1111-4111-8111-111111111111'],
+  ])('%s %s 允許匿名', async (method, path) => {
+    expect(isPassthrough(await middleware(makeReq(path, method)))).toBe(true);
+  });
+  test.each([
+    ['GET', '/api/board/comments/reports'],
+    ['DELETE', '/api/board/comments/11111111-1111-4111-8111-111111111111'],
+    ['PATCH', '/api/board/comments/11111111-1111-4111-8111-111111111111'],
+    ['GET', '/board/admin/reports'],
+  ])('%s %s 不開放匿名', async (method, path) => {
+    expect(isPassthrough(await middleware(makeReq(path, method)))).toBe(false);
+  });
+});
+
 describe('middleware — magic_scope allowlist（正面案例：兩個合法進入點）', () => {
   test('GET /finance/signoff/[id]，id 相符 → 放行', async () => {
     const cookie = await magicCookie(DOC_A);
