@@ -1,38 +1,20 @@
 /**
- * 原生推播（Capacitor App）共用型別。
- * 平台/通道：iOS → APNs（直送，token-based）；Android → FCM HTTP v1。
+ * 原生推播（Capacitor App）共用型別 — FCM 主題訂閱版。
+ * 不存任何裝置識別碼：App 同意後自行訂閱主題，後端只對主題廣播。
  */
-export type NativeApp = 'e118emba' | 'e118slc';
-export type NativePlatform = 'ios' | 'android';
-export type ApnsEnv = 'production' | 'sandbox';
 
-/** app 識別 → bundle id / package name（APNs apns-topic 用）。與 capacitor.config 的 appId 一致。 */
-export const APP_BUNDLE_IDS: Record<NativeApp, string> = {
-  e118emba: 'com.aqualux.e118emba',
-  e118slc: 'com.aqualux.e118slc',
-};
+/** 全班公告主題。擴充方式（本次未實作）：e118_dept_<代碼>，須符合 FCM 主題名稱規則 [a-zA-Z0-9-_.~%]+ */
+export const TOPIC_ALL = 'e118_all';
 
-export type NativeTarget = {
-  id: string;
-  app: NativeApp;
-  platform: NativePlatform;
-  token: string;
-  apns_env: ApnsEnv | null;
-  failure_count: number;
-};
+/** Android 通知頻道 ID：須與 App 的 AndroidManifest default_notification_channel_id、網頁端 createChannel 一致 */
+export const ANDROID_CHANNEL_ID = 'e118_announcements';
 
 export type NativeSendResult = {
   ok: boolean;
-  /** token 已永久失效（APNs 410 / BadDeviceToken 兩環境皆失敗 / FCM UNREGISTERED）→ 標 disabled_at */
-  gone: boolean;
-  /** 暫時性失敗（429 / 5xx / timeout）→ failure_count+1 */
-  retryable: boolean;
-  /** 通道未設定／超過時間預算：不算 token 的錯，不動 token 狀態 */
-  skipped?: 'not_configured' | 'deadline';
+  /** 通道未設定（缺 FCM_PROJECT_ID／服務帳號）：不算失敗、也不發送 */
+  skipped?: 'not_configured';
   statusCode?: number;
   reason?: string;
-  /** iOS：實際成功的環境，供回寫 apns_env */
-  apnsEnvUsed?: ApnsEnv;
   durationMs: number;
 };
 

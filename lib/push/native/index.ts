@@ -1,76 +1,33 @@
 /**
- * 原生通道（APNs / FCM）批次發送器 — 給 dispatcher 呼叫。
- *   • 通道依 platform 分流；憑證沒設定的通道 → 該平台 token 全部 skipped:not_configured（不動 token 狀態）
- *   • 時間預算：deadlineAt（epoch ms）一過就停止送出剩餘 token（skipped:deadline），
- *     與 Web Push 並行執行（Promise.all），總時間 = max 而非相加，不惡化 Netlify 10 秒上限風險
- *   • 分批：每批 concurrency 個；APNs 共用單一 HTTP/2 連線（多工）
+ * 原生通道（FCM 主題）發送器 — 給 dispatcher 呼叫。
+ *   • 憑證沒設定 → skipped:not_configured（不發送、不算失敗）
+ *   • 永不 throw：憑證格式錯誤等也以 ok:false 回傳，不影響 Web Push
+ *   • 不寫資料庫：結果只用 console log 記錄（不存、不輸出任何金鑰）
  */
 import type { Env } from '../../env';
-import { ApnsClient, decodeP8 } from './apns';
 import { FcmClient, parseServiceAccount } from './fcm';
-import { buildApnsBody, buildFcmMessage } from './payload';
-import type { NativeContent, NativeSendResult, NativeTarget } from './types';
+import { buildTopicMessage } from './payload';
+import { TOPIC_ALL, type NativeContent, type NativeSendResult } from './types';
 
-export type NativeChannels = { apns: ApnsClient | null; fcm: FcmClient | null };
-
-export function createNativeChannels(env: Env): NativeChannels {
-  let apns: ApnsClient | null = null;
-  let fcm: FcmClient | null = null;
-  if (env.APNS_KEY_ID && env.APNS_TEAM_ID && env.APNS_P8_B64) {
-    apns = new ApnsClient({
-      keyId: env.APNS_KEY_ID,
-      teamId: env.APNS_TEAM_ID,
-      p8Pem: decodeP8(env.APNS_P8_B64),
-      defaultEnv: env.APNS_ENV,
-    });
-  }
+export function createFcmClient(env: Env): FcmClient | null {
   const saRaw = env.FCM_SERVICE_ACCOUNT_JSON ?? env.FCM_SERVICE_ACCOUNT_JSON_B64;
-  if (env.FCM_PROJECT_ID && saRaw) {
-    fcm = new FcmClient({ projectId: env.FCM_PROJECT_ID, serviceAccount: parseServiceAccount(saRaw) });
-  }
-  return { apns, fcm };
+  if (!env.FCM_PROJECT_ID || !saRaw) return null;
+  return new FcmClient({ projectId: env.FCM_PROJECT_ID, serviceAccount: parseServiceAccount(saRaw) });
 }
 
-export async function sendNativeBatch(opts: {
-  channels: NativeChannels;
-  targets: NativeTarget[];
+export async function sendNativeTopic(opts: {
+  env: Env;
   content: NativeContent;
-  perCallTimeoutMs: number;
-  concurrency: number;
-  deadlineAt: number;
-}): Promise<Array<{ target: NativeTarget; result: NativeSendResult }>> {
-  const { channels, targets, content, perCallTimeoutMs, concurrency, deadlineAt } = opts;
-  const apnsBody = buildApnsBody(content);
-  const out: Array<{ target: NativeTarget; result: NativeSendResult }> = [];
-  const skipped = (reason: 'not_configured' | 'deadline'): NativeSendResult => ({
-    ok: false,
-    gone: false,
-    retryable: false,
-    skipped: reason,
-    durationMs: 0,
-  });
-
+  topic?: string;
+  timeoutMs: number;
+  client?: FcmClient | null;
+}): Promise<NativeSendResult> {
+  const start = Date.now();
   try {
-    for (let i = 0; i < targets.length; i += concurrency) {
-      const chunk = targets.slice(i, i + concurrency);
-      const results = await Promise.all(
-        chunk.map(async (target) => {
-          const channel = target.platform === 'ios' ? channels.apns : channels.fcm;
-          if (!channel) return { target, result: skipped('not_configured') };
-          const remaining = deadlineAt - Date.now();
-          if (remaining <= 0) return { target, result: skipped('deadline') };
-          const timeout = Math.min(perCallTimeoutMs, remaining);
-          const result =
-            target.platform === 'ios'
-              ? await (channel as ApnsClient).send(target, apnsBody, timeout)
-              : await (channel as FcmClient).send(target, buildFcmMessage(target.token, content), timeout);
-          return { target, result };
-        }),
-      );
-      out.push(...results);
-    }
-  } finally {
-    channels.apns?.close();
+    const client = opts.client === undefined ? createFcmClient(opts.env) : opts.client;
+    if (!client) return { ok: false, skipped: 'not_configured', durationMs: Date.now() - start };
+    return await client.sendToTopic(buildTopicMessage(opts.content, opts.topic ?? TOPIC_ALL), opts.timeoutMs);
+  } catch (e) {
+    return { ok: false, reason: (e as Error).message.slice(0, 80), durationMs: Date.now() - start };
   }
-  return out;
 }

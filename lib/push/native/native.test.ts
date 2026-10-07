@@ -1,72 +1,20 @@
-// 原生推播：不連外。用臨時產生的假金鑰 + 假 token 驗 JWT 結構、payload 組裝、錯誤分類、時間預算。
+// 原生推播（FCM 主題）：不連外。用臨時產生的假金鑰驗 JWT 結構、topic payload、錯誤處理、缺憑證行為。
 import crypto from 'node:crypto';
 import { describe, expect, test, vi } from 'vitest';
-import { ApnsClient, classifyApns, decodeP8, makeApnsJwt, JWT_REFRESH_SECONDS } from './apns';
-import { FcmClient, classifyFcm, makeServiceAccountAssertion, parseServiceAccount } from './fcm';
-import { buildApnsBody, buildFcmMessage, nativeTargetUrl } from './payload';
-import { BUNDLE_TO_APP, nativeRegisterSchema } from './register-schema';
-import { sendNativeBatch } from './index';
-import type { NativeTarget } from './types';
+import { FcmClient, fcmErrorCode, makeServiceAccountAssertion, parseServiceAccount } from './fcm';
+import { buildTopicMessage, nativeTargetUrl } from './payload';
+import { sendNativeTopic } from './index';
+import { ANDROID_CHANNEL_ID, TOPIC_ALL } from './types';
+import type { Env } from '../../env';
 
 const content = { post_id: '123e4567-e89b-12d3-a456-426614174000', short_title: '標題', short_excerpt: '摘要' };
 const decode = (s: string) => JSON.parse(Buffer.from(s, 'base64url').toString('utf8'));
+const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }) as string;
+const sa = { client_email: 'fake@fake.iam.gserviceaccount.com', private_key: pem };
 
-describe('APNs JWT', () => {
-  const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
-  const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }) as string;
-
-  test('header/claims 結構符合 Apple 規格，簽章可用公鑰驗證（ES256 / P1363 64 bytes）', () => {
-    const jwt = makeApnsJwt({ keyId: 'ABC123DEFG', teamId: 'TEAM123456', p8Pem: pem, iat: 1_700_000_000 });
-    const [h, c, s] = jwt.split('.');
-    expect(decode(h)).toEqual({ alg: 'ES256', kid: 'ABC123DEFG' });
-    expect(decode(c)).toEqual({ iss: 'TEAM123456', iat: 1_700_000_000 });
-    const sig = Buffer.from(s, 'base64url');
-    expect(sig.length).toBe(64);
-    expect(
-      crypto.verify('sha256', Buffer.from(`${h}.${c}`), { key: publicKey, dsaEncoding: 'ieee-p1363' }, sig),
-    ).toBe(true);
-  });
-
-  test('decodeP8：base64 還原 PEM；非 PEM 丟錯', () => {
-    expect(decodeP8(Buffer.from(pem).toString('base64'))).toContain('BEGIN PRIVATE KEY');
-    expect(() => decodeP8(Buffer.from('nope').toString('base64'))).toThrow();
-  });
-
-  test('JWT 重簽間隔介於 20–60 分鐘', () => {
-    expect(JWT_REFRESH_SECONDS).toBeGreaterThanOrEqual(20 * 60);
-    expect(JWT_REFRESH_SECONDS).toBeLessThan(60 * 60);
-  });
-
-  test('格式錯誤的 device token 不發請求、直接視為失效', async () => {
-    const c = new ApnsClient({ keyId: 'ABC123DEFG', teamId: 'TEAM123456', p8Pem: pem, defaultEnv: 'production' });
-    const t: NativeTarget = { id: '1', app: 'e118emba', platform: 'ios', token: '../../evil', apns_env: null, failure_count: 0 };
-    const r = await c.send(t, buildApnsBody(content), 100);
-    expect(r).toMatchObject({ ok: false, gone: true });
-    c.close();
-  });
-
-  test('classifyApns：200 / 410 / BadDeviceToken / 403 / 429 / 5xx', () => {
-    expect(classifyApns({ status: 200 }, 'sandbox')).toMatchObject({ ok: true, apnsEnvUsed: 'sandbox' });
-    expect(classifyApns({ status: 410, reason: 'Unregistered' }, 'production')).toMatchObject({ gone: true });
-    expect(classifyApns({ status: 400, reason: 'BadDeviceToken' }, 'production')).toMatchObject({ gone: true });
-    expect(classifyApns({ status: 403, reason: 'InvalidProviderToken' }, 'production')).toMatchObject({
-      gone: false,
-      retryable: false,
-    });
-    expect(classifyApns({ status: 429, reason: 'TooManyRequests' }, 'production')).toMatchObject({ retryable: true });
-    expect(classifyApns({ status: 503 }, 'production')).toMatchObject({ retryable: true });
-  });
-});
-
-describe('FCM v1', () => {
-  const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
-  const sa = {
-    client_email: 'fcm-sender@example-project.iam.gserviceaccount.com',
-    private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }) as string,
-  };
-  const target: NativeTarget = { id: '2', app: 'e118emba', platform: 'android', token: 'fake_token:APA91b-xxxxxxxxxxxxxxxxxxx', apns_env: null, failure_count: 0 };
-
-  test('服務帳號 assertion：RS256、claims 正確、簽章可驗', () => {
+describe('FCM 服務帳號 JWT', () => {
+  test('header/claims 結構正確，RS256 簽章可用公鑰驗證', () => {
     const jwt = makeServiceAccountAssertion(sa, 1_700_000_000);
     const [h, c, s] = jwt.split('.');
     expect(decode(h)).toEqual({ alg: 'RS256', typ: 'JWT' });
@@ -79,93 +27,85 @@ describe('FCM v1', () => {
     });
     expect(crypto.verify('RSA-SHA256', Buffer.from(`${h}.${c}`), publicKey, Buffer.from(s, 'base64url'))).toBe(true);
   });
-
-  test('parseServiceAccount：接受原文與 base64；缺欄位丟錯', () => {
-    const raw = JSON.stringify(sa);
-    expect(parseServiceAccount(raw).client_email).toBe(sa.client_email);
-    expect(parseServiceAccount(Buffer.from(raw).toString('base64')).client_email).toBe(sa.client_email);
-    expect(() => parseServiceAccount('{}')).toThrow();
-  });
-
-  function mockFetch(sendStatus: number, sendBody: unknown = {}) {
-    return vi.fn(async (url: string | URL | Request) => {
-      const u = String(url);
-      if (u.includes('oauth2.googleapis.com')) {
-        return new Response(JSON.stringify({ access_token: 'fake-access', expires_in: 3600 }), { status: 200 });
-      }
-      return new Response(JSON.stringify(sendBody), { status: sendStatus });
-    }) as unknown as typeof fetch;
-  }
-
-  test('成功送出：URL / Authorization / body；權杖快取只換一次', async () => {
-    const f = mockFetch(200, { name: 'projects/p/messages/1' });
-    const c = new FcmClient({ projectId: 'example-project', serviceAccount: sa }, f);
-    const msg = buildFcmMessage(target.token, content);
-    expect((await c.send(target, msg, 1000)).ok).toBe(true);
-    expect((await c.send(target, msg, 1000)).ok).toBe(true);
-    const calls = (f as unknown as ReturnType<typeof vi.fn>).mock.calls;
-    expect(calls.filter((x) => String(x[0]).includes('oauth2')).length).toBe(1);
-    const sendCall = calls.find((x) => String(x[0]).includes('fcm.googleapis.com'))!;
-    expect(String(sendCall[0])).toBe('https://fcm.googleapis.com/v1/projects/example-project/messages:send');
-    expect((sendCall[1] as RequestInit).headers).toMatchObject({ authorization: 'Bearer fake-access' });
-  });
-
-  test('UNREGISTERED(404) → gone；429 → retryable；400 → 不禁用', async () => {
-    const mk = (s: number, b: unknown) => new FcmClient({ projectId: 'p-id', serviceAccount: sa }, mockFetch(s, b));
-    const msg = buildFcmMessage(target.token, content);
-    expect(await mk(404, { error: { status: 'NOT_FOUND', details: [{ errorCode: 'UNREGISTERED' }] } }).send(target, msg, 1000)).toMatchObject({ gone: true });
-    expect(await mk(429, { error: { status: 'RESOURCE_EXHAUSTED' } }).send(target, msg, 1000)).toMatchObject({ retryable: true, gone: false });
-    expect(await mk(400, { error: { status: 'INVALID_ARGUMENT' } }).send(target, msg, 1000)).toMatchObject({ gone: false, retryable: false });
-    expect(classifyFcm(503, {})).toMatchObject({ retryable: true });
+  test('parseServiceAccount：原文／base64 皆可；缺欄位丟錯且訊息不含金鑰', () => {
+    const json = JSON.stringify({ ...sa, extra: 'x' });
+    expect(parseServiceAccount(json).client_email).toBe(sa.client_email);
+    expect(parseServiceAccount(Buffer.from(json).toString('base64')).private_key).toContain('BEGIN PRIVATE KEY');
+    expect(() => parseServiceAccount('{"client_email":"a"}')).toThrow(/缺 client_email/);
   });
 });
 
-describe('payload', () => {
-  test('APNs：aps.alert + 自訂 url/post_id', () => {
-    const b = buildApnsBody(content) as { aps: { alert: { title: string; body: string } }; url: string; post_id: string };
-    expect(b.aps.alert).toEqual({ title: '標題', body: '摘要' });
-    expect(b.url).toBe('/board/post/123e4567-e89b-12d3-a456-426614174000');
-    expect(b.post_id).toBe(content.post_id);
+describe('topic payload', () => {
+  test('message.topic = e118_all（無 /topics/ 前綴）、標題內文、站內導向、Android 頻道', () => {
+    const m = (buildTopicMessage(content) as { message: Record<string, any> }).message;
+    expect(m.topic).toBe(TOPIC_ALL);
+    expect(m.topic).toBe('e118_all');
+    expect(m.token).toBeUndefined();
+    expect(m.notification).toEqual({ title: '標題', body: '摘要' });
+    expect(m.data).toEqual({ url: `/board/post/${content.post_id}`, post_id: content.post_id });
+    expect(Object.values(m.data).every((v) => typeof v === 'string')).toBe(true);
+    expect(m.android.notification.channel_id).toBe(ANDROID_CHANNEL_ID);
+    expect(m.apns.headers['apns-priority']).toBe('10');
   });
-  test('FCM：data 值全為 string；priority HIGH', () => {
-    const m = buildFcmMessage('tok', content) as { message: { token: string; data: Record<string, unknown>; android: { priority: string } } };
-    expect(m.message.token).toBe('tok');
-    expect(Object.values(m.message.data).every((v) => typeof v === 'string')).toBe(true);
-    expect(m.message.android.priority).toBe('HIGH');
-  });
-  test('post_id 非 UUID → 導向 /board（不拼接不明字串）', () => {
-    expect(nativeTargetUrl({ post_id: '../../x' })).toBe('/board');
-  });
-});
-
-describe('register schema', () => {
-  const base = { app: 'com.aqualux.e118emba', management_token: 'a'.repeat(64) };
-  test('iOS hex / Android FCM token 通過；互相錯置被擋', () => {
-    expect(nativeRegisterSchema.safeParse({ ...base, platform: 'ios', token: 'ab'.repeat(32) }).success).toBe(true);
-    expect(nativeRegisterSchema.safeParse({ ...base, platform: 'android', token: 'fAkE:APA91b_-' + 'x'.repeat(40) }).success).toBe(true);
-    expect(nativeRegisterSchema.safeParse({ ...base, platform: 'ios', token: 'fAkE:APA91b_-' + 'x'.repeat(40) }).success).toBe(false);
-  });
-  test('未知 app / 過短 management_token 被擋；bundle→內部代碼', () => {
-    expect(nativeRegisterSchema.safeParse({ ...base, app: 'evil.app', platform: 'ios', token: 'ab'.repeat(32) }).success).toBe(false);
-    expect(nativeRegisterSchema.safeParse({ ...base, management_token: 'short', platform: 'ios', token: 'ab'.repeat(32) }).success).toBe(false);
-    expect(BUNDLE_TO_APP['com.aqualux.e118emba']).toBe('e118emba');
+  test('post_id 非 UUID → 導向 /board；非法 topic 名稱丟錯', () => {
+    expect(nativeTargetUrl({ post_id: 'x' })).toBe('/board');
+    expect(() => buildTopicMessage(content, '/topics/e118_all')).toThrow(/invalid FCM topic/);
+    expect((buildTopicMessage(content, 'e118_dept_a1') as any).message.topic).toBe('e118_dept_a1'); // 可擴充
   });
 });
 
-describe('sendNativeBatch 預算與未設定通道', () => {
-  const ios: NativeTarget = { id: 'i', app: 'e118emba', platform: 'ios', token: 'ab'.repeat(32), apns_env: null, failure_count: 0 };
-  const and: NativeTarget = { id: 'a', app: 'e118emba', platform: 'android', token: 'x'.repeat(30), apns_env: null, failure_count: 0 };
-  test('通道未設定 → skipped:not_configured，且不動 token', async () => {
-    const r = await sendNativeBatch({ channels: { apns: null, fcm: null }, targets: [ios, and], content, perCallTimeoutMs: 100, concurrency: 5, deadlineAt: Date.now() + 1000 });
-    expect(r.map((x) => x.result.skipped)).toEqual(['not_configured', 'not_configured']);
+describe('FcmClient.sendToTopic', () => {
+  const tokenRes = () => new Response(JSON.stringify({ access_token: 'fake-at', expires_in: 3600 }), { status: 200 });
+  const mk = (sendRes: () => Response | Promise<Response>) => {
+    const f = vi.fn(async (url: string | URL | Request) =>
+      String(url).includes('oauth2') ? tokenRes() : await sendRes(),
+    ) as unknown as typeof fetch;
+    return { client: new FcmClient({ projectId: 'fake-proj', serviceAccount: sa }, f), f: f as unknown as ReturnType<typeof vi.fn> };
+  };
+
+  test('成功：POST 到 /v1/projects/{id}/messages:send，帶 Bearer', async () => {
+    const { client, f } = mk(() => new Response('{}', { status: 200 }));
+    const r = await client.sendToTopic(buildTopicMessage(content), 1000);
+    expect(r).toMatchObject({ ok: true, statusCode: 200 });
+    const call = f.mock.calls.find((c) => String(c[0]).includes('fcm.googleapis.com'))!;
+    expect(String(call[0])).toBe('https://fcm.googleapis.com/v1/projects/fake-proj/messages:send');
+    expect(call[1].headers.authorization).toBe('Bearer fake-at');
+    expect(JSON.parse(call[1].body).message.topic).toBe('e118_all');
   });
-  test('超過 deadline → skipped:deadline，未發出任何請求', async () => {
-    const send = vi.fn();
-    const r = await sendNativeBatch({
-      channels: { apns: { send, close() {} } as never, fcm: { send } as never },
-      targets: [ios, and], content, perCallTimeoutMs: 100, concurrency: 5, deadlineAt: Date.now() - 1,
-    });
-    expect(r.every((x) => x.result.skipped === 'deadline')).toBe(true);
-    expect(send).not.toHaveBeenCalled();
+  test('4xx 回 ok:false 並帶錯誤碼；不 throw', async () => {
+    const { client } = mk(() => new Response(JSON.stringify({ error: { status: 'INVALID_ARGUMENT' } }), { status: 400 }));
+    expect(await client.sendToTopic(buildTopicMessage(content), 1000)).toMatchObject({ ok: false, statusCode: 400, reason: 'INVALID_ARGUMENT' });
+  });
+  test('401 時強制換新權杖重試一次', async () => {
+    let n = 0;
+    const { client, f } = mk(() => (n++ === 0 ? new Response('{}', { status: 401 }) : new Response('{}', { status: 200 })));
+    expect((await client.sendToTopic(buildTopicMessage(content), 1000)).ok).toBe(true);
+    expect(f.mock.calls.filter((c) => String(c[0]).includes('oauth2')).length).toBe(2);
+  });
+  test('網路錯誤 → ok:false reason network_error', async () => {
+    const f = vi.fn(async () => { throw new Error('boom'); }) as unknown as typeof fetch;
+    const client = new FcmClient({ projectId: 'fake-proj', serviceAccount: sa }, f);
+    expect(await client.sendToTopic(buildTopicMessage(content), 1000)).toMatchObject({ ok: false, reason: 'network_error' });
+  });
+  test('fcmErrorCode：優先取 details.errorCode', () => {
+    expect(fcmErrorCode({ error: { status: 'NOT_FOUND', details: [{ errorCode: 'UNREGISTERED' }] } })).toBe('UNREGISTERED');
+  });
+});
+
+describe('sendNativeTopic（缺憑證／壞憑證都不影響呼叫端）', () => {
+  test('未設定憑證 → skipped:not_configured，不發請求', async () => {
+    const r = await sendNativeTopic({ env: {} as Env, content, timeoutMs: 100 });
+    expect(r).toMatchObject({ ok: false, skipped: 'not_configured' });
+  });
+  test('憑證格式錯誤 → ok:false（不 throw），訊息不含憑證內容', async () => {
+    const env = { FCM_PROJECT_ID: 'fake-proj', FCM_SERVICE_ACCOUNT_JSON: '{"not":"a service account ............................"}' } as unknown as Env;
+    const r = await sendNativeTopic({ env, content, timeoutMs: 100 });
+    expect(r.ok).toBe(false);
+    expect(r.skipped).toBeUndefined();
+    expect(r.reason).not.toMatch(/PRIVATE KEY/);
+  });
+  test('注入假 client：回傳其結果', async () => {
+    const fake = { sendToTopic: vi.fn(async () => ({ ok: true, statusCode: 200, durationMs: 1 })) } as unknown as FcmClient;
+    expect((await sendNativeTopic({ env: {} as Env, content, timeoutMs: 100, client: fake })).ok).toBe(true);
   });
 });

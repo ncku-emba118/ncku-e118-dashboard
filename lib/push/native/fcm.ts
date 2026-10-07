@@ -1,17 +1,14 @@
 /**
- * FCM HTTP v1 發送（OAuth2 服務帳號）。零額外依賴：node:crypto + fetch。
+ * FCM HTTP v1 對「主題」發送（OAuth2 服務帳號）。零額外依賴：node:crypto + fetch。
  *
- * 官方規格（2026-10-07 查證 firebase.google.com）：
- *   • POST https://fcm.googleapis.com/v1/projects/{projectId}/messages:send
+ * 規格（沿用先前 2026-10-07 查證 firebase.google.com 的結論）：
+ *   • POST https://fcm.googleapis.com/v1/projects/{projectId}/messages:send，body.message.topic = 主題名稱
  *   • Authorization: Bearer <OAuth2 access token>，scope https://www.googleapis.com/auth/firebase.messaging
- *   • 存取權杖：以服務帳號私鑰簽 RS256 JWT（iss/scope/aud/iat/exp）→ POST token_uri
- *     grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer 換取（約 1 小時有效，快取至到期前 60 秒）
- *   • 錯誤：UNREGISTERED（404）= token 失效；INVALID_ARGUMENT（400）；QUOTA_EXCEEDED（429）；UNAVAILABLE（503）
- * 服務帳號 JSON 由呼叫端以 env 傳入；本檔不讀檔、不 log 任何 token／金鑰。
+ *   • 存取權杖：以服務帳號私鑰簽 RS256 JWT → POST token_uri（grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer）
+ * 服務帳號 JSON 由呼叫端以 env 傳入；本檔不讀檔、不 log 任何金鑰。
  */
 import crypto from 'node:crypto';
-import { b64url } from './apns';
-import type { NativeSendResult, NativeTarget } from './types';
+import type { NativeSendResult } from './types';
 
 export const FCM_SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
 const DEFAULT_TOKEN_URI = 'https://oauth2.googleapis.com/token';
@@ -21,6 +18,8 @@ export type ServiceAccount = {
   private_key: string;
   token_uri?: string;
 };
+
+export const b64url = (input: string | Buffer): string => Buffer.from(input).toString('base64url');
 
 export function parseServiceAccount(raw: string): ServiceAccount {
   const text = raw.trim().startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8');
@@ -76,7 +75,8 @@ export class FcmClient {
     return j.access_token;
   }
 
-  async send(target: NativeTarget, message: Record<string, unknown>, timeoutMs: number): Promise<NativeSendResult> {
+  /** 對主題發送一則訊息（message 為 buildTopicMessage 的結果）。永不 throw：失敗以 ok:false 回傳。 */
+  async sendToTopic(message: Record<string, unknown>, timeoutMs: number): Promise<NativeSendResult> {
     const start = Date.now();
     const done = (r: Omit<NativeSendResult, 'durationMs'>): NativeSendResult => ({
       ...r,
@@ -94,34 +94,21 @@ export class FcmClient {
       };
       let res = await post(false);
       if (res.status === 401) res = await post(true); // 權杖被撤銷/過期：強制換新一次
-      if (res.ok) return done({ ok: true, gone: false, retryable: false, statusCode: res.status });
+      if (res.ok) return done({ ok: true, statusCode: res.status });
       const body = (await res.json().catch(() => ({}))) as {
         error?: { status?: string; details?: Array<{ errorCode?: string }> };
       };
-      return done(classifyFcm(res.status, body));
+      return done({ ok: false, statusCode: res.status, reason: fcmErrorCode(body) });
     } catch (e) {
       const name = (e as Error).name;
-      return done({
-        ok: false,
-        gone: false,
-        retryable: true,
-        reason: name === 'TimeoutError' || name === 'AbortError' ? 'timeout' : 'network_error',
-      });
+      return done({ ok: false, reason: name === 'TimeoutError' || name === 'AbortError' ? 'timeout' : 'network_error' });
     }
   }
 }
 
-export function classifyFcm(
-  status: number,
-  body: { error?: { status?: string; details?: Array<{ errorCode?: string }> } },
-): Omit<NativeSendResult, 'durationMs'> {
-  const code = body.error?.details?.find((d) => d.errorCode)?.errorCode ?? body.error?.status;
-  if (status === 404 || code === 'UNREGISTERED') {
-    return { ok: false, gone: true, retryable: false, statusCode: status, reason: 'UNREGISTERED' };
-  }
-  if (status === 429 || status >= 500) {
-    return { ok: false, gone: false, retryable: true, statusCode: status, reason: code };
-  }
-  // 400 INVALID_ARGUMENT / 403 SENDER_ID_MISMATCH / 401：設定或內容問題，不禁用 token
-  return { ok: false, gone: false, retryable: false, statusCode: status, reason: code };
+/** 取 FCM 錯誤碼（例如 INVALID_ARGUMENT、QUOTA_EXCEEDED、UNAVAILABLE、SENDER_ID_MISMATCH），只回錯誤碼不回內文 */
+export function fcmErrorCode(body: {
+  error?: { status?: string; details?: Array<{ errorCode?: string }> };
+}): string | undefined {
+  return body.error?.details?.find((d) => d.errorCode)?.errorCode ?? body.error?.status;
 }

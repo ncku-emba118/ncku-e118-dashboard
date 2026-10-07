@@ -23,8 +23,8 @@ import { makePayload, makeCommentPayload, type PushPayload } from './payload';
 import { sendOne, type SubscriptionShape, type DeliveryResult } from './web-push';
 import { pushPostToLineGroup } from '../board/line_push';
 import { deptInfo } from '../depts';
-import { createNativeChannels, sendNativeBatch } from './native';
-import type { NativeTarget, NativeSendResult, NativeApp, NativePlatform, ApnsEnv } from './native/types';
+import { sendNativeTopic } from './native';
+import { TOPIC_ALL, type NativeSendResult } from './native/types';
 
 type ClaimedJob = {
   job_id: string;
@@ -46,15 +46,6 @@ type SubRow = {
 
 /** 殼內（Capacitor App）UA 標記，見 capacitor.config.json appendUserAgent；與 lib/native-app.ts 同步 */
 const SHELL_UA_MARK = 'NCKU-E118-App';
-
-type NativeRow = {
-  id: string;
-  app: NativeApp;
-  platform: NativePlatform;
-  token: string;
-  apns_env: ApnsEnv | null;
-  failure_count: number;
-};
 
 type PostRow = {
   id: string;
@@ -126,37 +117,6 @@ async function processChunk<T, R>(
   return out;
 }
 
-/** 原生 token 狀態回寫：410/失效 → disabled_at；暫時性失敗累計；成功重置並修正 apns_env */
-async function applyNativeOutcomes(
-  supabase: ReturnType<typeof getServerClient>,
-  items: Array<{ target: NativeTarget; result: NativeSendResult }>,
-  jobTrace: string,
-) {
-  const nowIso = new Date().toISOString();
-  const goneIds = items.filter((i) => i.result.gone).map((i) => i.target.id);
-  if (goneIds.length > 0) {
-    const { error } = await supabase.from('native_push_tokens').update({ disabled_at: nowIso }).in('id', goneIds);
-    if (error) console.error('[push.dispatcher.native_disable_failed]', { jobTrace, error: error.message });
-  }
-  for (const { target, result } of items) {
-    if (result.skipped || result.gone) continue;
-    if (result.retryable) {
-      const next = (target.failure_count ?? 0) + 1;
-      await supabase
-        .from('native_push_tokens')
-        .update(next >= DELIVERY_MAX_FAILURES ? { failure_count: next, disabled_at: nowIso } : { failure_count: next })
-        .eq('id', target.id);
-    } else if (result.ok) {
-      const patch: Record<string, unknown> = {};
-      if ((target.failure_count ?? 0) > 0) patch.failure_count = 0;
-      if (target.platform === 'ios' && result.apnsEnvUsed && result.apnsEnvUsed !== target.apns_env) {
-        patch.apns_env = result.apnsEnvUsed;
-      }
-      if (Object.keys(patch).length > 0) await supabase.from('native_push_tokens').update(patch).eq('id', target.id);
-    }
-  }
-}
-
 /** 共用 fan-out + delivery 記錄 + 訂閱清理，post_published / comment_created 都走這條 */
 async function fanOutAndRecord(opts: {
   supabase: ReturnType<typeof getServerClient>;
@@ -168,28 +128,38 @@ async function fanOutAndRecord(opts: {
   concurrency: number;
   jobTrace: string;
   attemptCount: number;
-  /** 只有 post_published 帶 true：原生通道（APNs/FCM）目前不處理 comment_created */
+  /** 只有 post_published 帶 true：原生通道（FCM 主題 e118_all）目前不處理 comment_created */
   includeNative?: boolean;
 }) {
   const { supabase, jobId, postId, payload, subs, perCallTimeout, concurrency, jobTrace, attemptCount } = opts;
   const env = getEnv();
   const nativeOn = opts.includeNative === true && env.NATIVE_PUSH_ENABLED === 'true';
 
-  // 原生 token 載入失敗（例如 0032 migration 尚未套用）只記 log，不影響 Web Push
-  let nativeTargets: NativeRow[] = [];
-  if (nativeOn) {
-    const { data, error } = await supabase
-      .from('native_push_tokens')
-      .select('id, app, platform, token, apns_env, failure_count')
-      .is('disabled_at', null);
-    if (error) {
-      console.error('[push.dispatcher.native_load_failed]', { jobTrace, error: error.message });
-    } else {
-      nativeTargets = (data ?? []) as NativeRow[];
-    }
-  }
+  // 原生通道（FCM 主題廣播，不載入任何 token）與 Web Push 並行：總時間 = max；自己有時間預算；
+  // 任何失敗只記 console log，不影響 Web Push 與 job 狀態（也不寫新的資料庫欄位）。
+  const nativePromise: Promise<NativeSendResult | null> = nativeOn
+    ? sendNativeTopic({
+        env,
+        content: payload,
+        timeoutMs: Math.min(perCallTimeout * 2, env.NATIVE_PUSH_BUDGET_MS),
+      })
+    : Promise.resolve(null);
+  const logNative = (r: NativeSendResult | null) => {
+    if (!r) return;
+    const tag = r.skipped ? 'native_skipped' : r.ok ? 'native_sent' : 'native_failed';
+    const log = r.ok || r.skipped ? console.info : console.error;
+    log(`[push.dispatcher.${tag}]`, {
+      jobTrace,
+      post_id: postId,
+      topic: TOPIC_ALL,
+      status: r.statusCode,
+      reason: r.skipped ?? r.reason,
+      ms: r.durationMs,
+    });
+  };
 
-  if (subs.length === 0 && nativeTargets.length === 0) {
+  if (subs.length === 0) {
+    logNative(await nativePromise);
     console.info('[push.dispatcher.no_subscribers]', { jobTrace, job_id: jobId, post_id: postId });
     await markJobSentEmpty(supabase, jobId, postId);
     return;
@@ -204,24 +174,8 @@ async function fanOutAndRecord(opts: {
     );
     return { sub, result: r };
   });
-  // 原生通道與 Web Push 並行（總時間 = max，不是相加），且有自己的時間預算
-  const nativePromise: Promise<Array<{ target: NativeTarget; result: NativeSendResult }>> = (async () => {
-    if (nativeTargets.length === 0) return [];
-    try {
-      return await sendNativeBatch({
-        channels: createNativeChannels(env), // 憑證格式錯誤會在這裡 throw → 被下面 catch，不影響 Web Push
-        targets: nativeTargets as NativeTarget[],
-        content: payload,
-        perCallTimeoutMs: perCallTimeout,
-        concurrency,
-        deadlineAt: Date.now() + env.NATIVE_PUSH_BUDGET_MS,
-      });
-    } catch (err) {
-      console.error('[push.dispatcher.native_batch_failed]', { jobTrace, error: (err as Error).message });
-      return [];
-    }
-  })();
-  const [results, nativeResults] = await Promise.all([webPromise, nativePromise]);
+  const [results, nativeResult] = await Promise.all([webPromise, nativePromise]);
+  logNative(nativeResult);
 
   const deliveryRows = results.map(({ sub, result }) => {
     const status: string = result.ok
@@ -246,7 +200,7 @@ async function fanOutAndRecord(opts: {
       trace_id: jobTrace,
     };
   });
-  if (deliveryRows.length > 0) await supabase.from('push_deliveries').insert(deliveryRows);
+  await supabase.from('push_deliveries').insert(deliveryRows);
 
   const gone = results.filter((r) => r.result.errorClass === '410_gone');
   if (gone.length > 0) {
@@ -275,20 +229,12 @@ async function fanOutAndRecord(opts: {
     }
   }
 
-  // 原生通道結果：skipped:not_configured 不算（憑證未設）；skipped:deadline 算失敗（使用者沒收到）
-  const nativeCounted = nativeResults.filter((r) => r.result.skipped !== 'not_configured');
-  const nativeSent = nativeCounted.filter((r) => r.result.ok).length;
-  const nativeGoneList = nativeCounted.filter((r) => r.result.gone);
-  const nativeFailed = nativeCounted.length - nativeSent;
-  await applyNativeOutcomes(supabase, nativeResults, jobTrace);
-
-  const sentCount = results.filter((r) => r.result.ok).length + nativeSent;
-  const goneCount = gone.length + nativeGoneList.length;
-  const totalCount = results.length + nativeCounted.length;
-  const failedCount = totalCount - sentCount;
+  const sentCount = results.filter((r) => r.result.ok).length;
+  const goneCount = gone.length;
+  const failedCount = results.length - sentCount;
 
   const jobStatus: 'sent' | 'partial_failed' | 'failed' =
-    sentCount === totalCount ? 'sent' : sentCount === 0 ? 'failed' : 'partial_failed';
+    sentCount === results.length ? 'sent' : sentCount === 0 ? 'failed' : 'partial_failed';
 
   await supabase
     .from('push_jobs')
@@ -298,21 +244,16 @@ async function fanOutAndRecord(opts: {
   await supabase.from('push_log').insert({
     job_id: jobId,
     post_id: postId,
-    total_subscribers: totalCount,
+    total_subscribers: results.length,
     sent_count: sentCount,
     failed_count: failedCount,
     gone_count: goneCount,
-    // native_* 欄位由 0032 migration 新增；只有開啟原生通道時才寫，避免 migration 未套用時弄壞既有紀錄
-    ...(nativeOn
-      ? { native_sent_count: nativeSent, native_failed_count: nativeFailed, native_gone_count: nativeGoneList.length }
-      : {}),
   });
 
   console.info('[push.dispatcher.job_done]', {
     jobTrace,
     job_id: jobId,
-    total: totalCount,
-    native: nativeCounted.length,
+    total: results.length,
     sent: sentCount,
     failed: failedCount,
     gone: goneCount,
@@ -424,7 +365,7 @@ async function processPostPublishedJob(
   }
   let subs = (subsRows ?? []) as SubRow[];
   // 去重：原生通道啟用時，跳過「在殼內（UA 帶 NCKU-E118-App）建立的 Web Push 訂閱」——
-  // 這類裝置改走原生 token，避免同一台手機收兩次。其他瀏覽器／一般 PWA 訂閱不受影響。
+  // 這類裝置改走原生主題訂閱，避免同一台手機收兩次。其他瀏覽器／一般 PWA 訂閱不受影響。
   if (getEnv().NATIVE_PUSH_ENABLED === 'true') {
     subs = subs.filter((x) => !(x.user_agent ?? '').includes(SHELL_UA_MARK));
   }
