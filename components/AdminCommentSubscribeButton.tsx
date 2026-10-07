@@ -119,7 +119,7 @@ export default function AdminCommentSubscribeButton({
     }
   }
 
-  if (native) return <><NativeNotificationNotice /><p>留言檢舉請至「留言檢舉管理」查看。</p></>;
+  if (native) return <><NativeNotificationNotice legacyOnly /><p>留言檢舉請至「留言檢舉管理」查看。</p></>;
   if (supported === null) return null;
 
   const box = {

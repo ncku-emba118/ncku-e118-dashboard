@@ -30,6 +30,22 @@ const envSchema = z.object({
   PUSH_CONCURRENCY: z.coerce.number().int().positive().default(20),
   PUSH_PER_CALL_TIMEOUT_MS: z.coerce.number().int().positive().default(3000),
 
+  // 原生推播（Capacitor App）— 全部 optional；NATIVE_PUSH_ENABLED 預設 false（安全上線：
+  // 先套 0032 migration、設好下列憑證，再改 true）。值一律放 1Password AI-agent vault → Netlify env，
+  // 程式碼/repo 只定義名稱，不得硬編。
+  NATIVE_PUSH_ENABLED: z.enum(['true', 'false']).default('false'),
+  // 原生通道自己的時間預算（ms）：超過就停止送出剩餘 token，避免拖累 Netlify 10s 函式上限
+  NATIVE_PUSH_BUDGET_MS: z.coerce.number().int().positive().default(5000),
+  // iOS（直送 APNs，token-based）：Key ID／Team ID／.p8 內容 base64（不放路徑，Netlify 無本機檔案）
+  APNS_KEY_ID: z.string().length(10).optional(),
+  APNS_TEAM_ID: z.string().length(10).optional(),
+  APNS_P8_B64: z.string().min(100).optional(),
+  APNS_ENV: z.enum(['production', 'sandbox']).default('production'),
+  // Android（FCM HTTP v1）：專案 ID + 服務帳號 JSON（原文或 base64 擇一）
+  FCM_PROJECT_ID: z.string().min(3).optional(),
+  FCM_SERVICE_ACCOUNT_JSON: z.string().min(50).optional(),
+  FCM_SERVICE_ACCOUNT_JSON_B64: z.string().min(50).optional(),
+
   // P0-2: cron / scheduled function 用 secret，避免 dispatch endpoint 被任何登入帳號狂打
   CRON_SECRET: z.string().min(32).optional(),
 
