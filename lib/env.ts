@@ -30,6 +30,17 @@ const envSchema = z.object({
   PUSH_CONCURRENCY: z.coerce.number().int().positive().default(20),
   PUSH_PER_CALL_TIMEOUT_MS: z.coerce.number().int().positive().default(3000),
 
+  // 原生推播（Capacitor App，FCM 主題訂閱）— 全部 optional；NATIVE_PUSH_ENABLED 預設 false。
+  // 上線順序：App 新版上架 → 設好下列憑證 → NATIVE_PUSH_ENABLED=true。值一律放 1Password AI-agent vault → Netlify env，
+  // 程式碼/repo 只定義名稱，不得硬編。不使用任何資料庫（沒有 token 表）。
+  NATIVE_PUSH_ENABLED: z.enum(['true', 'false']).default('false'),
+  // 原生通道自己的時間預算（ms）：與 Web Push 並行，避免拖累 Netlify 10s 函式上限
+  NATIVE_PUSH_BUDGET_MS: z.coerce.number().int().positive().default(5000),
+  // FCM HTTP v1：專案 ID + 服務帳號 JSON（原文或 base64 擇一）
+  FCM_PROJECT_ID: z.string().min(3).optional(),
+  FCM_SERVICE_ACCOUNT_JSON: z.string().min(50).optional(),
+  FCM_SERVICE_ACCOUNT_JSON_B64: z.string().min(50).optional(),
+
   // P0-2: cron / scheduled function 用 secret，避免 dispatch endpoint 被任何登入帳號狂打
   CRON_SECRET: z.string().min(32).optional(),
 

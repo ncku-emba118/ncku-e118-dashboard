@@ -23,6 +23,8 @@ import { makePayload, makeCommentPayload, type PushPayload } from './payload';
 import { sendOne, type SubscriptionShape, type DeliveryResult } from './web-push';
 import { pushPostToLineGroup } from '../board/line_push';
 import { deptInfo } from '../depts';
+import { sendNativeTopic } from './native';
+import { TOPIC_ALL, type NativeSendResult } from './native/types';
 
 type ClaimedJob = {
   job_id: string;
@@ -39,7 +41,10 @@ type SubRow = {
   auth: string;
   dept_filter: string[];
   failure_count: number;
+  user_agent?: string | null;
 };
+
+/** 殼內（Capacitor App）UA 標記，見 capacitor.config.json appendUserAgent；與 lib/native-app.ts 同步 */
 
 type PostRow = {
   id: string;
@@ -122,17 +127,45 @@ async function fanOutAndRecord(opts: {
   concurrency: number;
   jobTrace: string;
   attemptCount: number;
+  /** 只有 post_published 帶 true：原生通道（FCM 主題 e118_all）目前不處理 comment_created */
+  includeNative?: boolean;
 }) {
   const { supabase, jobId, postId, payload, subs, perCallTimeout, concurrency, jobTrace, attemptCount } = opts;
+  const env = getEnv();
+  const nativeOn = opts.includeNative === true && env.NATIVE_PUSH_ENABLED === 'true';
+
+  // 原生通道（FCM 主題廣播，不載入任何 token）與 Web Push 並行：總時間 = max；自己有時間預算；
+  // 任何失敗只記 console log，不影響 Web Push 與 job 狀態（也不寫新的資料庫欄位）。
+  const nativePromise: Promise<NativeSendResult | null> = nativeOn
+    ? sendNativeTopic({
+        env,
+        content: payload,
+        timeoutMs: Math.min(perCallTimeout * 2, env.NATIVE_PUSH_BUDGET_MS),
+      })
+    : Promise.resolve(null);
+  const logNative = (r: NativeSendResult | null) => {
+    if (!r) return;
+    const tag = r.skipped ? 'native_skipped' : r.ok ? 'native_sent' : 'native_failed';
+    const log = r.ok || r.skipped ? console.info : console.error;
+    log(`[push.dispatcher.${tag}]`, {
+      jobTrace,
+      post_id: postId,
+      topic: TOPIC_ALL,
+      status: r.statusCode,
+      reason: r.skipped ?? r.reason,
+      ms: r.durationMs,
+    });
+  };
 
   if (subs.length === 0) {
+    logNative(await nativePromise);
     console.info('[push.dispatcher.no_subscribers]', { jobTrace, job_id: jobId, post_id: postId });
     await markJobSentEmpty(supabase, jobId, postId);
     return;
   }
 
   type DeliverItem = { sub: SubRow; result: DeliveryResult };
-  const results = await processChunk<SubRow, DeliverItem>(subs, concurrency, async (sub) => {
+  const webPromise = processChunk<SubRow, DeliverItem>(subs, concurrency, async (sub) => {
     const r = await sendOne(
       { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
       payload,
@@ -140,6 +173,8 @@ async function fanOutAndRecord(opts: {
     );
     return { sub, result: r };
   });
+  const [results, nativeResult] = await Promise.all([webPromise, nativePromise]);
+  logNative(nativeResult);
 
   const deliveryRows = results.map(({ sub, result }) => {
     const status: string = result.ok
@@ -320,7 +355,7 @@ async function processPostPublishedJob(
   // dept_filter 欄位只給 comment_created 用，這裡不讀。
   const { data: subsRows, error: subsErr } = await supabase
     .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth, dept_filter, failure_count');
+    .select('id, endpoint, p256dh, auth, dept_filter, failure_count, user_agent');
 
   if (subsErr) {
     console.error('[push.dispatcher.subs_load_failed]', { jobTrace, error: subsErr.message });
@@ -328,6 +363,8 @@ async function processPostPublishedJob(
     return;
   }
   const subs = (subsRows ?? []) as SubRow[];
+  // 不以 UA 去重：單靠 UA 無法證明該裝置已訂閱原生主題，排除會讓尚未訂閱者漏收；
+  // App 殼內本來就不會建立新的 Web Push 訂閱（見 SubscribeButton／NativeNotificationNotice），重複機率極低。
   const payload: PushPayload = makePayload(post);
 
   await fanOutAndRecord({
@@ -340,6 +377,7 @@ async function processPostPublishedJob(
     concurrency,
     jobTrace,
     attemptCount: job.attempt_count,
+    includeNative: true,
   });
 }
 

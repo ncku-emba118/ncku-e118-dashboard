@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import PWARegister from '../components/PWARegister';
+import NativePushBridge from '../components/NativePushBridge';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://emba.aqualux.dev'),
