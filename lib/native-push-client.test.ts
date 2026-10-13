@@ -108,3 +108,11 @@ describe('disableNativePush', () => {
     expect(await disableNativePush(ok.p)).toBe(true);
   });
 });
+
+describe('審查回補（2026-10-13 Codex 敵對審查）', () => {
+  test('getToken 回空識別碼時不可宣稱已開啟，也不訂閱主題', async () => {
+    const { p } = fakePlugin('granted', { getToken: vi.fn(async () => ({ token: '' })) });
+    expect(await enableNativePush(p as unknown as MessagingPluginLike, 'ios')).toBe('error');
+    expect(p.subscribeToTopic).not.toHaveBeenCalled();
+  });
+});

@@ -109,3 +109,44 @@ describe('sendNativeTopic（缺憑證／壞憑證都不影響呼叫端）', () =
     expect((await sendNativeTopic({ env: {} as Env, content, timeoutMs: 100, client: fake })).ok).toBe(true);
   });
 });
+
+describe('審查回補（2026-10-13 Codex 敵對審查）', () => {
+  const tok = () => new Response(JSON.stringify({ access_token: 'fake-at', expires_in: 3600 }));
+
+  test('token_uri 被竄改也一律打固定的 Google 端點，aud 同樣固定', async () => {
+    const urls: string[] = [];
+    const f = vi.fn(async (url: string | URL | Request) => {
+      urls.push(String(url));
+      return String(url).includes('oauth2') ? tok() : new Response('{}', { status: 200 });
+    }) as unknown as typeof fetch;
+    const evil = { ...sa, token_uri: 'https://evil.example.test/collect' };
+    const client = new FcmClient({ projectId: 'fake-proj', serviceAccount: evil }, f);
+    await client.sendToTopic(buildTopicMessage(content), 1000);
+    expect(urls[0]).toBe('https://oauth2.googleapis.com/token');
+    expect(urls.some((u) => u.includes('evil.example.test'))).toBe(false);
+    const claims = decode(makeServiceAccountAssertion(evil, 1_700_000_000).split('.')[1]);
+    expect(claims.aud).toBe('https://oauth2.googleapis.com/token');
+  });
+
+  test('timeoutMs 是整次發送（含換權杖與 401 重試）的總預算，不是每個請求各一份', async () => {
+    const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    let n = 0;
+    const f = vi.fn(async (url: string | URL | Request) => {
+      await delay(40);
+      if (String(url).includes('oauth2')) return tok();
+      return n++ === 0 ? new Response('{}', { status: 401 }) : new Response('{}', { status: 200 });
+    }) as unknown as typeof fetch;
+    const client = new FcmClient({ projectId: 'fake-proj', serviceAccount: sa }, f);
+    const started = Date.now();
+    const r = await client.sendToTopic(buildTopicMessage(content), 100);
+    expect(Date.now() - started).toBeLessThan(160);
+    expect(r).toMatchObject({ ok: false, reason: 'timeout' });
+  });
+
+  test('壞憑證的失敗原因是固定代碼，不帶 JSON.parse 例外內的內容片段', async () => {
+    const env = { FCM_PROJECT_ID: 'fake-proj', FCM_SERVICE_ACCOUNT_JSON: '{"private_key": SECRET_PRIVATE_KEY_MARKER}' } as unknown as Env;
+    const r = await sendNativeTopic({ env, content, timeoutMs: 100 });
+    expect(r).toMatchObject({ ok: false, reason: 'client_init_failed' });
+    expect(JSON.stringify(r)).not.toContain('SECRET_PRI');
+  });
+});

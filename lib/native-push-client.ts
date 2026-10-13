@@ -20,7 +20,7 @@ export type PermState = 'prompt' | 'prompt-with-rationale' | 'granted' | 'denied
 export type MessagingPluginLike = {
   checkPermissions(): Promise<{ receive: PermState }>;
   requestPermissions(): Promise<{ receive: PermState }>;
-  getToken(): Promise<unknown>;
+  getToken(): Promise<{ token?: string }>;
   deleteToken(): Promise<void>;
   subscribeToTopic(opts: { topic: string }): Promise<void>;
   unsubscribeFromTopic(opts: { topic: string }): Promise<void>;
@@ -86,7 +86,8 @@ export async function enableNativePush(
         .createChannel({ id: ANDROID_CHANNEL_ID, name: '班級公告', description: '班級新公告通知', importance: 4 })
         .catch(() => undefined); // 頻道已存在時略過
     }
-    await plugin.getToken(); // 關閉自動初始化後，同意才在此啟動 FCM；回傳值不保存、不外送
+    const { token } = await plugin.getToken(); // 關閉自動初始化後，同意才在此啟動 FCM；回傳值不保存、不外送
+    if (!token) return 'error'; // 沒取得識別碼就不可宣稱已開啟
     await plugin.subscribeToTopic({ topic: TOPIC_ALL });
     return 'ok';
   } catch {

@@ -45,7 +45,6 @@ type SubRow = {
 };
 
 /** 殼內（Capacitor App）UA 標記，見 capacitor.config.json appendUserAgent；與 lib/native-app.ts 同步 */
-const SHELL_UA_MARK = 'NCKU-E118-App';
 
 type PostRow = {
   id: string;
@@ -363,12 +362,9 @@ async function processPostPublishedJob(
     await markJobFailed(supabase, job.job_id, subsErr.message);
     return;
   }
-  let subs = (subsRows ?? []) as SubRow[];
-  // 去重：原生通道啟用時，跳過「在殼內（UA 帶 NCKU-E118-App）建立的 Web Push 訂閱」——
-  // 這類裝置改走原生主題訂閱，避免同一台手機收兩次。其他瀏覽器／一般 PWA 訂閱不受影響。
-  if (getEnv().NATIVE_PUSH_ENABLED === 'true') {
-    subs = subs.filter((x) => !(x.user_agent ?? '').includes(SHELL_UA_MARK));
-  }
+  const subs = (subsRows ?? []) as SubRow[];
+  // 不以 UA 去重：單靠 UA 無法證明該裝置已訂閱原生主題，排除會讓尚未訂閱者漏收；
+  // App 殼內本來就不會建立新的 Web Push 訂閱（見 SubscribeButton／NativeNotificationNotice），重複機率極低。
   const payload: PushPayload = makePayload(post);
 
   await fanOutAndRecord({

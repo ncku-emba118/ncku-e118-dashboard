@@ -15,12 +15,17 @@ export default function NativePushBridge() {
     const w = window as Window & { __e118PushNav?: boolean };
     if (w.__e118PushNav) return;
     w.__e118PushNav = true;
-    void plugin.addListener('notificationActionPerformed', ((a: {
-      notification?: { data?: { url?: unknown } };
-    }) => {
-      const path = safeInternalPath(a?.notification?.data?.url);
-      if (path) window.location.href = path;
-    }) as never);
+    // 註冊失敗時把旗標還原，下次掛載才有機會重試；並吞掉 rejection 避免未處理錯誤
+    void Promise.resolve(
+      plugin.addListener('notificationActionPerformed', ((a: {
+        notification?: { data?: { url?: unknown } };
+      }) => {
+        const path = safeInternalPath(a?.notification?.data?.url);
+        if (path) window.location.href = path;
+      }) as never),
+    ).catch(() => {
+      w.__e118PushNav = false;
+    });
   }, []);
   return null;
 }

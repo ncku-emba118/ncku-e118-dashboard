@@ -71,7 +71,11 @@ export default function NativePushOptIn() {
       try {
         const { receive } = await plugin.checkPermissions();
         if (receive === 'denied') setView({ kind: 'denied' });
-        else if (receive === 'granted' && read(ENABLED_KEY)) setView({ kind: 'on' });
+        else if (receive === 'granted' && read(ENABLED_KEY)) {
+          // 本機旗標只代表「曾經開啟」；識別碼可能已更新，所以每次進來都靜默重新訂閱（可重複執行），成功才顯示已開啟
+          const r = await enableNativePush(plugin, getNativePlatform(window));
+          setView(r === 'ok' ? { kind: 'on' } : { kind: 'prompt' });
+        }
         else if (read(DECLINED_KEY)) setView({ kind: 'declined' });
         else setView({ kind: 'prompt' });
       } catch {

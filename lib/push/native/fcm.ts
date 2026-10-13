@@ -34,7 +34,7 @@ export function makeServiceAccountAssertion(sa: ServiceAccount, nowSec: number):
     JSON.stringify({
       iss: sa.client_email,
       scope: FCM_SCOPE,
-      aud: sa.token_uri || DEFAULT_TOKEN_URI,
+      aud: DEFAULT_TOKEN_URI,
       iat: nowSec,
       exp: nowSec + 3600,
     }),
@@ -45,6 +45,17 @@ export function makeServiceAccountAssertion(sa: ServiceAccount, nowSec: number):
 }
 
 type FetchLike = typeof fetch;
+
+/** 讓一個 Promise 最多等 ms 毫秒，逾時就拒絕（讀取回應本文時也受總預算限制） */
+function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(Object.assign(new Error('deadline'), { name: 'TimeoutError' })), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
 
 export class FcmClient {
   private access: { token: string; expiresAt: number } | null = null;
@@ -59,7 +70,8 @@ export class FcmClient {
     if (!force && this.access && this.now() < this.access.expiresAt - 60_000) return this.access.token;
     const sa = this.cfg.serviceAccount;
     const assertion = makeServiceAccountAssertion(sa, Math.floor(this.now() / 1000));
-    const res = await this.fetchImpl(sa.token_uri || DEFAULT_TOKEN_URI, {
+    // 一律用固定的 Google token 端點，忽略金鑰 JSON 內的 token_uri（避免被竄改而把簽好的 assertion 送去別處）
+    const res = await this.fetchImpl(DEFAULT_TOKEN_URI, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -82,20 +94,27 @@ export class FcmClient {
       ...r,
       durationMs: Date.now() - start,
     });
+    // timeoutMs 是「整次發送（含換權杖、401 重試）」的總預算，每一步只用剩餘時間
+    const deadline = start + timeoutMs;
+    const remaining = () => {
+      const left = deadline - Date.now();
+      if (left <= 0) throw Object.assign(new Error('budget_exhausted'), { name: 'TimeoutError' });
+      return left;
+    };
     try {
       const post = async (force: boolean) => {
-        const token = await this.getAccessToken(force, timeoutMs);
+        const token = await this.getAccessToken(force, remaining());
         return this.fetchImpl(`https://fcm.googleapis.com/v1/projects/${this.cfg.projectId}/messages:send`, {
           method: 'POST',
           headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
           body: JSON.stringify(message),
-          signal: AbortSignal.timeout(timeoutMs),
+          signal: AbortSignal.timeout(remaining()),
         });
       };
       let res = await post(false);
       if (res.status === 401) res = await post(true); // 權杖被撤銷/過期：強制換新一次
       if (res.ok) return done({ ok: true, statusCode: res.status });
-      const body = (await res.json().catch(() => ({}))) as {
+      const body = (await withDeadline(res.json(), remaining()).catch(() => ({}))) as {
         error?: { status?: string; details?: Array<{ errorCode?: string }> };
       };
       return done({ ok: false, statusCode: res.status, reason: fcmErrorCode(body) });

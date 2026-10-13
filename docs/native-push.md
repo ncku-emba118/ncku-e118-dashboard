@@ -19,7 +19,8 @@
 
 - 主題：`e118_all`（`lib/push/native/types.ts` 的 `TOPIC_ALL`）。擴充方式（本次未實作）：`e118_dept_<代碼>`，
   `buildTopicMessage(content, topic)` 已支援傳入其他主題（名稱須符合 `[a-zA-Z0-9-_.~%]+`）。
-- 與 Web Push 去重：Web Push 訂閱的 `user_agent` 含 `NCKU-E118-App` 者（殼內建立）在 `NATIVE_PUSH_ENABLED=true` 時跳過；其餘瀏覽器／PWA 訂閱不受影響。
+- 與 Web Push **不去重**（2026-10-13 Codex 審查後調整）：單靠 `user_agent` 無法證明該裝置已訂閱原生主題，排除會讓尚未訂閱者漏收；App 殼內本來就不會建立新的 Web Push 訂閱，重複機率極低。
+- 發送時間預算：`NATIVE_PUSH_BUDGET_MS` 是整次原生發送（含換權杖、401 重試、讀回應）的總上限。OAuth 端點固定為 Google 官方網址，忽略金鑰 JSON 內的 `token_uri`。
 - **不寫資料庫、無 SQL**：原生發送結果只用 console log（`[push.dispatcher.native_sent|native_failed|native_skipped]`，Netlify Functions 日誌可查）。
   `push_log` 沒有 native 欄位，原生通道不計入 `total_subscribers／sent_count`。原生發送失敗**不**影響 job 狀態、不重試（避免 Web Push 重複送出）。
 - 舊版 App（沒有 `FirebaseMessaging` 外掛）：`window.Capacitor.Plugins.FirebaseMessaging` 不存在 → 自動退回原本「請透過班級 LINE 群組」說明。
