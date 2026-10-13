@@ -1,0 +1,2 @@
+.income-date { -webkit-appearance: none; appearance: none; display: block; width: 100%; min-width: 0; min-height: 44px; text-align: left; }
+.income-date::-webkit-date-and-time-value { text-align: left; }

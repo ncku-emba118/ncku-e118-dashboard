@@ -144,7 +144,7 @@ function LoginForm() {
             style={{
               width: '100%',
               padding: '12px 14px',
-              fontSize: 14,
+              fontSize: 16,
               border: '1px solid #D9CDB8',
               borderRadius: 4,
               background: '#FAF7F2',

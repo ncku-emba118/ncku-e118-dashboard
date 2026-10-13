@@ -1,4 +1,5 @@
 'use client';
+import './income.css';
 
 import { useEffect, useState } from 'react';
 import { INCOME_CATEGORIES } from '@/lib/finance/income';
@@ -107,19 +108,19 @@ export default function IncomeManagePage() {
             {/* 新增表單 */}
             <form onSubmit={add} style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 8, padding: 16, marginBottom: 22 }}>
               <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: WINE }}>＋ 記一筆收入</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <label style={lbl}>日期
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required style={inp} />
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 10 }}>
+                <label style={{ ...lbl, minWidth: 0 }}>日期
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required className="income-date" style={inp} />
                 </label>
-                <label style={lbl}>項目
+                <label style={{ ...lbl, minWidth: 0 }}>項目
                   <select value={category} onChange={(e) => setCategory(e.target.value)} style={inp}>
                     {INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </label>
-                <label style={lbl}>金額（NT$）
+                <label style={{ ...lbl, minWidth: 0 }}>金額（NT$）
                   <input type="number" min="1" step="1" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="例：303000" required style={inp} />
                 </label>
-                <label style={lbl}>備註（選填）
+                <label style={{ ...lbl, minWidth: 0 }}>備註（選填）
                   <input type="text" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="例：每人 3000 × 101 人" style={inp} />
                 </label>
               </div>
@@ -164,4 +165,4 @@ export default function IncomeManagePage() {
 }
 
 const lbl: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5, color: MUTE };
-const inp: React.CSSProperties = { border: `1px solid ${LINE}`, borderRadius: 4, padding: '8px 10px', fontSize: 14, color: INK, background: '#fff' };
+const inp: React.CSSProperties = { border: `1px solid ${LINE}`, borderRadius: 4, padding: '8px 10px', fontSize: 16, color: INK, background: '#fff' };
