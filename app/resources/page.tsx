@@ -92,7 +92,7 @@ export default function ResourcesPage() {
           </a>
 
           <a
-            className="resources-tile accent"
+            className="resources-tile"
             href={`${thesis.href}?src=resources`}
           >
             <div
