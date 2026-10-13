@@ -345,7 +345,7 @@ export default function PostForm({
             style={{
               width: '100%',
               padding: '10px 14px',
-              fontSize: 14,
+              fontSize: 16,
               border: '1px solid #D9CDB8',
               borderRadius: 4,
               background: isEdit ? '#EDE6D6' : '#FAF7F2',
@@ -493,7 +493,7 @@ export default function PostForm({
             style={{
               width: '100%',
               padding: '12px 14px',
-              fontSize: 15,
+              fontSize: 16,
               lineHeight: 1.7,
               border: '1px solid #D9CDB8',
               borderRadius: 4,
@@ -712,7 +712,7 @@ export default function PostForm({
                   style={{
                     flex: '0 0 140px',
                     padding: '8px 10px',
-                    fontSize: 13,
+                    fontSize: 16,
                     border: '1px solid #D9CDB8',
                     borderRadius: 3,
                     background: '#fff',
@@ -729,7 +729,7 @@ export default function PostForm({
                     flex: 1,
                     minWidth: 200,
                     padding: '8px 10px',
-                    fontSize: 13,
+                    fontSize: 16,
                     border: '1px solid #D9CDB8',
                     borderRadius: 3,
                     background: '#fff',

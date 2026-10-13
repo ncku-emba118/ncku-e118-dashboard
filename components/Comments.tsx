@@ -452,7 +452,7 @@ export default function Comments({
           style={{
             width: '100%',
             padding: '8px 12px',
-            fontSize: 13,
+            fontSize: 16,
             border: '1px solid #D9CDB8',
             borderRadius: 4,
             background: '#FAF7F2',
@@ -481,7 +481,7 @@ export default function Comments({
           style={{
             width: '100%',
             padding: '10px 12px',
-            fontSize: 14,
+            fontSize: 16,
             lineHeight: 1.65,
             border: '1px solid #D9CDB8',
             borderRadius: 4,

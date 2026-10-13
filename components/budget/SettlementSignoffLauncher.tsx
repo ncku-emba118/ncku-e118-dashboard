@@ -236,7 +236,7 @@ function Modal({
                 disabled={!a.selected}
                 onChange={(e) => setRole(a.id, e.target.value)}
                 placeholder="角色（如 審核/核准）"
-                style={{ ...input, flex: 1, padding: '5px 8px', fontSize: 12.5 }}
+                style={{ ...input, flex: 1, padding: '5px 8px', fontSize: 16 }}
               />
             </div>
           ))}
