@@ -16,7 +16,7 @@ type Card = {
 
 const byKey = Object.fromEntries((cards as Card[]).map((c) => [c.key, c]));
 
-const PAGE_TITLE = 'EMBA 資源書院';
+const PAGE_TITLE = '學術資源共享站';
 const PAGE_DESCRIPTION =
   'NCKU EMBA 學術資源共享站 — 課程報告、論文查詢、學分追蹤、社團總表，不分屆別的共用資料庫。';
 
@@ -73,7 +73,7 @@ export default function ResourcesPage() {
         <img src="/assets/resources/campus-hero.jpg" alt="國立成功大學校園" />
         <div className="resources-hero-copy">
           <div className="tag">Empowering Thought. Enriching Leadership.</div>
-          <h1>不分屆別的 EMBA 學術資源共享站</h1>
+          <h1>學術資源共享站</h1>
         </div>
       </div>
 
