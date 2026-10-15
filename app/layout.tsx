@@ -81,6 +81,8 @@ export default function RootLayout({
         {/* PWARegister: SW register + Local dev href override +
             sw-navigate postMessage 接收（推播點擊 fallback 導航） */}
         <PWARegister />
+        {/* NativePushBridge: App 殼內點通知 → 導向公告（一般瀏覽器不動作） */}
+        <NativePushBridge />
         {children}
       </body>
     </html>
