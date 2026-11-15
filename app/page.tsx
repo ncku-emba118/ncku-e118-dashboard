@@ -2,6 +2,7 @@ import cards from '@/lib/dashboard/cards.json';
 import { getLatestPosts, getUpcomingEvents } from '@/lib/dashboard/feeds';
 import ClassPhotoSection from '@/components/ClassPhotoSection';
 import HomeEasterEggs from '@/components/HomeEasterEggs';
+import ChibiMascots from '@/components/ChibiMascots';
 
 /**
  * 主 dashboard 首頁 — Bento 版型（2026-05 改版）。
@@ -174,6 +175,7 @@ export default async function Home() {
 
       {/* 彩蛋：logo 連點 5 下合照 overlay + 深夜問候 toast（純 client、不影響 SSG 內容） */}
       <HomeEasterEggs />
+      <ChibiMascots />
     </>
   );
 }
