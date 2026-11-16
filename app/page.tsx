@@ -44,11 +44,14 @@ export default async function Home() {
               <span className="brand-class-label">Class Portal</span>
             </div>
           </a>
+          <div className="top-right">
           <ul className="nav-links">
             <li><a href="#apps">常用入口</a></li>
             <li><a href="#help">使用說明</a></li>
             <li data-install-guide><a href="#install">安裝 App</a></li>
           </ul>
+          <div id="chibi-slot" />
+          </div>
         </div>
       </header>
 
