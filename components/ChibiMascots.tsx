@@ -167,7 +167,8 @@ function locate(pose: Pose, size: number, zone: Zone, others: Mascot[] = [], fir
     const b = brand.getBoundingClientRect();
     const n = nav?.getBoundingClientRect();
     const start = b.right + 18 + size / 2;
-    const end = (n && n.width ? n.left : h.right) - 18 - size / 2;
+    const t = header.querySelector<HTMLElement>('.chibi-toggle')?.getBoundingClientRect();
+    const end = (n && n.width ? n.left : t && t.width ? t.left : h.right) - 18 - size / 2;
     if (end < start) return null;
     for (let i = 0; i < 8; i++) { const at = { x: random(start, end) + scrollX, y: h.bottom + scrollY }; if (valid(at)) return at; }
     return null;
@@ -444,7 +445,8 @@ export default function ChibiMascots() {
   }, [debug]);
 
   if (!mounted) return null;
-  return createPortal(<>
+  const slot = document.getElementById('chibi-slot');
+  return <>{createPortal(<>
     <style>{`
       .chibi-layer{position:absolute;inset:0;z-index:55;pointer-events:none}
       .chibi-place{position:absolute;pointer-events:none}
@@ -471,11 +473,13 @@ export default function ChibiMascots() {
       .chibi-zs span:nth-child(1){font-size:13px;animation-delay:0s}.chibi-zs span:nth-child(2){font-size:18px;animation-delay:1s}.chibi-zs span:nth-child(3){font-size:23px;animation-delay:2s}
       .chibi-hearts{font-size:22px;animation:chibi-heart-float 1.6s ease-out infinite}
       .chibi-bubble{position:absolute;left:50%;top:-22px;transform:translateX(-50%);white-space:nowrap;background:#fffaf1;color:#8B1F2F;border:1px solid #E0C896;border-radius:999px;padding:5px 10px;font-size:13px;box-shadow:0 3px 12px #0002;animation:chibi-bubble 2s both;pointer-events:none}
-      .chibi-toggle{position:fixed;right:16px;bottom:16px;z-index:60;display:flex;padding:3px;gap:2px;border-radius:999px;border:1px solid #E0C896;background:#fffaf1;box-shadow:0 3px 12px #0002}
+      .chibi-toggle{position:relative;z-index:60;display:flex;flex:none;padding:3px;gap:2px;border-radius:999px;border:1px solid #E0C896;background:#fffaf1;box-shadow:0 3px 12px #0002}
+      .chibi-toggle-float{position:fixed;right:16px;bottom:16px}
       .chibi-toggle button{border:0;background:transparent;color:#8B1F2F;border-radius:999px;padding:6px 12px;font-size:13px;line-height:1.2;cursor:pointer;white-space:nowrap}
       .chibi-toggle button[aria-pressed=true]{background:#8B1F2F;color:#fffaf1}
       .chibi-toggle .chibi-reroll{border:1px solid #E0C896;margin-left:2px}
       .chibi-toggle .chibi-reroll:disabled{opacity:.4;cursor:default}
+      @media(max-width:720px){.chibi-toggle button{padding:5px 7px;font-size:12px}.chibi-toggle .chibi-reroll-text{display:none}}
       .chibi-toggle button:focus-visible,.chibi-person:focus-visible{outline:3px solid #8B1F2F;outline-offset:2px}
       @keyframes chibi-pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
       @keyframes chibi-bob{50%{transform:translateY(-5px)}}
@@ -499,13 +503,16 @@ export default function ChibiMascots() {
       @media(prefers-reduced-motion:reduce){.chibi-enter,.chibi-motion,.chibi-person,.chibi-bubble,.chibi-zs span,.chibi-hearts{animation:none!important}.chibi-peek .chibi-motion{transform:none;opacity:1}}
     `}</style>
     {(enabled || debug) && <div className="chibi-layer">{mascots.map((m) => <MascotView key={m.id} mascot={m} reduced={reduced} paused={paused} hop={hopId === m.id} />)}</div>}
-    <div className="chibi-toggle" role="group" aria-label="首頁版本">
+  </>, document.body)}
+  {createPortal(
+    <div className={slot ? 'chibi-toggle' : 'chibi-toggle chibi-toggle-float'} role="group" aria-label="首頁版本">
       {([['on', '同學版', true], ['off', '原始版', false]] as const).map(([key, label, value]) => (
         <button key={key} type="button" aria-pressed={enabled === value} onClick={() => {
           setEnabled(value); try { localStorage.setItem('e118-chibi', key); } catch {}
         }}>{label}</button>
       ))}
-      <button type="button" className="chibi-reroll" disabled={!enabled} aria-label="換一批同學" title="換一批" onClick={() => { seedRef.current = Math.floor(Math.random() * 2 ** 31); setReroll((n) => n + 1); }}>↻ 換一批</button>
+      <button type="button" className="chibi-reroll" disabled={!enabled} aria-label="換一批同學" title="換一批" onClick={() => { seedRef.current = Math.floor(Math.random() * 2 ** 31); setReroll((n) => n + 1); }}>↻<span className="chibi-reroll-text"> 換一批</span></button>
     </div>
-  </>, document.body);
+  , slot ?? document.body)}
+  </>;
 }

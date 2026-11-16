@@ -123,6 +123,8 @@
       color: var(--ncku-mute);
       margin-top: 4px;
     }
+    .top-right { display: flex; align-items: center; gap: 28px; }
+    #chibi-slot { display: flex; align-items: center; }
     .nav-links { display: flex; gap: 28px; list-style: none; }
     .nav-links a {
       text-decoration: none;
@@ -644,6 +646,9 @@
       .hero h1 { font-size: 76px; }
       .app-grid { grid-template-columns: repeat(2, 1fr); }
     }
+    @media (max-width: 480px) {
+      .brand-class-label { display: none; }
+    }
     @media (max-width: 720px) {
       .container { padding: 0 24px; }
       header.top { padding: 16px 0; }
@@ -651,6 +656,8 @@
       .brand-class { padding-left: 12px; }
       .brand-class-num { font-size: 17px; }
       .nav-links { display: none; }
+      .top-inner { gap: 8px; }
+      .top-right { gap: 0; }
       .hero { padding: 56px 0 40px; }
       .hero h1 { font-size: 56px; }
       .hero-tc { font-size: 18px; }
